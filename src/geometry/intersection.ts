@@ -11,3 +11,10 @@ export class PrimitiveIntersection {
         public primitive   : Primitive = null, /* <-- theoretically this should be wrong from an architectural perspective */
     ) { }
 }
+
+export class AABBIntersection {
+    constructor(
+        public t   : number  = Infinity,
+        public hit : boolean = false,
+    ) { }
+}

@@ -1,6 +1,7 @@
 import { Vector2, Vector3 } from "three";
 import { Camera } from "./camera";
 import { ComputationRequest, ComputationResult, IStartMessage, IWorkerMessage } from "./commonTypes";
+import { BVH } from "./geometry/bvh";
 import { PrimitiveIntersection } from "./geometry/intersection";
 import { Material, Materials } from "./materials/materials";
 import { SimpleGlossy } from "./materials/simpleGlossy";
@@ -55,6 +56,8 @@ ctx.onmessage = ({ data }: { data: IWorkerMessage }) => {
         primitives.push(newEntity);
       }
     }
+
+    let bvh = new BVH(primitives);
 
     // build the materials array
     for(let i = 0; i < scene.materials.length; i++) {

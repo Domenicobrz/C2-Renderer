@@ -1,4 +1,5 @@
 import { Vector3 } from "three";
+import { AABB } from "../geometry/aabb";
 import { PrimitiveIntersection } from "../geometry/intersection";
 import { Ray } from "../geometry/ray";
 import { Primitive } from "./primitive";
@@ -10,6 +11,25 @@ export class Sphere extends Primitive {
         public materialIndex : number,
     ) { 
         super(materialIndex);
+    }
+
+    getAABB() : AABB {
+        return new AABB(
+            new Vector3(
+                this.center.x - this.radius,
+                this.center.y - this.radius,
+                this.center.z - this.radius,
+            ), 
+            new Vector3(
+                this.center.x + this.radius,
+                this.center.y + this.radius,
+                this.center.z + this.radius,
+            ), 
+        );
+    }
+
+    getCentroid() : Vector3 {
+        return this.center.clone();
     }
 
     intersect(ray : Ray) : PrimitiveIntersection {

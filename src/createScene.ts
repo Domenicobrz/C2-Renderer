@@ -34,18 +34,18 @@ export function createScene() : string {
         center: new Vector3(-2, 2.5, 15),
         material: 3,
       },
-      {
-        type: "sphere",
-        radius: 100,
-        center: new Vector3(0, -102.5,10),
-        material: 1,
-      }, 
-      {
-        type: "sphere",
-        radius: 150,
-        center: new Vector3(0, 9, 170),
-        material: 0,
-      },
+      // {
+      //   type: "sphere",
+      //   radius: 100,
+      //   center: new Vector3(0, -102.5,10),
+      //   material: 1,
+      // }, 
+      // {
+      //   type: "sphere",
+      //   radius: 150,
+      //   center: new Vector3(0, 9, 170),
+      //   material: 0,
+      // },
     ],
     materials: [
       {

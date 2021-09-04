@@ -15,8 +15,8 @@ import { createScene } from "./createScene";
 import { refreshDisplay } from "./display";
 import { Tile, TileManager } from "./tile";
 
-// let canvasSize = new Vector2(800, 550);
-let canvasSize = new Vector2(600, 400);
+let canvasSize = new Vector2(800, 550);
+// let canvasSize = new Vector2(600, 400);
 
 let canvas    = document.getElementById('canvas') as HTMLCanvasElement;
 canvas.width  = canvasSize.x;

@@ -26,6 +26,8 @@ function sfc32(a : number, b : number, c : number, d : number) {
 }
 
 // from https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
+// DO NOT USE RAND() OR NRAND() FOR CALCULATIONS THAT DETERMINE RADIANCE COMPUTATION
+// OTHERWISE EACH WEBWORKER WOULD GET THE SAME VALUES
 export var rand = sfc32(seed(), seed(), seed(), seed());
 
 export function nrand(value : number = 1) : number {

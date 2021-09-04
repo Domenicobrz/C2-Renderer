@@ -1,6 +1,6 @@
 import { Vector3 } from "three";
 import { Materials } from "./materials/materials";
-import { nrand } from "./utils";
+import { nrand, rand } from "./utils";
 
 export function createScene(): string {
   let entities = [];
@@ -9,14 +9,35 @@ export function createScene(): string {
       idx: 0,
       type: Materials.SimpleLambert,
       color: new Vector3(0.9, 0.9, 0.9),
-    }
+    },
+    {
+      idx: 1,
+      type: Materials.SimpleLambert,
+      color: new Vector3(1, 0.5, 0.24),
+    },
+    {
+      idx: 2,
+      type: Materials.SimpleMirror,
+      color: new Vector3(0.24, 0.5, 1.0),
+    },
+    {
+      idx: 3,
+      type: Materials.SimpleLambert,
+      color: new Vector3(0.8, 0.15, 0.05),
+    },
+    {
+      idx: 4,
+      type: Materials.SimpleTransmission,
+      color: new Vector3(0.85, 0.85, 0.85),
+      refractionIndex: 1.5,
+    },
   ];
 
   for (let i = 0; i < 3000; i++) {
     entities.push({
       type: "sphere",
       radius: Math.random() * 2 + 0.2,
-      material: 0,
+      material: Math.floor(rand() * 4.99),
       center: new Vector3(nrand(20), nrand(20), nrand(20) + 40)
     })
   }
@@ -35,48 +56,7 @@ export function createScene(): string {
 // export function createScene() : string {
 //   return JSON.stringify({ 
 //     entities: [
-//       {
-//         type: "sphere",
-//         radius: 1,
-//         center: new Vector3(0, -0.5, 10),
-//         material: 2,
-//       },
-//       {
-//         type: "sphere",
-//         radius: 1.6,
-//         center: new Vector3(-2.75, -0.5, 10),
-//         material: 5,
-//       },
-//       {
-//         type: "sphere",
-//         radius: 2.5,
-//         center: new Vector3(+4, 1.5,10),
-//         material: 1,
-//       },
-//       {
-//         type: "sphere",
-//         radius: 0.75,
-//         center: new Vector3(-2.3, 1.5, 7),
-//         material: 7,
-//       },
-//       {
-//         type: "sphere",
-//         radius: 1.2,
-//         center: new Vector3(-2, 2.5, 15),
-//         material: 3,
-//       },
-//       // {
-//       //   type: "sphere",
-//       //   radius: 100,
-//       //   center: new Vector3(0, -102.5,10),
-//       //   material: 1,
-//       // }, 
-//       // {
-//       //   type: "sphere",
-//       //   radius: 150,
-//       //   center: new Vector3(0, 9, 170),
-//       //   material: 0,
-//       // },
+//     
 //     ],
 //     materials: [
 //       {

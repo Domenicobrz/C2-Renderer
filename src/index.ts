@@ -36,6 +36,10 @@ let samplesCount = 0;
 let tileSamples = 1;
 
 function start() {
+  // can't be created inside the for-loop otherwise random() based scenes would be different 
+  // for each webworker
+  let scene = createScene();
+
   for(let i = 0; i < workersCount; i++) {
     const worker = new Worker(new URL('./tracer', import.meta.url));
   
@@ -46,7 +50,7 @@ function start() {
       tile: new Tile(0, 0, canvasSize.x, canvasSize.y, tileSamples, null),
       canvasSize: canvasSize,
       workerIndex: i,
-      scene: createScene(),
+      scene,
     } as IStartMessage);
     
     workers[i].onmessage = onWorkerMessage;

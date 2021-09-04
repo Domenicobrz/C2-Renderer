@@ -4,8 +4,8 @@ import { Ray } from "./ray";
 
 export class AABB {
     constructor(
-        public min : Vector3 = new Vector3(0,0,0),
-        public max : Vector3 = new Vector3(0,0,0),
+        public min : Vector3 = new Vector3(Infinity,Infinity,Infinity),
+        public max : Vector3 = new Vector3(-Infinity,-Infinity,-Infinity),
     ) { }
 
     expand(aabb : AABB) {
@@ -42,6 +42,9 @@ export class AABB {
         if (tmin > tmax) {
             return new AABBIntersection(tmax, false);
         }
+
+        // necessary to avoid issue 1. on docs/images
+        if(tmin < 0) tmin = 0;
 
         return new AABBIntersection(tmin, true);
     }

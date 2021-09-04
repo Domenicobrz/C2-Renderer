@@ -1,6 +1,6 @@
 import { Primitive } from "../primitives/primitive";
 import { AABB } from "./aabb";
-import { PrimitiveIntersection } from "./intersection";
+import { AABBIntersection, PrimitiveIntersection } from "./intersection";
 import { Ray } from "./ray";
 
 const MAX_PRIMITIVES_PER_NODE = 2;
@@ -17,6 +17,8 @@ export class BVH {
         if(!this.root.isLeaf()){
             stack.push(this.root);
         }
+
+        let nodeCount = 0;
 
         while (stack.length > 0) {
             // if we get in here, we're sure we're not dealing with a leaf
@@ -41,6 +43,8 @@ export class BVH {
             let leftNode = new Node(leftPrims);
             let rightNode = new Node(rightPrims);
 
+            nodeCount += 2;
+
             node.setLeft(leftNode);
             node.setRight(rightNode);
 
@@ -55,10 +59,71 @@ export class BVH {
                 node.releasePrimitivesArrayMemory(); // release memory
             }
         }
+
+        console.log("bvh nodes count: " + nodeCount);
     }
 
     intersect(ray: Ray): PrimitiveIntersection {
-        return new PrimitiveIntersection();
+        let stack : Node[] = [ this.root ];
+
+        let closestPrimitiveIntersection = new PrimitiveIntersection();
+
+        if(!this.root.nodeAABB.intersect(ray)) return closestPrimitiveIntersection;
+
+        let nodesEvaluated = 0;
+        let primitivesTested = 0;
+
+        while(stack.length > 0) {
+            let node = stack.pop();
+            nodesEvaluated++;
+
+            if(node.isLeaf()) {
+                // try to hit all its primitives
+                let primitives = node.primitives;
+                for(let i = 0; i < primitives.length; i++) {
+                    let intersection = primitives[i].intersect(ray);
+                    primitivesTested++;
+
+                    if(intersection.intersected && intersection.t < closestPrimitiveIntersection.t) {
+                        closestPrimitiveIntersection = intersection;
+                    }
+                }
+
+                if(!closestPrimitiveIntersection.intersected) {
+                    continue;
+                }
+            }
+
+            if(!node.isLeaf()) {
+                // get ts of both nodes
+                let leftIntersection = node.left.nodeAABB.intersect(ray);
+                let rightIntersection = node.right.nodeAABB.intersect(ray);
+
+                let closestNode : Node, otherNode : Node;
+                let closestNodeIntersection : AABBIntersection, otherNodeIntersection : AABBIntersection;
+
+                if(leftIntersection.t < rightIntersection.t) {
+                    closestNode = node.left;
+                    otherNode   = node.right;
+                    closestNodeIntersection = leftIntersection;
+                    otherNodeIntersection = rightIntersection;
+                } else {
+                    closestNode = node.right;
+                    otherNode   = node.left;
+                    closestNodeIntersection = rightIntersection;
+                    otherNodeIntersection = leftIntersection;
+                }
+
+                if(closestNodeIntersection.hit && closestNodeIntersection.t < closestPrimitiveIntersection.t) {
+                    stack.push(closestNode);
+                }
+                if(otherNodeIntersection.hit && otherNodeIntersection.t < closestPrimitiveIntersection.t) {
+                    stack.push(otherNode);
+                }
+            }
+        }
+
+        return closestPrimitiveIntersection;
     }
 }
 

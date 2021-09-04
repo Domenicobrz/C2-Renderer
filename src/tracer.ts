@@ -1,8 +1,10 @@
 import { Vector2, Vector3 } from "three";
 import { Camera } from "./camera";
 import { ComputationRequest, ComputationResult, IStartMessage, IWorkerMessage } from "./commonTypes";
+import { AABB } from "./geometry/aabb";
 import { BVH } from "./geometry/bvh";
 import { PrimitiveIntersection } from "./geometry/intersection";
+import { Ray } from "./geometry/ray";
 import { Material, Materials } from "./materials/materials";
 import { SimpleGlossy } from "./materials/simpleGlossy";
 import { SimpleLambert } from "./materials/simpleLambert";
@@ -19,6 +21,7 @@ const ctx: Worker = self as any;
 let workerIndex : number;
 let scene : any;
 let camera : Camera;
+let bvh : BVH;
 let primitives : Primitive[] = [];
 let materials : Material[] = [];
 let canvasSize : Vector2;
@@ -57,7 +60,7 @@ ctx.onmessage = ({ data }: { data: IWorkerMessage }) => {
       }
     }
 
-    let bvh = new BVH(primitives);
+    bvh = new BVH(primitives);
 
     // build the materials array
     for(let i = 0; i < scene.materials.length; i++) {
@@ -129,17 +132,23 @@ function renderTile(tile: Tile) : Tile {
           let mint : number = Infinity;
           let closestPrimitive : Primitive; 
           let closestHitResult : PrimitiveIntersection;
-          for(let pi = 0; pi < primitives.length; pi++) {
-            let primitive = primitives[pi];
-            let intersectionResult = primitive.intersect(ray);
-            if(intersectionResult.intersected) {
-              if(intersectionResult.t < mint) {
-                mint = intersectionResult.t;
-                closestPrimitive = primitive;
-                closestHitResult = intersectionResult;
-              }
-            }
-          }
+
+          // for(let pi = 0; pi < primitives.length; pi++) {
+          //   let primitive = primitives[pi];
+          //   let intersectionResult = primitive.intersect(ray);
+          //   if(intersectionResult.intersected) {
+          //     if(intersectionResult.t < mint) {
+          //       mint = intersectionResult.t;
+          //       closestPrimitive = primitive;
+          //       closestHitResult = intersectionResult;
+          //     }
+          //   }
+          // }
+
+          closestHitResult = bvh.intersect(ray);
+          mint = closestHitResult.t;
+          closestPrimitive = closestHitResult.primitive;
+
     
           if(mint < Infinity) {
             

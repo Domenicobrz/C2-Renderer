@@ -1,3 +1,5 @@
+import { Vector3 } from "three";
+
 function xmur3(str : string) {
     for(var i = 0, h = 1779033703 ^ str.length; i < str.length; i++)
         h = Math.imul(h ^ str.charCodeAt(i), 3432918353),
@@ -26,15 +28,21 @@ function sfc32(a : number, b : number, c : number, d : number) {
 }
 
 
-// since it's too risky, let's explicitly create a seeded_rand function
-
+export var rand = Math.random;
+export function nrand(value : number = 1) : number {
+    return (rand() * 2 - 1) * value;
+};
 
 
 // from https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
 // DO NOT USE RAND() OR NRAND() FOR CALCULATIONS THAT DETERMINE RADIANCE COMPUTATION
 // OTHERWISE EACH WEBWORKER WOULD GET THE SAME VALUES
-export var rand = sfc32(seed(), seed(), seed(), seed());
-
-export function nrand(value : number = 1) : number {
-    return (rand() * 2 - 1) * value;
+export var seededRand = sfc32(seed(), seed(), seed(), seed());
+export function seededNrand(value : number = 1) : number {
+    return (seededRand() * 2 - 1) * value;
 };
+
+
+export function vec3(x : number, y : number, z : number) : Vector3 {
+    return new Vector3(x,y,z);
+}

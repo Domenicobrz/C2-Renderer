@@ -7,15 +7,25 @@ export class AABB {
         public min : Vector3 = new Vector3(Infinity,Infinity,Infinity),
         public max : Vector3 = new Vector3(-Infinity,-Infinity,-Infinity),
     ) { }
-
-    expand(aabb : AABB) {
-        if(aabb.min.x < this.min.x) this.min.setX(aabb.min.x);
-        if(aabb.min.y < this.min.y) this.min.setY(aabb.min.y);
-        if(aabb.min.z < this.min.z) this.min.setZ(aabb.min.z);
-
-        if(aabb.max.x > this.max.x) this.max.setX(aabb.max.x);
-        if(aabb.max.y > this.max.y) this.max.setY(aabb.max.y);
-        if(aabb.max.z > this.max.z) this.max.setZ(aabb.max.z);
+        
+    expand(param : Vector3) : void;
+    expand(param : AABB) : void;
+    expand(param : AABB | Vector3) : void {
+        if(param instanceof Vector3) {
+            if(param.x < this.min.x) this.min.setX(param.x);
+            if(param.y < this.min.y) this.min.setY(param.y);
+            if(param.z < this.min.z) this.min.setZ(param.z);
+            if(param.x > this.max.x) this.max.setX(param.x);
+            if(param.y > this.max.y) this.max.setY(param.y);
+            if(param.z > this.max.z) this.max.setZ(param.z);
+        } else if (param instanceof AABB) {
+            if(param.min.x < this.min.x) this.min.setX(param.min.x);
+            if(param.min.y < this.min.y) this.min.setY(param.min.y);
+            if(param.min.z < this.min.z) this.min.setZ(param.min.z);
+            if(param.max.x > this.max.x) this.max.setX(param.max.x);
+            if(param.max.y > this.max.y) this.max.setY(param.max.y);
+            if(param.max.z > this.max.z) this.max.setZ(param.max.z);
+        }
     }
 
     intersect(ray : Ray) : AABBIntersection {

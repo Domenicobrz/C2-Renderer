@@ -12,7 +12,9 @@ import { SimpleMirror } from "./materials/simpleMirror";
 import { SimpleTransmission } from "./materials/simpleTransmission";
 import { Primitive } from "./primitives/primitive";
 import { Sphere } from "./primitives/sphere";
+import { Triangle } from "./primitives/triangle";
 import { Tile, TileManager } from "./tile";
+import { vec3 } from "./utils";
 
 // (self as unknown as Worker) was a fix I took from: https://github.com/Microsoft/TypeScript/issues/20595
 // I got the issue link from: https://stackoverflow.com/questions/48950248/how-do-i-strongly-type-a-typescript-web-worker-file-with-postmessage
@@ -58,7 +60,21 @@ ctx.onmessage = ({ data }: { data: IWorkerMessage }) => {
         );
         primitives.push(newEntity);
       }
+      if(e.type == "triangle") {
+        let newEntity = new Triangle(
+          new Vector3(e.v0.x, e.v0.y, e.v0.z),
+          new Vector3(e.v1.x, e.v1.y, e.v1.z),
+          new Vector3(e.v2.x, e.v2.y, e.v2.z),
+          e.material
+        );
+        primitives.push(newEntity);
+      }
     }
+
+    // debugger;
+    // let t = new Triangle(vec3(-10, -10, 10), vec3(10, -10, 10), vec3(0, 10, 10), 1);
+    // let ray = new Ray(vec3(0,0,9), vec3(0,0,1));
+    // t.intersect(ray);
 
     bvh = new BVH(primitives);
 
@@ -151,10 +167,9 @@ function renderTile(tile: Tile) : Tile {
 
     
           if(mint < Infinity) {
-            
             let material = materials[closestPrimitive.materialIndex];
-            material.scatter(closestHitResult, ray, mult);
 
+            material.scatter(closestHitResult, ray, mult);
           } else {
 
             radiance.set(3, 3, 3);

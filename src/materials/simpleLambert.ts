@@ -12,6 +12,10 @@ export class SimpleLambert extends Material {
 
     scatter(pi : PrimitiveIntersection, ray : Ray, mult: Vector3) : void {
         let normal = pi.normal;
+        if(ray.direction.dot(normal) > 0) {
+            normal = normal.clone().negate();
+        }
+
         let hitPoint = pi.hitPoint;
         let newRayOrigin = hitPoint.clone().addScaledVector(normal, 0.0001);
         

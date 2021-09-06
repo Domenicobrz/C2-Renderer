@@ -9,14 +9,15 @@ For more information see this blog post.
  
 */
 
-import { Vector2, Vector3 } from "three";
+import { FloatType, Vector2, Vector3 } from "three";
 import { ComputationRequest, ComputationResult, IStartMessage, IWorkerMessage } from "./commonTypes";
 import { createScene } from "./createScene";
 import { refreshDisplay } from "./display";
 import { Tile, TileManager } from "./tile";
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
 
 let canvasSize = new Vector2(800, 550);
-// let canvasSize = new Vector2(600, 400);
+// canvasSize = new Vector2(600, 400);
 
 let canvas    = document.getElementById('canvas') as HTMLCanvasElement;
 canvas.width  = canvasSize.x;
@@ -30,10 +31,16 @@ for(let i = 0; i < radianceData.length; i++) {
   radianceData[0] = 0;
 }
 
-let workersCount = 12;
+let workersCount = 6;
 let workers : Worker[] = [];
 let samplesCount = 0;
-let tileSamples = 3;
+let tileSamples = 1;
+
+
+// let envmap = new RGBELoader().setDataType( FloatType ).load('assets/envmaps/studio_loft.hdr', (t) => {
+//   console.log(t);
+// });
+
 
 function start() {
   // can't be created inside the for-loop otherwise random() based scenes would be different 

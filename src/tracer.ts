@@ -6,6 +6,7 @@ import { BVH } from "./geometry/bvh";
 import { PrimitiveIntersection } from "./geometry/intersection";
 import { Ray } from "./geometry/ray";
 import { Material, Materials } from "./materials/materials";
+import { SimpleEmission } from "./materials/simpleEmission";
 import { SimpleGlossy } from "./materials/simpleGlossy";
 import { SimpleLambert } from "./materials/simpleLambert";
 import { SimpleMirror } from "./materials/simpleMirror";
@@ -27,6 +28,7 @@ let bvh : BVH;
 let primitives : Primitive[] = [];
 let materials : Material[] = [];
 let canvasSize : Vector2;
+let background : Vector3;
 
 ctx.onmessage = ({ data }: { data: IWorkerMessage }) => {
 
@@ -48,6 +50,8 @@ ctx.onmessage = ({ data }: { data: IWorkerMessage }) => {
       new Vector2().copy(startMessage.canvasSize),
       scene.camera.fov,
     );
+
+    background = new Vector3().copy(scene.background);
 
     // build the entities array
     for(let i = 0; i < scene.entities.length; i++) {
@@ -104,6 +108,13 @@ ctx.onmessage = ({ data }: { data: IWorkerMessage }) => {
           new SimpleTransmission(
             new Vector3(m.color.x, m.color.y, m.color.z),
             m.refractionIndex,
+          )
+        );
+      }
+      if(m.type == Materials.SimpleEmission) {
+        materials.push(
+          new SimpleEmission(
+            new Vector3(m.emission.x, m.emission.y, m.emission.z),
           )
         );
       }
@@ -168,19 +179,16 @@ function renderTile(tile: Tile) : Tile {
     
           if(mint < Infinity) {
             let material = materials[closestPrimitive.materialIndex];
+            let emission = material.getEmission(closestHitResult, ray);
+            radiance.add(
+              emission.clone().multiply(mult)
+            );
 
             material.scatter(closestHitResult, ray, mult);
           } else {
 
-            radiance.set(3, 3, 3);
+            radiance.add(background);
            
-            // if(ray.direction.dot(new Vector3(1, 1, -0.2)) > 0.8) {
-            //   radiance.add(new Vector3(3,1,0.5));
-            // }
-            // if(ray.direction.dot(new Vector3(-1, 1, -0.2)) > 0.8) {
-            //   radiance.add(new Vector3(0.5,1,3));
-            // }
-
             break;
           }
         }

@@ -5,6 +5,7 @@ import { AABB } from "./geometry/aabb";
 import { BVH } from "./geometry/bvh";
 import { PrimitiveIntersection } from "./geometry/intersection";
 import { Ray } from "./geometry/ray";
+import { HDRBackground } from "./hdrBackground";
 import { Material, Materials } from "./materials/materials";
 import { SimpleEmission } from "./materials/simpleEmission";
 import { SimpleGlossy } from "./materials/simpleGlossy";
@@ -28,9 +29,9 @@ let bvh : BVH;
 let primitives : Primitive[] = [];
 let materials : Material[] = [];
 let canvasSize : Vector2;
-let background : Vector3;
+let background : Vector3 | HDRBackground;
 
-ctx.onmessage = ({ data }: { data: IWorkerMessage }) => {
+ctx.onmessage = async ({ data }: { data: IWorkerMessage }) => {
 
   let tile : Tile;
 
@@ -51,7 +52,12 @@ ctx.onmessage = ({ data }: { data: IWorkerMessage }) => {
       scene.camera.fov,
     );
 
-    background = new Vector3().copy(scene.background);
+    if(!scene.background.path) {
+      background = new Vector3().copy(scene.background);
+    } else {
+      background = new HDRBackground(scene.background.intensity);
+      await background.load(scene.background.path);
+    }
 
     // build the entities array
     for(let i = 0; i < scene.entities.length; i++) {
@@ -187,7 +193,13 @@ function renderTile(tile: Tile) : Tile {
             material.scatter(closestHitResult, ray, mult);
           } else {
 
-            radiance.add(background);
+            if(background instanceof Vector3) {
+              radiance.add(background);
+            } 
+
+            if(background instanceof HDRBackground) {
+              radiance.add(background.getRadiance(ray));
+            }
            
             break;
           }

@@ -45,56 +45,13 @@ export function createScene(): string {
     },
   ];
 
-  // for (let i = 0; i < 3000; i++) {
-  //   entities.push({
-  //     type: "sphere",
-  //     radius: Math.random() * 2 + 0.2,
-  //     material: Math.floor(rand() * 4.99),
-  //     center: new Vector3(nrand(20), nrand(20), nrand(20) + 40)
-  //   })
-  // }
-
-  // for(let i = 0; i < 1400; i++) {
-  //   let r = 2;
-  //   let v0 = new Vector3(nrand(r), nrand(r), nrand(r) + 10);
-  //   let v1 = new Vector3(nrand(r), nrand(r), nrand(r) + 10);
-  //   let v2 = new Vector3(nrand(r), nrand(r), nrand(r) + 10);
-
-  //   let t = 7;
-  //   let translation = new Vector3(nrand(t), nrand(t), nrand(t));
-
-  //   v0.add(translation);
-  //   v1.add(translation);
-  //   v2.add(translation);
-
-  //   entities.push({
-  //     type: "triangle",
-  //     v0, v1, v2,
-  //     material: Math.floor(rand() * 3.99),
-  //   });
-  // }
-
-  entities.push({
-    type: "sphere",
-    radius: 6,
-    material: 5,
-    center: new Vector3(20,0,40),
-  });
-
-  entities.push({
-    type: "sphere",
-    radius: 6,
-    material: 6,
-    center: new Vector3(-20,0,40),
-  });
-
-  for (let i = 0; i < 2560; i++) {
-    let center = new Vector3(nrand(60), nrand(60), nrand(100) + 40)
+  for (let i = 0; i < 450; i++) {
+    let center = new Vector3(nrand(30), nrand(30), nrand(60) + 40)
     if(center.length() < 35) continue;
 
     entities.push({
       type: "sphere",
-      radius: Math.random() * 2 + 2,
+      radius: Math.random() * 4 + 2,
       material: Math.floor(rand() * 3.99),
       center,
     });
@@ -108,6 +65,10 @@ export function createScene(): string {
       target: new Vector3(0, 0, 1),
       fov: (25 / 180) * Math.PI,
     },
-    background: new Vector3(0, 0, 0)
+    // background: new Vector3(3, 3, 3)
+    background: {
+      path: "assets/envmaps/studio_loft.hdr",
+      intensity: vec3(3.4, 3.4, 3.4),
+    },
   });
 }

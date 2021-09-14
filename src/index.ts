@@ -31,16 +31,10 @@ for(let i = 0; i < radianceData.length; i++) {
   radianceData[0] = 0;
 }
 
-let workersCount = 6;
+let workersCount = 1;
 let workers : Worker[] = [];
 let samplesCount = 0;
 let tileSamples = 1;
-
-
-// let envmap = new RGBELoader().setDataType( FloatType ).load('assets/envmaps/studio_loft.hdr', (t) => {
-//   console.log(t);
-// });
-
 
 function start() {
   // can't be created inside the for-loop otherwise random() based scenes would be different 

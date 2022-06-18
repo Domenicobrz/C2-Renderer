@@ -1,0 +1,1 @@
+1. Roussian roulette as described in Advanced Global Illumination (2nd ed) page 5.3.2

@@ -1,0 +1,1 @@
+SvelteKit wont create a route for /components since there's no +page.svelte inside the folder

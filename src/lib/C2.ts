@@ -1,3 +1,5 @@
+import { RenderSegment } from "./segment/renderSegment";
+
 export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
 
   // WebGPU typescript types are loaded from an external library:
@@ -17,6 +19,11 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
     format: presentationFormat,
   });
 
+
+
+  // next step: create a segment for the compute pass, 
+  // handle canvas resizes,
+  // and use arbitrary texture sizes, not limited to 8x8
 
 
 
@@ -50,8 +57,8 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
       ) {
         let idx = lid.y * 8 + lid.x;
         data[idx] = vec3f(
-          sin(f32(lid.x) * 1.75) * 0.5 + 0.5, 
-          cos(f32(lid.y) * 1.75) * 0.5 + 0.5, 
+          sin(f32(lid.x) * 0.75) * 0.5 + 0.5, 
+          cos(f32(lid.y) * 0.75) * 0.5 + 0.5, 
           0
         );
       }
@@ -77,101 +84,9 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
 
 
   // *************** render pipeline ****************
-  const renderModule = device.createShaderModule({
-    label: 'render shader',
-    code: /* wgsl */`
-      struct VSOutput {
-        @builtin(position) position: vec4f,
-        @location(0) texcoord: vec2f,
-      };
-
-      @group(0) @binding(0) var<storage> data: array<vec3f>;
-
-      @vertex fn vs(
-        @builtin(vertex_index) vertexIndex : u32
-      ) -> VSOutput {
-        let pos = array(
-          vec2f( 0.0,  0.0),  // center
-          vec2f( 1.0,  0.0),  // right, center
-          vec2f( 0.0,  1.0),  // center, top
-
-          // 2st triangle
-          vec2f( 0.0,  1.0),  // center, top
-          vec2f( 1.0,  0.0),  // right, center
-          vec2f( 1.0,  1.0),  // right, top
-        );
-
-        var vsOutput: VSOutput;
-        let xy = pos[vertexIndex];
-
-        vsOutput.position = vec4f(xy * 2 - 1, 0.0, 1.0);
-        vsOutput.texcoord = xy;
-        
-        return vsOutput;
-      }
-
-      @fragment fn fs(fsInput: VSOutput) -> @location(0) vec4f {
-        let x = floor(fsInput.texcoord.x * 8);
-        let y = floor(fsInput.texcoord.y * 8);
-        let idx = i32(y * 8 + x);
-        
-        return vec4f(data[idx], 1);
-      }
-    `,
-  });
-
-  const renderBindGroupLayout = device.createBindGroupLayout({
-    entries: [
-      {
-        binding: 0,
-        visibility: GPUShaderStage.FRAGMENT,
-        buffer: {
-          type: "read-only-storage"
-        },
-      },
-    ],
-  });
-
-  const renderPipelineLayout = device.createPipelineLayout({
-    bindGroupLayouts: [renderBindGroupLayout]
-  });
-
-  const renderPipeline = device.createRenderPipeline({
-    label: 'render pipeline',
-    layout: renderPipelineLayout,
-    vertex: {
-      module: renderModule,
-      entryPoint: 'vs',
-    },
-    fragment: {
-      module: renderModule,
-      entryPoint: 'fs',
-      targets: [{ format: presentationFormat }],
-    },
-  });
-
-  const renderBindGroup = device.createBindGroup({
-    layout: renderPipeline.getBindGroupLayout(0),
-    entries: [
-      { binding: 0, resource: { buffer: workBuffer, size: input.byteLength, } },
-    ],
-  });
-
-  // Get the current texture from the canvas context and
-  // set it as the texture to render to.
-  const renderPassDescriptor = {
-    label: 'our basic canvas renderPass',
-    colorAttachments: [
-      {
-        view: context.getCurrentTexture().createView(),
-        clearValue: [0, 0, 0, 1],
-        loadOp: 'clear',
-        storeOp: 'store',
-      },
-    ],
-  };
-
-
+  const renderSegment = new RenderSegment(device, context, presentationFormat);
+  // we need to resize before we're able to render
+  renderSegment.resize(8, 8, workBuffer);
 
 
 
@@ -195,18 +110,8 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   device.queue.submit([computeCommandBuffer]);
 
 
-
   // ******************** render to canvas ********************
-
-  const renderEncoder = device.createCommandEncoder({ label: 'render encoder' });
-  const renderPass = renderEncoder.beginRenderPass(renderPassDescriptor);
-  renderPass.setPipeline(renderPipeline);
-  renderPass.setBindGroup(0, renderBindGroup);
-  renderPass.draw(6);  // call our vertex shader 6 times
-  renderPass.end();
-
-  const renderCommandBuffer = renderEncoder.finish();
-  device.queue.submit([renderCommandBuffer]);
+  renderSegment.render();
 }
 
 export function loadModel(path: string): void {

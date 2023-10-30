@@ -1,5 +1,6 @@
 import { ComputeSegment } from "./segment/computeSegment";
 import { RenderSegment } from "./segment/renderSegment";
+import { vec2 } from "./utils";
 
 export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
 
@@ -21,18 +22,19 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   });
 
 
-
   // next step: 
   // handle canvas resizes,
   // and use arbitrary texture sizes, not limited to 8x8
 
 
+  let canvasSize = vec2(canvas.width, canvas.height);
 
-  const input = new Float32Array(8 * 8 * 4);
+
+  const input = new Float32Array(canvasSize.x * canvasSize.y * 4);
   const workBuffer = device.createBuffer({
     label: 'work buffer',
     size: input.byteLength,
-    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
   });
   device.queue.writeBuffer(workBuffer, 0, input);
 
@@ -44,8 +46,8 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   const renderSegment = new RenderSegment(device, context, presentationFormat);
 
   // we need to resize before we're able to render
-  computeSegment.resize(8, 8, workBuffer);
-  renderSegment.resize(8, 8, workBuffer);
+  computeSegment.resize(canvasSize, workBuffer);
+  renderSegment.resize(canvasSize, workBuffer);
 
   computeSegment.compute();
   renderSegment.render();

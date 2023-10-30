@@ -14,7 +14,7 @@
 </script>
 
 <main>
-  <canvas width="8" height="8" bind:this={canvasRef}></canvas>
+  <canvas width="603" height="603" bind:this={canvasRef}></canvas>
 </main>
 
 <style>

@@ -6,21 +6,21 @@ export class RenderSegment {
   #context: GPUCanvasContext;
   #pipeline: GPURenderPipeline;
 
-  #renderBindGroup: GPUBindGroup | null;
+  #bindGroup0: GPUBindGroup | null;
 
   constructor(device: GPUDevice, context: GPUCanvasContext, presentationFormat: GPUTextureFormat) {
-    this.#renderBindGroup = null;
+    this.#bindGroup0 = null;
 
     this.#context = context;
     this.#device = device;
 
     // *************** render pipeline ****************
-    const renderModule = device.createShaderModule({
+    const module = device.createShaderModule({
       label: 'render shader',
       code: renderShader,
     });
 
-    const renderBindGroupLayout = device.createBindGroupLayout({
+    const bindGroupLayout = device.createBindGroupLayout({
       entries: [
         {
           binding: 0,
@@ -32,19 +32,19 @@ export class RenderSegment {
       ],
     });
 
-    const renderPipelineLayout = device.createPipelineLayout({
-      bindGroupLayouts: [renderBindGroupLayout]
+    const pipelineLayout = device.createPipelineLayout({
+      bindGroupLayouts: [bindGroupLayout]
     });
 
     this.#pipeline = device.createRenderPipeline({
       label: 'render pipeline',
-      layout: renderPipelineLayout,
+      layout: pipelineLayout,
       vertex: {
-        module: renderModule,
+        module,
         entryPoint: 'vs',
       },
       fragment: {
-        module: renderModule,
+        module,
         entryPoint: 'fs',
         targets: [{ format: presentationFormat }],
       },
@@ -52,7 +52,7 @@ export class RenderSegment {
   }
 
   resize(width: number, height: number, workBuffer: GPUBuffer) {
-    this.#renderBindGroup = this.#device.createBindGroup({
+    this.#bindGroup0 = this.#device.createBindGroup({
       layout: this.#pipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: { buffer: workBuffer, size: workBuffer.size, } },
@@ -61,7 +61,7 @@ export class RenderSegment {
   }
 
   render() {
-    if (!this.#renderBindGroup) {
+    if (!this.#bindGroup0) {
       throw new Error("undefined render bind group");
     }
 
@@ -82,7 +82,7 @@ export class RenderSegment {
     const encoder = this.#device.createCommandEncoder({ label: 'render encoder' });
     const pass = encoder.beginRenderPass(passDescriptor);
     pass.setPipeline(this.#pipeline);
-    pass.setBindGroup(0, this.#renderBindGroup);
+    pass.setBindGroup(0, this.#bindGroup0);
     pass.draw(6);  // call our vertex shader 6 times
     pass.end();
 

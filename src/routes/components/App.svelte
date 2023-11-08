@@ -3,8 +3,8 @@
 	import { onMount } from 'svelte';
 
 	let canvasRef: HTMLCanvasElement;
-	let canvasWidth = 603;
-	let canvasHeight = 603;
+	let canvasWidth = 800;
+	let canvasHeight = 600;
 
 	onMount(async () => {
 		try {
@@ -19,6 +19,7 @@
 	<canvas width={canvasWidth} height={canvasHeight} bind:this={canvasRef} />
 
 	<div>
+		<br />
 		<label>width: </label>
 		<input type="range" min="1" max="1000" bind:value={canvasWidth} />
 		<br />

@@ -36,18 +36,16 @@ const camera = Camera(vec3f(0, 0, 0), PI * 0.25, mat3x3f());
   let ro = vec3f(0, 0, 0);
 
 
-  let sphere = Sphere(vec3f(0, 0, 10), 1);
   let ray = Ray(ro, rd);
-  let intersectionResult = intersectSphere(sphere, ray);
+  // let sphere = Sphere(vec3f(0, 0, 10), 1);
+  // let intersectionResult = intersectSphere(sphere, ray);
+  let triangle = Triangle(vec3f(-1, 0, 10), vec3f(0, 1.5, 10), vec3f(1, 0, 10));
+  let intersectionResult = intersectTriangle(triangle, ray);
+
   let finalColor = select(vec3f(0,0,0), vec3f(1,0,0), intersectionResult.hit);
 
 
   let idx = gid.y * canvasSize.x + gid.x;
-  // data[idx] = vec3f(
-  //   sin(f32(gid.x) * 0.75) * 0.5 + 0.5, 
-  //   cos(f32(gid.y) * 0.75) * 0.5 + 0.5, 
-  //   0
-  // );
   // data[idx] = rd;
   data[idx] = finalColor;
 }

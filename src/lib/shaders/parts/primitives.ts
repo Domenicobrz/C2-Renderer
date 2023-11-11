@@ -1,13 +1,20 @@
 export const primitivesPart = /* wgsl */ `
-struct Sphere {
-  center: vec3f,
-  radius: f32,
-}
 
 struct IntersectionResult {
   hit: bool,
   t: f32,
   hitPoint: vec3f,
+}
+
+struct Sphere {
+  center: vec3f,
+  radius: f32,
+}
+
+struct Triangle {
+  v0: vec3f,
+  v1: vec3f,
+  v2: vec3f,
 }
 
 fn intersectSphere(sphere: Sphere, ray: Ray) -> IntersectionResult {
@@ -44,10 +51,6 @@ fn intersectSphere(sphere: Sphere, ray: Ray) -> IntersectionResult {
   // ---- select(falseExpression, trueExpression, condition);
   let t = select(tMax, tMin, tMin >= 0);
 
-  // intersection.x = origin.x + t * direction.x;
-  // intersection.y = origin.y + t * direction.y;
-  // intersection.z = origin.z + t * direction.z;
-
   let intersectionPoint = vec3f(
     ray.origin.x + t * ray.direction.x,
     ray.origin.y + t * ray.direction.y,
@@ -55,5 +58,43 @@ fn intersectSphere(sphere: Sphere, ray: Ray) -> IntersectionResult {
   );
 
   return IntersectionResult(true, t, intersectionPoint);
+}
+
+// https://github.com/johnnovak/raytriangle-test
+// Simple, direct implementation of the Möller–Trumbore intersection algorithm.
+fn intersectTriangle(triangle: Triangle, ray: Ray) -> IntersectionResult {
+  let v0 = triangle.v0;
+  let v1 = triangle.v1;
+  let v2 = triangle.v2;
+
+  let v0v1 = v1 - v0;
+  let v0v2 = v2 - v0;
+  let pvec = cross(ray.direction, v0v2);
+  
+  let det = dot(v0v1, pvec);
+
+  if (det < 0.000001) {
+    return IntersectionResult(false, 0, vec3f(0));
+  }
+
+  let invDet = 1.0 / det;
+  let tvec = ray.origin - v0;
+  let u = dot(tvec, pvec) * invDet;
+
+  if (u < 0 || u > 1) {
+    return IntersectionResult(false, 0, vec3f(0));
+  }
+
+  let qvec = cross(tvec, v0v1);
+  let v = dot(ray.direction, qvec) * invDet;
+
+  if (v < 0 || u + v > 1) {
+    return IntersectionResult(false, 0, vec3f(0));
+  }
+
+  let t = dot(v0v2, qvec) * invDet;
+  let hitPoint = ray.origin + t * ray.direction;
+  
+  return IntersectionResult(true, t, hitPoint);
 }
 `;

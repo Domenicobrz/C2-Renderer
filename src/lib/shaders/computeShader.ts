@@ -1,12 +1,15 @@
-export const computeShader = /*wgsl*/ `
-struct Camera {
-  position: vec3f,
-  fov: f32,
-  rotationMatrix: mat3x3f,
-}
+import { cameraPart } from './parts/camera';
+import { mathUtilsPart } from './parts/mathUtils';
+import { primitivesPart } from './parts/primitives';
 
+export const computeShader = /*wgsl*/ `
 @group(0) @binding(0) var<storage, read_write> data: array<vec3f>;
 @group(0) @binding(1) var<uniform> canvasSize: vec2u;
+
+// at the moment these have to be imported with this specific order
+${mathUtilsPart}
+${cameraPart}
+${primitivesPart}
 
 const PI = 3.14159265359;
 const camera = Camera(vec3f(0, 0, 0), PI * 0.25, mat3x3f());
@@ -30,6 +33,14 @@ const camera = Camera(vec3f(0, 0, 0), PI * 0.25, mat3x3f());
     fovTangent * nuv.y, 
     1.0
   ));
+  let ro = vec3f(0, 0, 0);
+
+
+  let sphere = Sphere(vec3f(0, 0, 10), 1);
+  let ray = Ray(ro, rd);
+  let intersectionResult = intersectSphere(sphere, ray);
+  let finalColor = select(vec3f(0,0,0), vec3f(1,0,0), intersectionResult.hit);
+
 
   let idx = gid.y * canvasSize.x + gid.x;
   // data[idx] = vec3f(
@@ -37,6 +48,7 @@ const camera = Camera(vec3f(0, 0, 0), PI * 0.25, mat3x3f());
   //   cos(f32(gid.y) * 0.75) * 0.5 + 0.5, 
   //   0
   // );
-  data[idx] = rd;
+  // data[idx] = rd;
+  data[idx] = finalColor;
 }
 `;

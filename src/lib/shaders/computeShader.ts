@@ -2,17 +2,19 @@ import { cameraPart } from './parts/camera';
 import { mathUtilsPart } from './parts/mathUtils';
 import { primitivesPart } from './parts/primitives';
 
-export const computeShader = /*wgsl*/ `
-@group(0) @binding(0) var<storage, read_write> data: array<vec3f>;
-@group(0) @binding(1) var<uniform> canvasSize: vec2u;
-
+export const computeShader = /* wgsl */ `
 // at the moment these have to be imported with this specific order
 ${mathUtilsPart}
 ${cameraPart}
 ${primitivesPart}
 
+@group(0) @binding(0) var<storage, read_write> data: array<vec3f>;
+@group(0) @binding(1) var<uniform> canvasSize: vec2u;
+
+// on a separate bind group since camera changes more often than data/canvasSize
+@group(1) @binding(0) var<uniform> camera: Camera;
+
 const PI = 3.14159265359;
-const camera = Camera(vec3f(0, 0, 0), PI * 0.25, mat3x3f());
 
 @compute @workgroup_size(8, 8) fn computeSomething(
   @builtin(global_invocation_id) gid: vec3<u32>,
@@ -28,18 +30,18 @@ const camera = Camera(vec3f(0, 0, 0), PI * 0.25, mat3x3f());
 
   let aspectRatio = f32(canvasSize.x) / f32(canvasSize.y);
   let fovTangent = tan(camera.fov * 0.5);
-  let rd = normalize(vec3f(
+  let rd = camera.rotationMatrix * normalize(vec3f(
     fovTangent * nuv.x * aspectRatio, 
     fovTangent * nuv.y, 
     1.0
   ));
-  let ro = vec3f(0, 0, 0);
+  let ro = camera.position;
 
 
   let ray = Ray(ro, rd);
   // let sphere = Sphere(vec3f(0, 0, 10), 1);
   // let intersectionResult = intersectSphere(sphere, ray);
-  let triangle = Triangle(vec3f(-1, 0, 10), vec3f(0, 1.5, 10), vec3f(1, 0, 10));
+  let triangle = Triangle(vec3f(-1, 0, 0), vec3f(0, 1.5, 0), vec3f(1, 0, 0));
   let intersectionResult = intersectTriangle(triangle, ray);
 
   let finalColor = select(vec3f(0,0,0), vec3f(1,0,0), intersectionResult.hit);

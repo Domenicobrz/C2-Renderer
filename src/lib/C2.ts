@@ -26,17 +26,22 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   const computeSegment = new ComputeSegment(device);
   const renderSegment = new RenderSegment(device, context, presentationFormat);
 
+  const resizeObserver = new ResizeObserver((entries) => {
+    onCanvasResize(canvas, device, computeSegment, renderSegment);
+    render(computeSegment, renderSegment);
+  });
+  resizeObserver.observe(canvas);
+  // initialize work buffers immediately
+  onCanvasResize(canvas, device, computeSegment, renderSegment);
+
   // create & set camera
   const orbit = new Orbit();
   orbit.e.addEventListener('change', () => {
     computeSegment.updateCamera(orbit.position, orbit.fov, orbit.rotationMatrix);
+    render(computeSegment, renderSegment);
   });
+  // will fire the 'change' event
   orbit.set(new Vector3(0, 0, -10), new Vector3(0, 0, 0));
-
-  const resizeObserver = new ResizeObserver((entries) => {
-    onCanvasResize(canvas, device, computeSegment, renderSegment);
-  });
-  resizeObserver.observe(canvas);
 }
 
 function onCanvasResize(
@@ -58,8 +63,6 @@ function onCanvasResize(
   // we need to resize before we're able to render
   computeSegment.resize(canvasSize, workBuffer);
   renderSegment.resize(canvasSize, workBuffer);
-
-  render(computeSegment, renderSegment);
 }
 
 function render(computeSegment: ComputeSegment, renderSegment: RenderSegment) {

@@ -14,6 +14,9 @@ ${primitivesPart}
 // on a separate bind group since camera changes more often than data/canvasSize
 @group(1) @binding(0) var<uniform> camera: Camera;
 
+@group(2) @binding(0) var<storage, read_write> debugBuffer: array<f32>;
+@group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;
+
 const PI = 3.14159265359;
 
 @compute @workgroup_size(8, 8) fn computeSomething(
@@ -50,5 +53,17 @@ const PI = 3.14159265359;
   let idx = gid.y * canvasSize.x + gid.x;
   // data[idx] = rd;
   data[idx] = finalColor;
+
+
+
+
+
+  // debug stuff
+  if (debugPixelTarget.x == gid.x && debugPixelTarget.y == gid.y) {
+    debugBuffer[0] = f32(debugPixelTarget.x);
+    debugBuffer[1] = f32(debugPixelTarget.y);
+    debugBuffer[2] = 999;
+    data[idx] = vec3f(0, 1, 0);
+  }
 }
 `;

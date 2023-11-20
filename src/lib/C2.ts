@@ -1,8 +1,9 @@
 import { Matrix4, Vector3 } from 'three';
 import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
-import { vec2 } from './utils';
+import { vec2 } from './utils/math';
 import { Orbit } from './controls/Orbit';
+import { onKey } from './utils/keys';
 
 export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   // WebGPU typescript types are loaded from an external library:
@@ -24,6 +25,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
 
   // *************** compute & render segments ****************
   const computeSegment = new ComputeSegment(device);
+  computeSegment.setDebugPixelTarget(200, 200);
   const renderSegment = new RenderSegment(device, context, presentationFormat);
 
   const resizeObserver = new ResizeObserver((entries) => {
@@ -42,6 +44,8 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   });
   // will fire the 'change' event
   orbit.set(new Vector3(0, 0, -10), new Vector3(0, 0, 0));
+
+  onKey('l', () => computeSegment.logDebugResult());
 }
 
 function onCanvasResize(

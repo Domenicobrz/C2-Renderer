@@ -1,5 +1,6 @@
-import { renderShader } from "$lib/shaders/renderShader";
-import type { Vector2 } from "three";
+import { renderShader } from '$lib/shaders/renderShader';
+import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
+import type { Vector2 } from 'three';
 
 export class RenderSegment {
   // private fields
@@ -22,30 +23,16 @@ export class RenderSegment {
     // *************** render pipeline ****************
     const module = device.createShaderModule({
       label: 'render shader',
-      code: renderShader,
-    });
-
-    const bindGroupLayout = device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: {
-            type: "read-only-storage"
-          },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: {
-            type: "uniform"
-          },
-        },
-      ],
+      code: renderShader
     });
 
     const pipelineLayout = device.createPipelineLayout({
-      bindGroupLayouts: [bindGroupLayout]
+      bindGroupLayouts: [
+        getBindGroupLayout(device, [
+          { visibility: GPUShaderStage.FRAGMENT, type: 'read-only-storage' },
+          { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }
+        ])
+      ]
     });
 
     this.#pipeline = device.createRenderPipeline({
@@ -53,19 +40,19 @@ export class RenderSegment {
       layout: pipelineLayout,
       vertex: {
         module,
-        entryPoint: 'vs',
+        entryPoint: 'vs'
       },
       fragment: {
         module,
         entryPoint: 'fs',
-        targets: [{ format: presentationFormat }],
-      },
+        targets: [{ format: presentationFormat }]
+      }
     });
 
     // create a typedarray to hold the values for the uniforms in JavaScript
     this.#canvasSizeUniformBuffer = device.createBuffer({
       size: 2 * 4,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
   }
 
@@ -83,18 +70,19 @@ export class RenderSegment {
     this.#bindGroup0 = this.#device.createBindGroup({
       layout: this.#pipeline.getBindGroupLayout(0),
       entries: [
-        { binding: 0, resource: { buffer: workBuffer, size: workBuffer.size, } },
-        { binding: 1, resource: { buffer: this.#canvasSizeUniformBuffer } },
-      ],
+        { binding: 0, resource: { buffer: workBuffer, size: workBuffer.size } },
+        { binding: 1, resource: { buffer: this.#canvasSizeUniformBuffer } }
+      ]
     });
   }
 
   render() {
     if (!this.#bindGroup0 || !this.#canvasSize) {
-      throw new Error("undefined render bind group");
+      throw new Error('undefined render bind group');
     }
 
-    if (this.#canvasSize.x === 0 || this.#canvasSize.y === 0) throw new Error("canvas size dimensions is 0");
+    if (this.#canvasSize.x === 0 || this.#canvasSize.y === 0)
+      throw new Error('canvas size dimensions is 0');
 
     // Get the current texture from the canvas context and
     // set it as the texture to render to.
@@ -105,16 +93,16 @@ export class RenderSegment {
           view: this.#context.getCurrentTexture().createView(),
           clearValue: [0, 0, 0, 1],
           loadOp: 'clear',
-          storeOp: 'store',
-        },
-      ],
+          storeOp: 'store'
+        }
+      ]
     };
 
     const encoder = this.#device.createCommandEncoder({ label: 'render encoder' });
     const pass = encoder.beginRenderPass(passDescriptor);
     pass.setPipeline(this.#pipeline);
     pass.setBindGroup(0, this.#bindGroup0);
-    pass.draw(6);  // call our vertex shader 6 times
+    pass.draw(6); // call our vertex shader 6 times
     pass.end();
 
     const commandBuffer = encoder.finish();

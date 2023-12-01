@@ -73,15 +73,17 @@ fn intersectTriangle(triangle: Triangle, ray: Ray) -> IntersectionResult {
   
   let det = dot(v0v1, pvec);
 
-  // ****** important note ******
-  // ****** important note ******
-  // ****** important note ******
-  // The original algorithm had the additional conditional below.
-  // From my tests it seems like it "removes" double sided intersections
-  // and only counts front-facing intersections, which is not what we want in a raytracer
-  // if (det < 0.000001) {
-  //   return IntersectionResult(false, 0, vec3f(0));
-  // }
+  const CULLING = false;
+
+  if (CULLING) {
+    if (det < 0.000001) {
+      return IntersectionResult(false, 0, vec3f(0));
+    }
+  } else {
+    if (abs(det) < 0.000001) {
+      return IntersectionResult(false, 0, vec3f(0));
+    }
+  }
 
   let invDet = 1.0 / det;
   let tvec = ray.origin - v0;

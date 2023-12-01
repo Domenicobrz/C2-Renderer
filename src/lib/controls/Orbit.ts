@@ -12,12 +12,18 @@ export class Orbit {
   #keys: { a: boolean; s: boolean; d: boolean; w: boolean };
   #disposed: boolean;
 
+  #theta: number;
+  #phi: number;
+
   constructor() {
     this.e = new EventHandler();
     this.position = new Vector3(0, 0, -10);
     this.target = new Vector3(0, 0, 0);
     this.rotationMatrix = new Matrix4().identity();
     this.fov = Math.PI * 0.25;
+
+    this.#theta = Math.PI * 0.5;
+    this.#phi = 0.0;
 
     this.#keys = {
       a: false,
@@ -40,22 +46,24 @@ export class Orbit {
   }
 
   #loop() {
-    let rotX = 0,
-      rotY = 0;
+    if (this.#keys['w']) this.#theta += 0.05;
+    if (this.#keys['s']) this.#theta -= 0.05;
+    if (this.#keys['d']) this.#phi += 0.05;
+    if (this.#keys['a']) this.#phi -= 0.05;
 
-    if (this.#keys['w']) rotY += 0.05;
-    if (this.#keys['s']) rotY -= 0.05;
-    if (this.#keys['d']) rotX += 0.05;
-    if (this.#keys['a']) rotX -= 0.05;
+    const epsilon = 0.001;
+    if (this.#theta < epsilon) this.#theta = epsilon;
+    if (this.#theta > Math.PI - epsilon) this.#theta = Math.PI - epsilon;
 
-    if (Math.abs(rotX) > 0 || Math.abs(rotY) > 0) {
-      let diffVec = this.position.clone().sub(this.target);
-      diffVec.applyAxisAngle(new Vector3(0, 1, 0), rotX);
-      this.position.copy(this.target.clone().add(diffVec));
+    if (this.#keys['w'] || this.#keys['s'] || this.#keys['d'] || this.#keys['a']) {
+      const dirV = new Vector3(0, 1, 0);
+      dirV.applyAxisAngle(new Vector3(-1, 0, 0), this.#theta);
+      dirV.applyAxisAngle(new Vector3(0, 1, 0), this.#phi);
 
-      let { basisX, basisY, basisZ } = this.#getBasis();
-      diffVec.applyAxisAngle(basisX, rotY);
-      this.position.copy(this.target.clone().add(diffVec));
+      const radius = this.position.clone().sub(this.target).length();
+      const newPos = this.target.clone().add(dirV.clone().multiplyScalar(radius));
+
+      this.position.copy(newPos);
 
       this.#calculateMatrix();
       this.e.fireEvent('change');
@@ -89,19 +97,15 @@ export class Orbit {
   #getBasis(): { basisX: Vector3; basisY: Vector3; basisZ: Vector3 } {
     const dir = this.target.clone().sub(this.position).normalize();
     const up = new Vector3(0, 1, 0);
-    const right = new Vector3(1, 0, 0);
 
-    if (Math.abs(dir.dot(up)) < 0.95) {
-      const basisZ = dir;
-      const basisX = up.clone().cross(basisZ).normalize();
-      const basisY = basisZ.clone().cross(basisX).normalize();
-      return { basisX, basisY, basisZ };
-    } else {
-      const basisZ = dir;
-      const basisY = basisZ.clone().cross(right).normalize();
-      const basisX = basisY.clone().cross(basisZ).normalize();
-      return { basisX, basisY, basisZ };
-    }
+    // there's no need to check the dot since we're applying a small epsilon to #theta
+    // const right = new Vector3(1, 0, 0);
+    // if (Math.abs(dir.dot(up)) < 0.95) {
+
+    const basisZ = dir;
+    const basisX = up.clone().cross(basisZ).normalize();
+    const basisY = basisZ.clone().cross(basisX).normalize();
+    return { basisX, basisY, basisZ };
   }
 
   #calculateMatrix() {

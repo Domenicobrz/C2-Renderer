@@ -26,6 +26,22 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   // *************** compute & render segments ****************
   const computeSegment = new ComputeSegment(device);
   computeSegment.setDebugPixelTarget(200, 200);
+  computeSegment.updateScene([
+    {
+      v0: new Vector3(-1, 0, 0),
+      v1: new Vector3(0, 1.5, 0),
+      v2: new Vector3(+1, 0, 0),
+      normal: new Vector3(0, 0, -1),
+      materialOffset: 0
+    },
+    {
+      v0: new Vector3(-1, 0, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
+      v1: new Vector3(0, 1.5, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
+      v2: new Vector3(+1, 0, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
+      normal: new Vector3(0, 0, -1),
+      materialOffset: 0
+    }
+  ]);
   const renderSegment = new RenderSegment(device, context, presentationFormat);
 
   const resizeObserver = new ResizeObserver((entries) => {

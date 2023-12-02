@@ -1,18 +1,19 @@
 import { computeShader } from '$lib/shaders/computeShader';
 import { vec2 } from '$lib/utils/math';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
-import type { Matrix3, Matrix4, Vector2, Vector3 } from 'three';
+import type { Matrix4, Vector2, Vector3 } from 'three';
 
 export class ComputeSegment {
   // private fields
   #device: GPUDevice;
   #pipeline: GPUComputePipeline;
 
-  #bindGroup0: GPUBindGroup | null;
-  #bindGroup1: GPUBindGroup | null;
-  #bindGroup2: GPUBindGroup | null;
+  #bindGroup0: GPUBindGroup | null = null;
+  #bindGroup1: GPUBindGroup | null = null;
+  #bindGroup2: GPUBindGroup | null = null;
+  #bindGroup3: GPUBindGroup | null = null;
 
-  #canvasSize: Vector2 | null;
+  #canvasSize: Vector2 | null = null;
   #canvasSizeUniformBuffer: GPUBuffer;
   #cameraUniformBuffer: GPUBuffer;
 
@@ -20,12 +21,10 @@ export class ComputeSegment {
   #debugPixelTargetBuffer: GPUBuffer;
   #debugReadBuffer: GPUBuffer;
 
-  constructor(device: GPUDevice) {
-    this.#bindGroup0 = null;
-    this.#bindGroup1 = null;
-    this.#bindGroup2 = null;
-    this.#canvasSize = null;
+  #trianglesBuffer: GPUBuffer | null = null;
+  #materialsBuffer: GPUBuffer | null = null;
 
+  constructor(device: GPUDevice) {
     this.#device = device;
 
     const computeModule = device.createShaderModule({
@@ -43,6 +42,10 @@ export class ComputeSegment {
         getBindGroupLayout(device, [
           { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
+        ]),
+        getBindGroupLayout(device, [
+          { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
+          { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' }
         ])
       ]
     });
@@ -162,6 +165,58 @@ export class ComputeSegment {
     });
   }
 
+  updateScene(
+    triangles: {
+      v0: Vector3;
+      v1: Vector3;
+      v2: Vector3;
+      normal: Vector3;
+      materialOffset: number;
+    }[]
+  ) {
+    const STRUCT_SIZE = 64;
+    const trianglesCount = triangles.length;
+    const data = new ArrayBuffer(STRUCT_SIZE * trianglesCount);
+
+    triangles.forEach((t, i) => {
+      const offs = i * STRUCT_SIZE;
+      const views = {
+        v0: new Float32Array(data, offs + 0, 3),
+        v1: new Float32Array(data, offs + 16, 3),
+        v2: new Float32Array(data, offs + 32, 3),
+        normal: new Float32Array(data, offs + 48, 3),
+        materialOffset: new Uint32Array(data, offs + 60, 1)
+      };
+      views.v0.set([t.v0.x, t.v0.y, t.v0.z]);
+      views.v1.set([t.v1.x, t.v1.y, t.v1.z]);
+      views.v2.set([t.v2.x, t.v2.y, t.v2.z]);
+      views.normal.set([t.normal.x, t.normal.y, t.normal.z]);
+      views.materialOffset.set([0]);
+    });
+
+    this.#trianglesBuffer = this.#device.createBuffer({
+      size: trianglesCount * STRUCT_SIZE /* determined with offset computer */,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+    });
+
+    this.#materialsBuffer = this.#device.createBuffer({
+      size: 4 /* determined with offset computer */,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+    });
+
+    this.#device.queue.writeBuffer(this.#trianglesBuffer, 0, data);
+
+    // we need to re-create the bindgroup
+    this.#bindGroup3 = this.#device.createBindGroup({
+      label: 'compute bindgroup - scene data',
+      layout: this.#pipeline.getBindGroupLayout(3),
+      entries: [
+        { binding: 0, resource: { buffer: this.#trianglesBuffer } },
+        { binding: 1, resource: { buffer: this.#materialsBuffer } }
+      ]
+    });
+  }
+
   resize(canvasSize: Vector2, workBuffer: GPUBuffer) {
     this.#canvasSize = canvasSize;
 
@@ -184,8 +239,14 @@ export class ComputeSegment {
   }
 
   compute() {
-    if (!this.#bindGroup0 || !this.#bindGroup1 || !this.#bindGroup2 || !this.#canvasSize) {
-      throw new Error('undefined bind groups or canvasSize or debug buffer');
+    if (
+      !this.#bindGroup0 ||
+      !this.#bindGroup1 ||
+      !this.#bindGroup2 ||
+      !this.#bindGroup3 ||
+      !this.#canvasSize
+    ) {
+      throw new Error('undefined bind groups or canvasSize');
     }
 
     if (this.#canvasSize.x === 0 || this.#canvasSize.y === 0)
@@ -208,6 +269,7 @@ export class ComputeSegment {
     pass.setBindGroup(0, this.#bindGroup0);
     pass.setBindGroup(1, this.#bindGroup1);
     pass.setBindGroup(2, this.#bindGroup2);
+    pass.setBindGroup(3, this.#bindGroup3);
     pass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
     pass.end();
 

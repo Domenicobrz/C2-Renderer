@@ -17,6 +17,9 @@ ${primitivesPart}
 @group(2) @binding(0) var<storage, read_write> debugBuffer: array<f32>;
 @group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;
 
+@group(3) @binding(0) var<storage> triangles: array<Triangle>;
+@group(3) @binding(1) var<storage> materialsData: array<f32>;
+
 const PI = 3.14159265359;
 
 @compute @workgroup_size(8, 8) fn computeSomething(
@@ -40,15 +43,21 @@ const PI = 3.14159265359;
   ));
   let ro = camera.position;
 
-
   let ray = Ray(ro, rd);
-  // let sphere = Sphere(vec3f(0, 0, 10), 1);
-  // let intersectionResult = intersectSphere(sphere, ray);
-  let triangle = Triangle(vec3f(-1, 0, 0), vec3f(0, 1.5, 0), vec3f(1, 0, 0));
-  let intersectionResult = intersectTriangle(triangle, ray);
 
-  let finalColor = select(vec3f(0,0,0), vec3f(1,0,0), intersectionResult.hit);
+  var closestT = 999999999.0;
+  var hitTriangle: Triangle;
+  let trianglesCount = arrayLength(&triangles);
+  for (var i: u32 = 0; i < trianglesCount; i++) {
+    let triangle = triangles[i];
+    let intersectionResult = intersectTriangle(triangle, ray);
+    if (intersectionResult.hit && intersectionResult.t < closestT) {
+      closestT = intersectionResult.t;
+      hitTriangle = triangle;
+    }
+  }
 
+  let finalColor = select(vec3f(0,0,0), vec3f(1,0,0), closestT < 999999999.0);
 
   let idx = gid.y * canvasSize.x + gid.x;
   // data[idx] = rd;

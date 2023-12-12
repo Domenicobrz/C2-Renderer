@@ -1,3 +1,4 @@
+import type { Material } from '$lib/materials/Material';
 import { computeShader } from '$lib/shaders/computeShader';
 import { vec2 } from '$lib/utils/math';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
@@ -172,7 +173,8 @@ export class ComputeSegment {
       v2: Vector3;
       normal: Vector3;
       materialOffset: number;
-    }[]
+    }[],
+    materials: Material[]
   ) {
     const STRUCT_SIZE = 64;
     const trianglesCount = triangles.length;
@@ -191,8 +193,10 @@ export class ComputeSegment {
       views.v1.set([t.v1.x, t.v1.y, t.v1.z]);
       views.v2.set([t.v2.x, t.v2.y, t.v2.z]);
       views.normal.set([t.normal.x, t.normal.y, t.normal.z]);
-      views.materialOffset.set([0]);
+      views.materialOffset.set([t.materialOffset]);
     });
+
+    let materialsData = new Float32Array(materials.map((mat) => mat.getFloatsArray()).flat());
 
     this.#trianglesBuffer = this.#device.createBuffer({
       size: trianglesCount * STRUCT_SIZE /* determined with offset computer */,
@@ -200,11 +204,12 @@ export class ComputeSegment {
     });
 
     this.#materialsBuffer = this.#device.createBuffer({
-      size: 4 /* determined with offset computer */,
+      size: materialsData.byteLength /* determined with offset computer */,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
     this.#device.queue.writeBuffer(this.#trianglesBuffer, 0, data);
+    this.#device.queue.writeBuffer(this.#materialsBuffer, 0, materialsData);
 
     // we need to re-create the bindgroup
     this.#bindGroup3 = this.#device.createBindGroup({

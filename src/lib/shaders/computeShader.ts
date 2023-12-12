@@ -1,10 +1,12 @@
 import { cameraPart } from './parts/camera';
+import { materialsStructPart } from './parts/materials';
 import { mathUtilsPart } from './parts/mathUtils';
 import { primitivesPart } from './parts/primitives';
 
 export const computeShader = /* wgsl */ `
 // at the moment these have to be imported with this specific order
 ${mathUtilsPart}
+${materialsStructPart}
 ${cameraPart}
 ${primitivesPart}
 
@@ -57,7 +59,8 @@ const PI = 3.14159265359;
     }
   }
 
-  let finalColor = select(vec3f(0,0,0), vec3f(1,0,0), closestT < 999999999.0);
+  let color = getAlbedo(hitTriangle.materialOffset);
+  let finalColor = select(vec3f(0,0,0), color, closestT < 999999999.0);
 
   let idx = gid.y * canvasSize.x + gid.x;
   // data[idx] = rd;

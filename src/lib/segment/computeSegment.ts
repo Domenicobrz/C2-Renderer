@@ -1,4 +1,5 @@
 import type { Material } from '$lib/materials/Material';
+import { Triangle } from '$lib/primitives/triangle';
 import { computeShader } from '$lib/shaders/computeShader';
 import { vec2 } from '$lib/utils/math';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
@@ -166,40 +167,13 @@ export class ComputeSegment {
     });
   }
 
-  updateScene(
-    triangles: {
-      v0: Vector3;
-      v1: Vector3;
-      v2: Vector3;
-      normal: Vector3;
-      materialOffset: number;
-    }[],
-    materials: Material[]
-  ) {
-    const STRUCT_SIZE = 64;
-    const trianglesCount = triangles.length;
-    const data = new ArrayBuffer(STRUCT_SIZE * trianglesCount);
-
-    triangles.forEach((t, i) => {
-      const offs = i * STRUCT_SIZE;
-      const views = {
-        v0: new Float32Array(data, offs + 0, 3),
-        v1: new Float32Array(data, offs + 16, 3),
-        v2: new Float32Array(data, offs + 32, 3),
-        normal: new Float32Array(data, offs + 48, 3),
-        materialOffset: new Uint32Array(data, offs + 60, 1)
-      };
-      views.v0.set([t.v0.x, t.v0.y, t.v0.z]);
-      views.v1.set([t.v1.x, t.v1.y, t.v1.z]);
-      views.v2.set([t.v2.x, t.v2.y, t.v2.z]);
-      views.normal.set([t.normal.x, t.normal.y, t.normal.z]);
-      views.materialOffset.set([t.materialOffset]);
-    });
+  updateScene(triangles: Triangle[], materials: Material[]) {
+    let { trianglesBufferData, trianglesBufferDataByteSize } = Triangle.getBufferData(triangles);
 
     let materialsData = new Float32Array(materials.map((mat) => mat.getFloatsArray()).flat());
 
     this.#trianglesBuffer = this.#device.createBuffer({
-      size: trianglesCount * STRUCT_SIZE /* determined with offset computer */,
+      size: trianglesBufferDataByteSize,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
@@ -208,7 +182,7 @@ export class ComputeSegment {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
-    this.#device.queue.writeBuffer(this.#trianglesBuffer, 0, data);
+    this.#device.queue.writeBuffer(this.#trianglesBuffer, 0, trianglesBufferData);
     this.#device.queue.writeBuffer(this.#materialsBuffer, 0, materialsData);
 
     // we need to re-create the bindgroup

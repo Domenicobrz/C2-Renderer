@@ -1,14 +1,18 @@
+import { Diffuse } from '$lib/materials/Diffuse';
+import { Material } from '$lib/materials/Material';
+import { Triangle } from '$lib/primitives/triangle';
 import { cameraPart } from './parts/camera';
-import { materialsStructPart } from './parts/materials';
 import { mathUtilsPart } from './parts/mathUtils';
-import { primitivesPart } from './parts/primitives';
 
 export const computeShader = /* wgsl */ `
 // at the moment these have to be imported with this specific order
 ${mathUtilsPart}
-${materialsStructPart}
+${Diffuse.shaderStruct()}
+${Diffuse.shaderCreateStruct()}
+${Material.shaderMaterialSelection()}
 ${cameraPart}
-${primitivesPart}
+${Triangle.shaderStruct()}
+${Triangle.shaderIntersectionFn()}
 
 @group(0) @binding(0) var<storage, read_write> data: array<vec3f>;
 @group(0) @binding(1) var<uniform> canvasSize: vec2u;

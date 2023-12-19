@@ -1,4 +1,4 @@
-import type { Material } from '$lib/materials/Material';
+import type { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { computeShader } from '$lib/shaders/computeShader';
 import { vec2 } from '$lib/utils/math';

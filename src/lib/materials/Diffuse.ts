@@ -1,5 +1,5 @@
 import type { Color } from 'three';
-import { Material } from './Material';
+import { Material } from './material';
 
 export class Diffuse extends Material {
   private color: Color;

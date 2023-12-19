@@ -1,5 +1,5 @@
-import { Diffuse } from '$lib/materials/Diffuse';
-import { Material } from '$lib/materials/Material';
+import { Diffuse } from '$lib/materials/diffuse';
+import { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { cameraPart } from './parts/camera';
 import { mathUtilsPart } from './parts/mathUtils';

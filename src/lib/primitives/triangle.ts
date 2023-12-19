@@ -1,3 +1,4 @@
+import { AABB } from '$lib/bvh/aabb';
 import type { Vector3 } from 'three';
 
 export class Triangle {
@@ -8,6 +9,19 @@ export class Triangle {
     public normal: Vector3,
     public materialOffset: number
   ) {}
+
+  getAABB(): AABB {
+    let aabb = new AABB();
+    aabb.expand(this.v0);
+    aabb.expand(this.v1);
+    aabb.expand(this.v2);
+
+    return aabb;
+  }
+
+  getCentroid(): Vector3 {
+    return this.v0.clone().add(this.v1).add(this.v2).divideScalar(3);
+  }
 
   static getBufferData(triangles: Triangle[]) {
     const STRUCT_SIZE = 64; /* determined with offset computer */

@@ -4,7 +4,8 @@ import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
 import { Orbit } from './controls/Orbit';
 import { onKey } from './utils/keys';
-import { Diffuse } from './materials/Diffuse';
+import { Diffuse } from './materials/diffuse';
+import { Triangle } from './primitives/triangle';
 
 export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   // WebGPU typescript types are loaded from an external library:
@@ -29,20 +30,20 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   computeSegment.setDebugPixelTarget(200, 200);
   computeSegment.updateScene(
     [
-      {
-        v0: new Vector3(-1, 0, 0),
-        v1: new Vector3(0, 1.5, 0),
-        v2: new Vector3(+1, 0, 0),
-        normal: new Vector3(0, 0, -1),
-        materialOffset: 0
-      },
-      {
-        v0: new Vector3(-1, 0, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
-        v1: new Vector3(0, 1.5, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
-        v2: new Vector3(+1, 0, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
-        normal: new Vector3(0, 0, -1),
-        materialOffset: 4 // four f32
-      }
+      new Triangle(
+        new Vector3(-1, 0, 0),
+        new Vector3(0, 1.5, 0),
+        new Vector3(+1, 0, 0),
+        new Vector3(0, 0, -1),
+        0
+      ),
+      new Triangle(
+        new Vector3(-1, 0, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
+        new Vector3(0, 1.5, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
+        new Vector3(+1, 0, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
+        new Vector3(0, 0, -1),
+        4
+      )
     ],
     [new Diffuse(new Color(1, 0, 0)), new Diffuse(new Color(0, 0, 1))]
   );

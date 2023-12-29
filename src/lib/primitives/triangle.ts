@@ -2,13 +2,19 @@ import { AABB } from '$lib/bvh/aabb';
 import type { Vector3 } from 'three';
 
 export class Triangle {
+  public idxRef: number = -1;
+
   constructor(
     public v0: Vector3,
     public v1: Vector3,
     public v2: Vector3,
     public normal: Vector3,
     public materialOffset: number
-  ) {}
+  ) { }
+
+  setIdxRef(idx: number) {
+    this.idxRef = idx;
+  }
 
   getAABB(): AABB {
     let aabb = new AABB();

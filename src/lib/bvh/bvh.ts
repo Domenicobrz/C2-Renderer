@@ -1,6 +1,8 @@
 import { Triangle } from '$lib/primitives/triangle';
 import { AABB } from './aabb';
 
+// at the moment I can't change this value because I'm not considering how padding
+// will change the offsets created by offset-computer.
 const MAX_TRIANGLES_PER_NODE = 2;
 
 export class BVH {
@@ -8,6 +10,16 @@ export class BVH {
   public bvhFlatArray: Node[];
 
   constructor(public triangles: Triangle[]) {
+    if (triangles.length > 2147483648) {
+      throw new Error("Exceeded max primitives count, the webGPU primitives array holds i32 indexes");
+    } 
+
+    // each triangle needs to know at which position they're being saved 
+    // in the triangles array
+    triangles.forEach((triangle, i) => {
+      triangle.setIdxRef(i);
+    })
+
     this.bvhFlatArray = [];
     this.root = new Node(triangles, 0);
 
@@ -73,14 +85,63 @@ export class BVH {
     }
 
     console.log('bvh nodes count: ' + this.bvhFlatArray.length);
+
+    if (this.bvhFlatArray.length > 2147483648) {
+      throw new Error("Exceeded max bvh nodes count, the webGPU left/right props holds i32 indexes");
+    } 
   }
 
   getBufferData() {
-    let { trianglesBufferData, trianglesBufferDataByteSize } = Triangle.getBufferData(
-      this.triangles
-    );
+    const structSize = 64
+    const BVHBufferDataByteSize = structSize * this.bvhFlatArray.length;
+    const BVHBufferData = new ArrayBuffer(BVHBufferDataByteSize);
 
-    // continue here
+    console.log(this.bvhFlatArray);
+
+    this.bvhFlatArray.forEach((node, ni) => {
+      const aabbMax = node.nodeAABB.max;
+      const aabbMin = node.nodeAABB.min;
+      const isLeaf = node.isLeaf(); 
+      let left = -1, right = -1;
+      let primitives: number[] = Array(MAX_TRIANGLES_PER_NODE).fill(-1);
+
+      if (!isLeaf && node.left && node.right) {
+        left = node.left.flatArrayIndex;
+        right = node.right.flatArrayIndex;
+      }
+      if (isLeaf) {
+        node.primitives.forEach((prim, i) => {
+          primitives[i] = prim.idxRef;
+        });
+      }
+
+      const ioff = ni * structSize
+      const BVHViews = {
+        aabb: {
+          min: new Float32Array(BVHBufferData, 0+ioff, 3),
+          max: new Float32Array(BVHBufferData, 16+ioff, 3),
+        },
+        left: new Int32Array(BVHBufferData, 32+ioff, 1),
+        right: new Int32Array(BVHBufferData, 36+ioff, 1),
+        leaf: new Uint32Array(BVHBufferData, 40+ioff, 1),
+        primitives: new Int32Array(BVHBufferData, 44+ioff, 2),
+      };
+
+      BVHViews.aabb.min.set([aabbMin.x, aabbMin.y, aabbMin.z]);
+      BVHViews.aabb.max.set([aabbMax.x, aabbMax.y, aabbMax.z]);
+      BVHViews.left.set([left]);
+      BVHViews.right.set([right]);
+      BVHViews.leaf.set([isLeaf ? 1 : 0]);
+      BVHViews.primitives.set(primitives);
+    });
+
+    return {
+      ...Triangle.getBufferData(
+        this.triangles
+      ),
+      BVHBufferData,
+      BVHBufferDataByteSize
+    }
   }
 
   static shaderStruct(): string {
@@ -93,10 +154,11 @@ export class BVH {
       // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html
       struct BVHNode {
         aabb: AABB,
-        left: u32,
-        right: u32,
-        leaf: bool,
-        primitives: array<u32, ${MAX_TRIANGLES_PER_NODE}>,
+        left: i32, // can be -1
+        right: i32, 
+        leaf: u32, // bool is apparently non-host something
+        // i32 is necessary since we're using -1 for null
+        primitives: array<i32, ${MAX_TRIANGLES_PER_NODE}>, 
       }
     `;
   }

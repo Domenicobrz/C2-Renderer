@@ -1,5 +1,6 @@
-import type { Material } from '$lib/materials/material';
-import { Triangle } from '$lib/primitives/triangle';
+import { BVH } from '$lib/bvh/bvh';
+import type { Material } from '$lib/materials/Material';
+import type { Triangle } from '$lib/primitives/triangle';
 import { computeShader } from '$lib/shaders/computeShader';
 import { vec2 } from '$lib/utils/math';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
@@ -25,6 +26,7 @@ export class ComputeSegment {
 
   #trianglesBuffer: GPUBuffer | null = null;
   #materialsBuffer: GPUBuffer | null = null;
+  #bvhBuffer: GPUBuffer | null = null;
 
   constructor(device: GPUDevice) {
     this.#device = device;
@@ -46,6 +48,7 @@ export class ComputeSegment {
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
         ]),
         getBindGroupLayout(device, [
+          { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
           { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
           { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' }
         ])
@@ -168,7 +171,11 @@ export class ComputeSegment {
   }
 
   updateScene(triangles: Triangle[], materials: Material[]) {
-    let { trianglesBufferData, trianglesBufferDataByteSize } = Triangle.getBufferData(triangles);
+    const bvh = new BVH(triangles);
+    let { 
+      trianglesBufferData, trianglesBufferDataByteSize, 
+      BVHBufferData, BVHBufferDataByteSize 
+    } = bvh.getBufferData();
 
     let materialsData = new Float32Array(materials.map((mat) => mat.getFloatsArray()).flat());
 
@@ -182,8 +189,14 @@ export class ComputeSegment {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
+    this.#bvhBuffer = this.#device.createBuffer({
+      size: BVHBufferDataByteSize /* determined with offset computer */,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+    });
+
     this.#device.queue.writeBuffer(this.#trianglesBuffer, 0, trianglesBufferData);
     this.#device.queue.writeBuffer(this.#materialsBuffer, 0, materialsData);
+    this.#device.queue.writeBuffer(this.#bvhBuffer, 0, BVHBufferData);
 
     // we need to re-create the bindgroup
     this.#bindGroup3 = this.#device.createBindGroup({
@@ -191,7 +204,8 @@ export class ComputeSegment {
       layout: this.#pipeline.getBindGroupLayout(3),
       entries: [
         { binding: 0, resource: { buffer: this.#trianglesBuffer } },
-        { binding: 1, resource: { buffer: this.#materialsBuffer } }
+        { binding: 1, resource: { buffer: this.#materialsBuffer } },
+        { binding: 2, resource: { buffer: this.#bvhBuffer } }
       ]
     });
   }

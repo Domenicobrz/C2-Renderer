@@ -1,5 +1,6 @@
-import { Diffuse } from '$lib/materials/diffuse';
-import { Material } from '$lib/materials/material';
+import { BVH } from '$lib/bvh/bvh';
+import { Diffuse } from '$lib/materials/Diffuse';
+import { Material } from '$lib/materials/Material';
 import { Triangle } from '$lib/primitives/triangle';
 import { cameraPart } from './parts/camera';
 import { mathUtilsPart } from './parts/mathUtils';
@@ -13,6 +14,7 @@ ${Material.shaderMaterialSelection()}
 ${cameraPart}
 ${Triangle.shaderStruct()}
 ${Triangle.shaderIntersectionFn()}
+${BVH.shaderStruct()}
 
 @group(0) @binding(0) var<storage, read_write> data: array<vec3f>;
 @group(0) @binding(1) var<uniform> canvasSize: vec2u;
@@ -25,6 +27,7 @@ ${Triangle.shaderIntersectionFn()}
 
 @group(3) @binding(0) var<storage> triangles: array<Triangle>;
 @group(3) @binding(1) var<storage> materialsData: array<f32>;
+@group(3) @binding(2) var<storage> bvhData: array<BVHNode>;
 
 const PI = 3.14159265359;
 
@@ -79,6 +82,25 @@ const PI = 3.14159265359;
     debugBuffer[0] = f32(debugPixelTarget.x);
     debugBuffer[1] = f32(debugPixelTarget.y);
     debugBuffer[2] = 999;
+    debugBuffer[3] = 999;
+    debugBuffer[4] = 999;
+
+    // bvh node content test
+    let bvhNode = bvhData[0];
+    debugBuffer[5] = bvhNode.aabb.min.x;
+    debugBuffer[6] = bvhNode.aabb.min.y;
+    debugBuffer[7] = bvhNode.aabb.min.z;
+    debugBuffer[8] = bvhNode.aabb.max.x;
+    debugBuffer[9] = bvhNode.aabb.max.y;
+    debugBuffer[10] = bvhNode.aabb.max.z;
+    debugBuffer[11] = 999;
+    debugBuffer[12] = f32(bvhNode.leaf);
+    debugBuffer[13] = f32(bvhNode.left);
+    debugBuffer[14] = f32(bvhNode.right);
+    debugBuffer[15] = 999;
+    debugBuffer[16] = f32(bvhNode.primitives[0]);
+    debugBuffer[17] = f32(bvhNode.primitives[1]);
+
     data[idx] = vec3f(0, 1, 0);
   }
 }

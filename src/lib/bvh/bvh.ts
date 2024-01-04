@@ -11,14 +11,16 @@ export class BVH {
 
   constructor(public triangles: Triangle[]) {
     if (triangles.length > 2147483648) {
-      throw new Error("Exceeded max primitives count, the webGPU primitives array holds i32 indexes");
-    } 
+      throw new Error(
+        'Exceeded max primitives count, the webGPU primitives array holds i32 indexes'
+      );
+    }
 
-    // each triangle needs to know at which position they're being saved 
+    // each triangle needs to know at which position they're being saved
     // in the triangles array
     triangles.forEach((triangle, i) => {
       triangle.setIdxRef(i);
-    })
+    });
 
     this.bvhFlatArray = [];
     this.root = new Node(triangles, 0);
@@ -91,11 +93,11 @@ export class BVH {
         Exceeded max bvh nodes count, the webGPU left/right props holds i32 indexes,
         also, maximum stack-intersection-depth is set to 32 when intersecting the bvh
       `);
-    } 
+    }
   }
 
   getBufferData() {
-    const structSize = 64
+    const structSize = 64;
     const BVHBufferDataByteSize = structSize * this.bvhFlatArray.length;
     const BVHBufferData = new ArrayBuffer(BVHBufferDataByteSize);
 
@@ -104,8 +106,9 @@ export class BVH {
     this.bvhFlatArray.forEach((node, ni) => {
       const aabbMax = node.nodeAABB.max;
       const aabbMin = node.nodeAABB.min;
-      const isLeaf = node.isLeaf(); 
-      let left = -1, right = -1;
+      const isLeaf = node.isLeaf();
+      let left = -1,
+        right = -1;
       let primitives: number[] = Array(MAX_TRIANGLES_PER_NODE).fill(-1);
 
       if (!isLeaf && node.left && node.right) {
@@ -118,16 +121,16 @@ export class BVH {
         });
       }
 
-      const ioff = ni * structSize
+      const ioff = ni * structSize;
       const BVHViews = {
         aabb: {
-          min: new Float32Array(BVHBufferData, 0+ioff, 3),
-          max: new Float32Array(BVHBufferData, 16+ioff, 3),
+          min: new Float32Array(BVHBufferData, 0 + ioff, 3),
+          max: new Float32Array(BVHBufferData, 16 + ioff, 3)
         },
-        left: new Int32Array(BVHBufferData, 32+ioff, 1),
-        right: new Int32Array(BVHBufferData, 36+ioff, 1),
-        leaf: new Uint32Array(BVHBufferData, 40+ioff, 1),
-        primitives: new Int32Array(BVHBufferData, 44+ioff, 2),
+        left: new Int32Array(BVHBufferData, 32 + ioff, 1),
+        right: new Int32Array(BVHBufferData, 36 + ioff, 1),
+        leaf: new Uint32Array(BVHBufferData, 40 + ioff, 1),
+        primitives: new Int32Array(BVHBufferData, 44 + ioff, 2)
       };
 
       BVHViews.aabb.min.set([aabbMin.x, aabbMin.y, aabbMin.z]);
@@ -139,12 +142,10 @@ export class BVH {
     });
 
     return {
-      ...Triangle.getBufferData(
-        this.triangles
-      ),
+      ...Triangle.getBufferData(this.triangles),
       BVHBufferData,
       BVHBufferDataByteSize
-    }
+    };
   }
 
   static shaderStruct(): string {
@@ -169,28 +170,54 @@ export class BVH {
   }
 
   static shaderIntersect() {
-    return /* wgsl */`
-      fn bvhIntersect(ro: vec3f, rd: vec3f) -> BVHIntersectionResult {
+    return /* wgsl */ `
+      fn bvhIntersect(ray: Ray) -> BVHIntersectionResult {
         let rootNode = bvhData[0];
-        // check AABB intersection before proceeding with stack stuff
 
-        return BVHIntersectionResult(false, 0, vec3f(0,0,0), triangles[0]);
+        if (!aabbIntersect(ray.origin, ray.direction, rootNode.aabb).hit) {
+          return BVHIntersectionResult(false, 0, vec3f(0,0,0), triangles[0]);
+        }
 
+        // from: https://github.com/gpuweb/gpuweb/issues/3431#issuecomment-1453667278
+        let highestFloat = 0x1.fffffep+127f;
+        var closestIntersection = IntersectionResult(false, highestFloat, vec3f(0,0,0));
+        var closestPrimitiveIndex = -1;
 
-        // // an array of 64 elements initialized to -1
-        // // contains the indexes of the bvhData array that we need to
-        // // check for intersections
-        // let stack = array<i32, 64>(-1);
-        // // set the first element to the root index of the bvhData array
-        // stack[0] = 0;
-        // let stackPointer = 0;
+        var stack = array<i32, 64>();
+        // set the first element to the root index of the bvhData array
+        stack[0] = 0;
+        var stackPointer = 0;
 
-        // while (stackPointer > -1) {
-        //   let nodeIndex = stack[stackPointer];
-        //   stackPointer -= 1;
+        while (stackPointer > -1) {
+          let nodeIndex = stack[stackPointer];
+          stackPointer -= 1;
 
-        //   let node = bvhData[nodeIndex];
-        // }
+          let node = bvhData[nodeIndex];
+
+          if (node.leaf == 1) {
+            // try to hit all its primitives
+            let primitivesIndexes = node.primitives;
+            for (var i = 0; i < ${MAX_TRIANGLES_PER_NODE}; i++) {
+              let primitiveIndex = primitivesIndexes[i];
+              let isValidIndex = primitiveIndex > -1;
+              if (!isValidIndex) { continue; };
+
+              let primitive = triangles[primitiveIndex];
+              let ires = intersectTriangle(primitive, ray);
+              if (ires.hit && ires.t < closestIntersection.t) {
+                closestIntersection = ires;
+                closestPrimitiveIndex = primitiveIndex;
+              }
+            }
+          }
+        }
+
+        return BVHIntersectionResult(
+          closestIntersection.hit, 
+          closestIntersection.t, 
+          closestIntersection.hitPoint, 
+          triangles[closestPrimitiveIndex]
+        );
       } 
     `;
   }

@@ -81,14 +81,20 @@ const PI = 3.14159265359;
 
 
 
-  let bvhNode = bvhData[0];
-  let aabbIres = aabbIntersect(ro, rd, bvhNode.aabb);
-  if (aabbIres.hit) {
+  // let bvhNode = bvhData[0];
+  // let aabbIres = aabbIntersect(ro, rd, bvhNode.aabb);
+  // if (aabbIres.hit) {
+  //   data[idx] = vec3f(0,1,0);
+  // } else {
+  //   data[idx] = vec3f(0,0,0);
+  // }
+
+  let ires = bvhIntersect(ray);
+  if (ires.hit) {
     data[idx] = vec3f(0,1,0);
   } else {
     data[idx] = vec3f(0,0,0);
   }
-
 
 
 

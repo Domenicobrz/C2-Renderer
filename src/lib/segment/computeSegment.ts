@@ -1,5 +1,5 @@
 import { BVH } from '$lib/bvh/bvh';
-import type { Material } from '$lib/materials/Material';
+import type { Material } from '$lib/materials/material';
 import type { Triangle } from '$lib/primitives/triangle';
 import { computeShader } from '$lib/shaders/computeShader';
 import { vec2 } from '$lib/utils/math';
@@ -172,10 +172,8 @@ export class ComputeSegment {
 
   updateScene(triangles: Triangle[], materials: Material[]) {
     const bvh = new BVH(triangles);
-    let { 
-      trianglesBufferData, trianglesBufferDataByteSize, 
-      BVHBufferData, BVHBufferDataByteSize 
-    } = bvh.getBufferData();
+    let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
+      bvh.getBufferData();
 
     let materialsData = new Float32Array(materials.map((mat) => mat.getFloatsArray()).flat());
 

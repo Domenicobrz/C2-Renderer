@@ -1,7 +1,7 @@
 import { AABB } from '$lib/bvh/aabb';
 import { BVH } from '$lib/bvh/bvh';
-import { Diffuse } from '$lib/materials/Diffuse';
-import { Material } from '$lib/materials/Material';
+import { Diffuse } from '$lib/materials/diffuse';
+import { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { cameraPart } from './parts/camera';
 import { mathUtilsPart } from './parts/mathUtils';
@@ -73,6 +73,7 @@ const PI = 3.14159265359;
   let color = getAlbedo(hitTriangle.materialOffset);
   let finalColor = select(vec3f(0,0,0), color, closestT < 999999999.0);
 
+
   let idx = gid.y * canvasSize.x + gid.x;
   // data[idx] = rd;
   data[idx] = finalColor;
@@ -80,8 +81,17 @@ const PI = 3.14159265359;
 
 
 
+  let bvhNode = bvhData[0];
+  let aabbIres = aabbIntersect(ro, rd, bvhNode.aabb);
+  if (aabbIres.hit) {
+    data[idx] = vec3f(0,1,0);
+  } else {
+    data[idx] = vec3f(0,0,0);
+  }
 
-  // debug stuff
+
+
+
   if (debugPixelTarget.x == gid.x && debugPixelTarget.y == gid.y) {
     debugBuffer[0] = f32(debugPixelTarget.x);
     debugBuffer[1] = f32(debugPixelTarget.y);

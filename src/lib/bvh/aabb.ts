@@ -27,7 +27,7 @@ export class AABB {
   }
 
   static shaderStruct() {
-    return /* wgsl */`
+    return /* wgsl */ `
       struct AABB {
         min: vec3f,
         max: vec3f,
@@ -41,41 +41,40 @@ export class AABB {
   }
 
   static shaderIntersect() {
-    return /* wgsl */`
+    return /* wgsl */ `
       fn aabbIntersect(ro: vec3f, rd: vec3f, aabb: AABB) -> AABBIntersectionResult {
-        return AABBIntersectionResult(0, false);
+        let dirfrac = vec3f(1,1,1) / rd;
+
+        // this.min is the corner of AABB with minimal coordinates - left bottom, this.max is maximal corner
+        // r.org is origin of ray
+        let t1 = (aabb.min.x - ro.x) * dirfrac.x;
+        let t2 = (aabb.max.x - ro.x) * dirfrac.x;
+        let t3 = (aabb.min.y - ro.y) * dirfrac.y;
+        let t4 = (aabb.max.y - ro.y) * dirfrac.y;
+        let t5 = (aabb.min.z - ro.z) * dirfrac.z;
+        let t6 = (aabb.max.z - ro.z) * dirfrac.z;
+
+
+        var tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+        let tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+
+        // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+        if (tmax < 0) {
+          return AABBIntersectionResult(tmax, false);
+        }
+
+        // if tmin > tmax, ray doesn't intersect AABB
+        if (tmin > tmax) {
+          return AABBIntersectionResult(tmax, false);
+        }
+
+        // necessary to avoid issue 1. on docs/images
+        if (tmin < 0) { 
+          tmin = 0;
+        }
+
+        return AABBIntersectionResult(tmin, true);
       }
     `;
   }
-
-  // intersect(ray : Ray) : AABBIntersection {
-  //     let dirfrac = new Vector3(1,1,1).divide(ray.direction);
-
-  //     // this.min is the corner of AABB with minimal coordinates - left bottom, this.max is maximal corner
-  //     // r.org is origin of ray
-  //     let t1 = (this.min.x - ray.origin.x) * dirfrac.x;
-  //     let t2 = (this.max.x - ray.origin.x) * dirfrac.x;
-  //     let t3 = (this.min.y - ray.origin.y) * dirfrac.y;
-  //     let t4 = (this.max.y - ray.origin.y) * dirfrac.y;
-  //     let t5 = (this.min.z - ray.origin.z) * dirfrac.z;
-  //     let t6 = (this.max.z - ray.origin.z) * dirfrac.z;
-
-  //     let tmin = Math.max(Math.max(Math.min(t1, t2), Math.min(t3, t4)), Math.min(t5, t6));
-  //     let tmax = Math.min(Math.min(Math.max(t1, t2), Math.max(t3, t4)), Math.max(t5, t6));
-
-  //     // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
-  //     if (tmax < 0) {
-  //         return new AABBIntersection(tmax, false);
-  //     }
-
-  //     // if tmin > tmax, ray doesn't intersect AABB
-  //     if (tmin > tmax) {
-  //         return new AABBIntersection(tmax, false);
-  //     }
-
-  //     // necessary to avoid issue 1. on docs/images
-  //     if(tmin < 0) tmin = 0;
-
-  //     return new AABBIntersection(tmin, true);
-  // }
 }

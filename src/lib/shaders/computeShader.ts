@@ -1,3 +1,4 @@
+import { AABB } from '$lib/bvh/aabb';
 import { BVH } from '$lib/bvh/bvh';
 import { Diffuse } from '$lib/materials/Diffuse';
 import { Material } from '$lib/materials/Material';
@@ -14,7 +15,10 @@ ${Material.shaderMaterialSelection()}
 ${cameraPart}
 ${Triangle.shaderStruct()}
 ${Triangle.shaderIntersectionFn()}
+${AABB.shaderStruct()}
+${AABB.shaderIntersect()}
 ${BVH.shaderStruct()}
+${BVH.shaderIntersect()}
 
 @group(0) @binding(0) var<storage, read_write> data: array<vec3f>;
 @group(0) @binding(1) var<uniform> canvasSize: vec2u;

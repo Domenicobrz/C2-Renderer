@@ -26,6 +26,28 @@ export class AABB {
     }
   }
 
+  static shaderStruct() {
+    return /* wgsl */`
+      struct AABB {
+        min: vec3f,
+        max: vec3f,
+      }
+
+      struct AABBIntersectionResult {
+        tmin: f32,
+        hit: bool,
+      }
+    `;
+  }
+
+  static shaderIntersect() {
+    return /* wgsl */`
+      fn aabbIntersect(ro: vec3f, rd: vec3f, aabb: AABB) -> AABBIntersectionResult {
+        return AABBIntersectionResult(0, false);
+      }
+    `;
+  }
+
   // intersect(ray : Ray) : AABBIntersection {
   //     let dirfrac = new Vector3(1,1,1).divide(ray.direction);
 

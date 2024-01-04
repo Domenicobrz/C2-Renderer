@@ -87,7 +87,10 @@ export class BVH {
     console.log('bvh nodes count: ' + this.bvhFlatArray.length);
 
     if (this.bvhFlatArray.length > 2147483648) {
-      throw new Error("Exceeded max bvh nodes count, the webGPU left/right props holds i32 indexes");
+      throw new Error(`
+        Exceeded max bvh nodes count, the webGPU left/right props holds i32 indexes,
+        also, maximum stack-intersection-depth is set to 32 when intersecting the bvh
+      `);
     } 
   }
 
@@ -146,11 +149,6 @@ export class BVH {
 
   static shaderStruct(): string {
     return /* wgsl */ `
-      struct AABB {
-        min: vec3f,
-        max: vec3f,
-      }
-
       // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html
       struct BVHNode {
         aabb: AABB,
@@ -160,6 +158,40 @@ export class BVH {
         // i32 is necessary since we're using -1 for null
         primitives: array<i32, ${MAX_TRIANGLES_PER_NODE}>, 
       }
+
+      struct BVHIntersectionResult {
+        hit: bool,
+        t: f32,
+        hitPoint: vec3f,
+        triangle: Triangle,
+      }
+    `;
+  }
+
+  static shaderIntersect() {
+    return /* wgsl */`
+      fn bvhIntersect(ro: vec3f, rd: vec3f) -> BVHIntersectionResult {
+        let rootNode = bvhData[0];
+        // check AABB intersection before proceeding with stack stuff
+
+        return BVHIntersectionResult(false, 0, vec3f(0,0,0), triangles[0]);
+
+
+        // // an array of 64 elements initialized to -1
+        // // contains the indexes of the bvhData array that we need to
+        // // check for intersections
+        // let stack = array<i32, 64>(-1);
+        // // set the first element to the root index of the bvhData array
+        // stack[0] = 0;
+        // let stackPointer = 0;
+
+        // while (stackPointer > -1) {
+        //   let nodeIndex = stack[stackPointer];
+        //   stackPointer -= 1;
+
+        //   let node = bvhData[nodeIndex];
+        // }
+      } 
     `;
   }
 

@@ -55,43 +55,14 @@ const PI = 3.14159265359;
     1.0
   ));
   let ro = camera.position;
-
   let ray = Ray(ro, rd);
 
-  var closestT = 999999999.0;
-  var hitTriangle: Triangle;
-  let trianglesCount = arrayLength(&triangles);
-  for (var i: u32 = 0; i < trianglesCount; i++) {
-    let triangle = triangles[i];
-    let intersectionResult = intersectTriangle(triangle, ray);
-    if (intersectionResult.hit && intersectionResult.t < closestT) {
-      closestT = intersectionResult.t;
-      hitTriangle = triangle;
-    }
-  }
-
-  let color = getAlbedo(hitTriangle.materialOffset);
-  let finalColor = select(vec3f(0,0,0), color, closestT < 999999999.0);
-
-
-  let idx = gid.y * canvasSize.x + gid.x;
-  // data[idx] = rd;
-  data[idx] = finalColor;
-
-
-
-
-  // let bvhNode = bvhData[0];
-  // let aabbIres = aabbIntersect(ro, rd, bvhNode.aabb);
-  // if (aabbIres.hit) {
-  //   data[idx] = vec3f(0,1,0);
-  // } else {
-  //   data[idx] = vec3f(0,0,0);
-  // }
-
   let ires = bvhIntersect(ray);
+  let idx = gid.y * canvasSize.x + gid.x;
+
   if (ires.hit) {
-    data[idx] = vec3f(0,1,0);
+    let color = getAlbedo(ires.triangle.materialOffset);
+    data[idx] = color;
   } else {
     data[idx] = vec3f(0,0,0);
   }

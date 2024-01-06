@@ -43,6 +43,13 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
         new Vector3(+1, 0, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
         new Vector3(0, 0, -1),
         4
+      ),
+      new Triangle(
+        new Vector3(-1, 0, 0).multiplyScalar(0.7).add(new Vector3(-0.5, 0, 1)),
+        new Vector3(0, 1.5, 0).multiplyScalar(0.7).add(new Vector3(-0.5, 0, 1)),
+        new Vector3(+1, 0, 0).multiplyScalar(0.7).add(new Vector3(-0.5, 0, 1)),
+        new Vector3(0, 0, -1),
+        4
       )
     ],
     [new Diffuse(new Color(1, 0, 0)), new Diffuse(new Color(0, 0, 1))]

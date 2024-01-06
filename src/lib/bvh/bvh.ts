@@ -210,6 +210,43 @@ export class BVH {
               }
             }
           }
+
+          if (node.leaf == 0) {
+            let leftIres = aabbIntersect(ray.origin, ray.direction, bvhData[node.left].aabb);
+            let rightIres = aabbIntersect(ray.origin, ray.direction, bvhData[node.right].aabb);
+
+            var closestNodeIndex: i32;
+            var otherNodeIndex: i32;
+            var closestNodeIntersection: AABBIntersectionResult;
+            var otherNodeIntersection: AABBIntersectionResult;
+
+            if (leftIres.t < rightIres.t) {
+              closestNodeIndex = node.left;
+              otherNodeIndex = node.right;
+              closestNodeIntersection = leftIres;
+              otherNodeIntersection = rightIres;
+            } else {
+              closestNodeIndex = node.right;
+              otherNodeIndex = node.left;
+              closestNodeIntersection = rightIres;
+              otherNodeIntersection = leftIres;
+            }
+
+            // we want to evaluate other node *after* evaluating the closest node, thus 
+            // we're placing it sooner inside the stack            
+            if (otherNodeIntersection.hit && otherNodeIntersection.t < closestIntersection.t) {
+              stackPointer += 1;
+              stack[stackPointer] = otherNodeIndex;
+            }
+
+            if (
+              closestNodeIntersection.hit &&
+              closestNodeIntersection.t < closestIntersection.t
+            ) {
+              stackPointer += 1;
+              stack[stackPointer] = closestNodeIndex;
+            }
+          }
         }
 
         return BVHIntersectionResult(
@@ -221,72 +258,6 @@ export class BVH {
       } 
     `;
   }
-
-  //   intersect(ray: Ray): PrimitiveIntersection {
-  //     let stack: Node[] = [this.root];
-
-  //     let closestPrimitiveIntersection = new PrimitiveIntersection();
-
-  //     if (!this.root.nodeAABB.intersect(ray)) return closestPrimitiveIntersection;
-
-  //     let nodesEvaluated = 0;
-  //     let primitivesTested = 0;
-
-  //     while (stack.length > 0) {
-  //       let node = stack.pop();
-  //       nodesEvaluated++;
-
-  //       if (node.isLeaf()) {
-  //         // try to hit all its primitives
-  //         let primitives = node.primitives;
-  //         for (let i = 0; i < primitives.length; i++) {
-  //           let intersection = primitives[i].intersect(ray);
-  //           primitivesTested++;
-
-  //           if (intersection.intersected && intersection.t < closestPrimitiveIntersection.t) {
-  //             closestPrimitiveIntersection = intersection;
-  //           }
-  //         }
-
-  //         if (!closestPrimitiveIntersection.intersected) {
-  //           continue;
-  //         }
-  //       }
-
-  //       if (!node.isLeaf()) {
-  //         // get ts of both nodes
-  //         let leftIntersection = node.left.nodeAABB.intersect(ray);
-  //         let rightIntersection = node.right.nodeAABB.intersect(ray);
-
-  //         let closestNode: Node, otherNode: Node;
-  //         let closestNodeIntersection: AABBIntersection, otherNodeIntersection: AABBIntersection;
-
-  //         if (leftIntersection.t < rightIntersection.t) {
-  //           closestNode = node.left;
-  //           otherNode = node.right;
-  //           closestNodeIntersection = leftIntersection;
-  //           otherNodeIntersection = rightIntersection;
-  //         } else {
-  //           closestNode = node.right;
-  //           otherNode = node.left;
-  //           closestNodeIntersection = rightIntersection;
-  //           otherNodeIntersection = leftIntersection;
-  //         }
-
-  //         if (
-  //           closestNodeIntersection.hit &&
-  //           closestNodeIntersection.t < closestPrimitiveIntersection.t
-  //         ) {
-  //           stack.push(closestNode);
-  //         }
-  //         if (otherNodeIntersection.hit && otherNodeIntersection.t < closestPrimitiveIntersection.t) {
-  //           stack.push(otherNode);
-  //         }
-  //       }
-  //     }
-
-  //     return closestPrimitiveIntersection;
-  //   }
 }
 
 type SplittingAxis = {

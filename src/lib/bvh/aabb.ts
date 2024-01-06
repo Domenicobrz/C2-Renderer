@@ -34,7 +34,7 @@ export class AABB {
       }
 
       struct AABBIntersectionResult {
-        tmin: f32,
+        t: f32,
         hit: bool,
       }
     `;

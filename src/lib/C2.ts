@@ -28,32 +28,27 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   // *************** compute & render segments ****************
   const computeSegment = new ComputeSegment(device);
   computeSegment.setDebugPixelTarget(200, 200);
-  computeSegment.updateScene(
-    [
-      new Triangle(
-        new Vector3(-1, 0, 0),
-        new Vector3(0, 1.5, 0),
-        new Vector3(+1, 0, 0),
-        new Vector3(0, 0, -1),
-        0
-      ),
-      new Triangle(
-        new Vector3(-1, 0, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
-        new Vector3(0, 1.5, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
-        new Vector3(+1, 0, 0).multiplyScalar(0.6).add(new Vector3(1.5, 1.5, 0)),
-        new Vector3(0, 0, -1),
-        4
-      ),
-      new Triangle(
-        new Vector3(-1, 0, 0).multiplyScalar(0.7).add(new Vector3(-0.5, 0, 1)),
-        new Vector3(0, 1.5, 0).multiplyScalar(0.7).add(new Vector3(-0.5, 0, 1)),
-        new Vector3(+1, 0, 0).multiplyScalar(0.7).add(new Vector3(-0.5, 0, 1)),
-        new Vector3(0, 0, -1),
-        4
-      )
-    ],
-    [new Diffuse(new Color(1, 0, 0)), new Diffuse(new Color(0, 0, 1))]
-  );
+  let triangles: Triangle[] = [];
+  for (let i = 0; i < 500; i++) {
+    let r = Math.random;
+    let nr = function () {
+      return Math.random() * 2 - 1;
+    };
+    let s = r() * 0.1 + 0.035;
+    let addV = new Vector3(nr() * 3, nr() * 3, nr() * 3);
+    let t = new Triangle(
+      new Vector3(-1, 0, 0).multiplyScalar(s).add(addV),
+      new Vector3(0, 1.5, 0).multiplyScalar(s).add(addV),
+      new Vector3(+1, 0, 0).multiplyScalar(s).add(addV),
+      new Vector3(0, 0, -1),
+      i % 2 === 0 ? 0 : 4
+    );
+    triangles.push(t);
+  }
+  computeSegment.updateScene(triangles, [
+    new Diffuse(new Color(1, 0, 0)),
+    new Diffuse(new Color(0, 0, 1))
+  ]);
   const renderSegment = new RenderSegment(device, context, presentationFormat);
 
   const resizeObserver = new ResizeObserver((entries) => {

@@ -5,6 +5,7 @@ import { computeShader } from '$lib/shaders/computeShader';
 import { vec2 } from '$lib/utils/math';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import type { Matrix4, Vector2, Vector3 } from 'three';
+import { samplesInfo } from '../../routes/stores/main';
 
 export class ComputeSegment {
   // private fields
@@ -138,6 +139,9 @@ export class ComputeSegment {
   }
 
   updateCamera(position: Vector3, fov: number, rotationMatrix: Matrix4) {
+    // reset samples count
+    samplesInfo.reset();
+
     this.#device.queue.writeBuffer(
       this.#cameraUniformBuffer,
       0,
@@ -171,6 +175,9 @@ export class ComputeSegment {
   }
 
   updateScene(triangles: Triangle[], materials: Material[]) {
+    // reset samples count
+    samplesInfo.reset();
+
     const bvh = new BVH(triangles);
     let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
       bvh.getBufferData();
@@ -209,6 +216,9 @@ export class ComputeSegment {
   }
 
   resize(canvasSize: Vector2, workBuffer: GPUBuffer) {
+    // reset samples count
+    samplesInfo.reset();
+
     this.#canvasSize = canvasSize;
 
     this.#device.queue.writeBuffer(
@@ -243,6 +253,10 @@ export class ComputeSegment {
     if (this.#canvasSize.x === 0 || this.#canvasSize.y === 0)
       throw new Error('canvas size dimensions is 0');
 
+    if (samplesInfo.count === 0) {
+      // run reset-segment before running this one
+    }
+
     // work group size in the shader is set to 8,8
     const workGroupsCount = vec2(
       Math.ceil(this.#canvasSize.x / 8),
@@ -275,5 +289,7 @@ export class ComputeSegment {
     // Finish encoding and submit the commands
     const computeCommandBuffer = encoder.finish();
     this.#device.queue.submit([computeCommandBuffer]);
+
+    samplesInfo.increment();
   }
 }

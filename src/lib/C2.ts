@@ -6,6 +6,10 @@ import { Orbit } from './controls/Orbit';
 import { onKey } from './utils/keys';
 import { Diffuse } from './materials/diffuse';
 import { Triangle } from './primitives/triangle';
+import { samplesInfo } from '../routes/stores/main';
+
+let computeSegment: ComputeSegment;
+let renderSegment: RenderSegment;
 
 export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   // WebGPU typescript types are loaded from an external library:
@@ -26,7 +30,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   });
 
   // *************** compute & render segments ****************
-  const computeSegment = new ComputeSegment(device);
+  computeSegment = new ComputeSegment(device);
   computeSegment.setDebugPixelTarget(200, 200);
   let triangles: Triangle[] = [];
   for (let i = 0; i < 500; i++) {
@@ -49,11 +53,10 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
     new Diffuse(new Color(1, 0, 0)),
     new Diffuse(new Color(0, 0, 1))
   ]);
-  const renderSegment = new RenderSegment(device, context, presentationFormat);
+  renderSegment = new RenderSegment(device, context, presentationFormat);
 
   const resizeObserver = new ResizeObserver((entries) => {
     onCanvasResize(canvas, device, computeSegment, renderSegment);
-    render(computeSegment, renderSegment);
   });
   resizeObserver.observe(canvas);
   // initialize work buffers immediately
@@ -63,12 +66,12 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   const orbit = new Orbit();
   orbit.e.addEventListener('change', () => {
     computeSegment.updateCamera(orbit.position, orbit.fov, orbit.rotationMatrix);
-    render(computeSegment, renderSegment);
   });
   // will fire the 'change' event
   orbit.set(new Vector3(0, 0, -10), new Vector3(0, 0, 0));
 
   onKey('l', () => computeSegment.logDebugResult());
+  renderLoop();
 }
 
 function onCanvasResize(
@@ -92,9 +95,12 @@ function onCanvasResize(
   renderSegment.resize(canvasSize, workBuffer);
 }
 
-function render(computeSegment: ComputeSegment, renderSegment: RenderSegment) {
-  computeSegment.compute();
-  renderSegment.render();
+function renderLoop() {
+  if (samplesInfo.count <= samplesInfo.limit) {
+    computeSegment.compute();
+    renderSegment.render();
+  }
+  requestAnimationFrame(renderLoop);
 }
 
 export function loadModel(path: string): void {}

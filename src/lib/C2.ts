@@ -96,7 +96,7 @@ function onCanvasResize(
 }
 
 function renderLoop() {
-  if (samplesInfo.count <= samplesInfo.limit) {
+  if (samplesInfo.count < samplesInfo.limit) {
     computeSegment.compute();
     renderSegment.render();
   }

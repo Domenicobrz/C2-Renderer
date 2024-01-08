@@ -1,6 +1,7 @@
 import { renderShader } from '$lib/shaders/renderShader';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import type { Vector2 } from 'three';
+import { samplesInfo } from '../../routes/stores/main';
 
 export class RenderSegment {
   // private fields
@@ -8,13 +9,15 @@ export class RenderSegment {
   #context: GPUCanvasContext;
   #pipeline: GPURenderPipeline;
 
-  #bindGroup0: GPUBindGroup | null;
+  #bindGroup0: GPUBindGroup | null = null;
+  #bindGroup1: GPUBindGroup | null = null;
 
   #canvasSize: Vector2 | null;
   #canvasSizeUniformBuffer: GPUBuffer;
 
+  #samplesCountUniformBuffer: GPUBuffer;
+
   constructor(device: GPUDevice, context: GPUCanvasContext, presentationFormat: GPUTextureFormat) {
-    this.#bindGroup0 = null;
     this.#canvasSize = null;
 
     this.#context = context;
@@ -31,7 +34,8 @@ export class RenderSegment {
         getBindGroupLayout(device, [
           { visibility: GPUShaderStage.FRAGMENT, type: 'read-only-storage' },
           { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }
-        ])
+        ]),
+        getBindGroupLayout(device, [{ visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }])
       ]
     });
 
@@ -52,6 +56,11 @@ export class RenderSegment {
     // create a typedarray to hold the values for the uniforms in JavaScript
     this.#canvasSizeUniformBuffer = device.createBuffer({
       size: 2 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    this.#samplesCountUniformBuffer = device.createBuffer({
+      size: 1 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
   }
@@ -76,8 +85,25 @@ export class RenderSegment {
     });
   }
 
+  #updateSamplesCountBuffer() {
+    this.#device.queue.writeBuffer(
+      this.#samplesCountUniformBuffer,
+      0,
+      new Uint32Array([samplesInfo.count])
+    );
+
+    // we need to re-create the bindgroup since samplesCount
+    // is a new buffer
+    this.#bindGroup1 = this.#device.createBindGroup({
+      layout: this.#pipeline.getBindGroupLayout(1),
+      entries: [{ binding: 0, resource: { buffer: this.#samplesCountUniformBuffer } }]
+    });
+  }
+
   render() {
-    if (!this.#bindGroup0 || !this.#canvasSize) {
+    this.#updateSamplesCountBuffer();
+
+    if (!this.#bindGroup0 || !this.#bindGroup1 || !this.#canvasSize) {
       throw new Error('undefined render bind group');
     }
 
@@ -102,6 +128,7 @@ export class RenderSegment {
     const pass = encoder.beginRenderPass(passDescriptor);
     pass.setPipeline(this.#pipeline);
     pass.setBindGroup(0, this.#bindGroup0);
+    pass.setBindGroup(1, this.#bindGroup1);
     pass.draw(6); // call our vertex shader 6 times
     pass.end();
 

@@ -1,4 +1,4 @@
-export const renderShader = /* wgsl */`
+export const renderShader = /* wgsl */ `
 struct VSOutput {
   @builtin(position) position: vec4f,
   @location(0) texcoord: vec2f,
@@ -6,6 +6,8 @@ struct VSOutput {
 
 @group(0) @binding(0) var<storage> data: array<vec3f>;
 @group(0) @binding(1) var<uniform> canvasSize: vec2u;
+
+@group(1) @binding(0) var<uniform> samplesCount: u32;
 
 @vertex fn vs(
   @builtin(vertex_index) vertexIndex : u32
@@ -35,6 +37,6 @@ struct VSOutput {
   let y = u32(floor(fsInput.texcoord.y * f32(canvasSize.y)));
   let idx: u32 = y * canvasSize.x + x;
   
-  return vec4f(data[idx], 1);
+  return vec4f(data[idx] / f32(samplesCount), 1);
 }
 `;

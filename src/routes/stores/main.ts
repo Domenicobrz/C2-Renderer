@@ -11,7 +11,7 @@ type SamplesInfo = {
 };
 export const samplesInfo = (function createSamplesInfoStore() {
   let store = writable<SamplesInfo>({
-    limit: 1,
+    limit: 4,
     count: 0
   });
 

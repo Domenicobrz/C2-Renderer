@@ -6,6 +6,7 @@ import { vec2 } from '$lib/utils/math';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import type { Matrix4, Vector2, Vector3 } from 'three';
 import { samplesInfo } from '../../routes/stores/main';
+import { ResetSegment } from './resetSegment';
 
 export class ComputeSegment {
   // private fields
@@ -29,8 +30,12 @@ export class ComputeSegment {
   #materialsBuffer: GPUBuffer | null = null;
   #bvhBuffer: GPUBuffer | null = null;
 
+  #resetSegment: ResetSegment;
+
   constructor(device: GPUDevice) {
     this.#device = device;
+
+    this.#resetSegment = new ResetSegment(device);
 
     const computeModule = device.createShaderModule({
       label: 'compute module',
@@ -216,6 +221,8 @@ export class ComputeSegment {
   }
 
   resize(canvasSize: Vector2, workBuffer: GPUBuffer) {
+    this.#resetSegment.resize(canvasSize, workBuffer);
+
     // reset samples count
     samplesInfo.reset();
 
@@ -254,7 +261,7 @@ export class ComputeSegment {
       throw new Error('canvas size dimensions is 0');
 
     if (samplesInfo.count === 0) {
-      // run reset-segment before running this one
+      this.#resetSegment.reset();
     }
 
     // work group size in the shader is set to 8,8

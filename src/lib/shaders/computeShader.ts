@@ -62,9 +62,9 @@ const PI = 3.14159265359;
 
   if (ires.hit) {
     let color = getAlbedo(ires.triangle.materialOffset);
-    data[idx] = color;
+    data[idx] += color;
   } else {
-    data[idx] = vec3f(0,0,0);
+    data[idx] += vec3f(0,0,0);
   }
 
 

@@ -1,4 +1,5 @@
 import { Triangle } from '$lib/primitives/triangle';
+import { bvhInfo } from '../../routes/stores/main';
 import { AABB } from './aabb';
 
 // at the moment I can't change this value because I'm not considering how padding
@@ -86,7 +87,7 @@ export class BVH {
       }
     }
 
-    console.log('bvh nodes count: ' + this.bvhFlatArray.length);
+    bvhInfo.set({ nodesCount: this.bvhFlatArray.length });
 
     if (this.bvhFlatArray.length > 2147483648) {
       throw new Error(`
@@ -100,8 +101,6 @@ export class BVH {
     const structSize = 64;
     const BVHBufferDataByteSize = structSize * this.bvhFlatArray.length;
     const BVHBufferData = new ArrayBuffer(BVHBufferDataByteSize);
-
-    console.log(this.bvhFlatArray);
 
     this.bvhFlatArray.forEach((node, ni) => {
       const aabbMax = node.nodeAABB.max;

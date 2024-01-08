@@ -1,51 +1,54 @@
 <script lang="ts">
-	import { Renderer } from '$lib/C2';
-	import { onMount } from 'svelte';
+  import { Renderer } from '$lib/C2';
+  import { onMount } from 'svelte';
+  import { bvhInfo } from '../stores/main';
 
-	let canvasRef: HTMLCanvasElement;
-	let canvasWidth = 800;
-	let canvasHeight = 600;
+  let canvasRef: HTMLCanvasElement;
+  let canvasWidth = 800;
+  let canvasHeight = 600;
 
-	onMount(async () => {
-		try {
-			const renderer = await Renderer(canvasRef);
-		} catch (error) {
-			console.error(error);
-		}
-	});
+  onMount(async () => {
+    try {
+      const renderer = await Renderer(canvasRef);
+    } catch (error) {
+      console.error(error);
+    }
+  });
 </script>
 
 <main>
-	<canvas width={canvasWidth} height={canvasHeight} bind:this={canvasRef} />
+  <canvas width={canvasWidth} height={canvasHeight} bind:this={canvasRef} />
 
-	<div>
-		<br />
-		<label>width: </label>
-		<input type="range" min="1" max="1000" bind:value={canvasWidth} />
-		<br />
-		<label>height: </label>
-		<input type="range" min="1" max="1000" bind:value={canvasHeight} />
-	</div>
+  <div>
+    <br />
+    <label>width: </label>
+    <input type="range" min="1" max="1000" bind:value={canvasWidth} />
+    <br />
+    <label>height: </label>
+    <input type="range" min="1" max="1000" bind:value={canvasHeight} />
+    <br />
+    <p>Bvh nodes count: {$bvhInfo.nodesCount}</p>
+  </div>
 </main>
 
 <style>
-	:global(html, body) {
-		width: 100%;
-		height: 100%;
-		margin: 0;
-	}
+  :global(html, body) {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
 
-	main {
-		width: 100%;
-		height: 100%;
+  main {
+    width: 100%;
+    height: 100%;
 
-		display: flex;
-		flex-flow: column nowrap;
-		justify-content: center;
-		align-items: center;
-	}
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+  }
 
-	canvas {
-		border: 1px solid #eee;
-	}
+  canvas {
+    border: 1px solid #eee;
+  }
 </style>

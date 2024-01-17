@@ -7,6 +7,7 @@ import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import type { Matrix4, Vector2, Vector3 } from 'three';
 import { samplesInfo } from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
+import { HaltonSampler } from '$lib/samplers/Halton';
 
 export class ComputeSegment {
   // private fields
@@ -22,6 +23,8 @@ export class ComputeSegment {
   #canvasSizeUniformBuffer: GPUBuffer;
   #cameraUniformBuffer: GPUBuffer;
 
+  #cameraSampleUniformBuffer: GPUBuffer;
+
   #debugBuffer: GPUBuffer;
   #debugPixelTargetBuffer: GPUBuffer;
   #debugReadBuffer: GPUBuffer;
@@ -31,6 +34,8 @@ export class ComputeSegment {
   #bvhBuffer: GPUBuffer | null = null;
 
   #resetSegment: ResetSegment;
+
+  #haltonSampler: HaltonSampler = new HaltonSampler();
 
   constructor(device: GPUDevice) {
     this.#device = device;
@@ -48,7 +53,10 @@ export class ComputeSegment {
           { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
         ]),
-        getBindGroupLayout(device, [{ visibility: GPUShaderStage.COMPUTE, type: 'uniform' }]),
+        getBindGroupLayout(device, [
+          { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
+          { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
+        ]),
         getBindGroupLayout(device, [
           { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
@@ -78,6 +86,11 @@ export class ComputeSegment {
 
     this.#cameraUniformBuffer = device.createBuffer({
       size: 4 * 16 /* determined with offset computer */,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    this.#cameraSampleUniformBuffer = device.createBuffer({
+      size: 2 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
@@ -175,7 +188,10 @@ export class ComputeSegment {
     this.#bindGroup1 = this.#device.createBindGroup({
       label: 'compute bindgroup - camera struct',
       layout: this.#pipeline.getBindGroupLayout(1),
-      entries: [{ binding: 0, resource: { buffer: this.#cameraUniformBuffer } }]
+      entries: [
+        { binding: 0, resource: { buffer: this.#cameraUniformBuffer } },
+        { binding: 1, resource: { buffer: this.#cameraSampleUniformBuffer } }
+      ]
     });
   }
 
@@ -220,6 +236,15 @@ export class ComputeSegment {
     });
   }
 
+  updateCameraSample() {
+    let sample = this.#haltonSampler.get2DSample();
+    this.#device.queue.writeBuffer(
+      this.#cameraSampleUniformBuffer,
+      0,
+      new Float32Array([sample.x, sample.y])
+    );
+  }
+
   resize(canvasSize: Vector2, workBuffer: GPUBuffer) {
     this.#resetSegment.resize(canvasSize, workBuffer);
 
@@ -262,7 +287,10 @@ export class ComputeSegment {
 
     if (samplesInfo.count === 0) {
       this.#resetSegment.reset();
+      this.#haltonSampler.reset();
     }
+
+    this.updateCameraSample();
 
     // work group size in the shader is set to 8,8
     const workGroupsCount = vec2(

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Renderer } from '$lib/C2';
   import { onMount } from 'svelte';
-  import { bvhInfo } from '../stores/main';
+  import { bvhInfo, samplesInfo } from '../stores/main';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidth = 800;
@@ -28,6 +28,7 @@
     <input type="range" min="1" max="1000" bind:value={canvasHeight} />
     <br />
     <p>Bvh nodes count: {$bvhInfo.nodesCount}</p>
+    <p>Sample: {$samplesInfo.count}</p>
   </div>
 </main>
 

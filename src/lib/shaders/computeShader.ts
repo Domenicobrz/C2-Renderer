@@ -25,6 +25,9 @@ ${BVH.shaderIntersect()}
 
 // on a separate bind group since camera changes more often than data/canvasSize
 @group(1) @binding(0) var<uniform> camera: Camera;
+// seems like maximum bindgroup count is 4 so I need to add the camera sample here 
+// unfortunately and I can't create a separate bindgroup for it
+@group(1) @binding(1) var<uniform> cameraSample: vec2f;
 
 @group(2) @binding(0) var<storage, read_write> debugBuffer: array<f32>;
 @group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;
@@ -43,8 +46,8 @@ const PI = 3.14159265359;
 
   // from [0...1] to [-1...+1]
   let nuv = vec2f(
-    f32(gid.x) / f32(canvasSize.x) * 2 - 1,
-    f32(gid.y) / f32(canvasSize.y) * 2 - 1,
+    (f32(gid.x) + cameraSample.x) / f32(canvasSize.x) * 2 - 1,
+    (f32(gid.y) + cameraSample.y) / f32(canvasSize.y) * 2 - 1,
   );
 
   let aspectRatio = f32(canvasSize.x) / f32(canvasSize.y);

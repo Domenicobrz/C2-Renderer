@@ -63,22 +63,54 @@ const PI = 3.14159265359;
     1.0
   ));
   let ro = camera.position;
-  let ray = Ray(ro, rd);
+  var ray = Ray(ro, rd);
 
-  let ires = bvhIntersect(ray);
   let idx = gid.y * canvasSize.x + gid.x;
 
-  if (ires.hit) {
-    let color = getAlbedo(ires.triangle.materialOffset);
-    let emissive = getEmissive(ires.triangle.materialOffset);
-    let r4 = rand4(gid.y * canvasSize.x + gid.x + u32(cameraSample.x * 1928373289 + cameraSample.y * 928373289));
-    // data[idx] += color + emissive;
-    data[idx] += r4.xyz;
-  } else {
-    data[idx] += vec3f(0,0,0);
+  var mult = vec3f(1.0);
+  var rad = vec3f(0.0);
+  for (var i = 0; i < 5; i++) {
+    let ires = bvhIntersect(ray);
+
+    if (ires.hit) {
+      let hitPoint = ires.hitPoint;
+      let color = getAlbedo(ires.triangle.materialOffset);
+      let emissive = getEmissive(ires.triangle.materialOffset);
+
+      var N = ires.triangle.normal;
+      if (dot(N, ray.direction) > 0) {
+        N = -N;
+      }
+
+      rad += emissive * mult;
+      mult *= color * max(dot(N, -ray.direction), 0.0) * (1 / PI);
+
+      ray.origin = ires.hitPoint - ray.direction * 0.001;
+
+      let rands = rand4(
+        gid.y * canvasSize.x + gid.x +
+        u32(cameraSample.x * 928373289 + cameraSample.y * 877973289) +
+        u32(i * 17325799),
+      );
+
+      let r0 = 2.0 * PI * rands.x;
+      let r1 = acos(rands.y);
+      let nd = normalize(vec3f(
+        sin(r0) * sin(r1),
+        cos(r1),
+        cos(r0) * sin(r1),
+      ));
+
+      var Nt = vec3f(0,0,0);
+      var Nb = vec3f(0,0,0);
+      getCoordinateSystem(N, &Nt, &Nb);
+
+      ray.direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
+    } else {
+      break;
+    }
   }
-
-
+  data[idx] += rad * 2 * PI;
 
   if (debugPixelTarget.x == gid.x && debugPixelTarget.y == gid.y) {
     debugBuffer[0] = f32(debugPixelTarget.x);
@@ -86,24 +118,7 @@ const PI = 3.14159265359;
     debugBuffer[2] = 999;
     debugBuffer[3] = 999;
     debugBuffer[4] = 999;
-
-    // bvh node content test
-    let bvhNode = bvhData[0];
-    debugBuffer[5] = bvhNode.aabb.min.x;
-    debugBuffer[6] = bvhNode.aabb.min.y;
-    debugBuffer[7] = bvhNode.aabb.min.z;
-    debugBuffer[8] = bvhNode.aabb.max.x;
-    debugBuffer[9] = bvhNode.aabb.max.y;
-    debugBuffer[10] = bvhNode.aabb.max.z;
-    debugBuffer[11] = 999;
-    debugBuffer[12] = f32(bvhNode.leaf);
-    debugBuffer[13] = f32(bvhNode.left);
-    debugBuffer[14] = f32(bvhNode.right);
-    debugBuffer[15] = 999;
-    debugBuffer[16] = f32(bvhNode.primitives[0]);
-    debugBuffer[17] = f32(bvhNode.primitives[1]);
-
-    data[idx] = vec3f(0, 1, 0);
+    data[idx] += vec3f(0, 1, 0);
   }
 }
 `;

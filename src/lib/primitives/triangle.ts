@@ -3,14 +3,23 @@ import type { Vector3 } from 'three';
 
 export class Triangle {
   public idxRef: number = -1;
+  public normal: Vector3;
 
   constructor(
     public v0: Vector3,
     public v1: Vector3,
     public v2: Vector3,
-    public normal: Vector3,
-    public materialIndex: number
-  ) {}
+    public materialIndex: number,
+    normal?: Vector3
+  ) {
+    if (normal) {
+      this.normal = normal;
+    } else {
+      let v1v0 = v1.clone().sub(v0);
+      let v2v0 = v2.clone().sub(v0);
+      this.normal = v1v0.cross(v2v0).normalize();
+    }
+  }
 
   setIdxRef(idx: number) {
     this.idxRef = idx;
@@ -117,6 +126,11 @@ export class Triangle {
         }
       
         let t = dot(v0v2, qvec) * invDet;
+
+        if (t < 0) {
+          return IntersectionResult(false, 0, vec3f(0));
+        }
+
         let hitPoint = ray.origin + t * ray.direction;
 
         return IntersectionResult(true, t, hitPoint);

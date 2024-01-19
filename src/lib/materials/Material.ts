@@ -35,6 +35,10 @@ export class Material {
           return diffuse.color;
         }
 
+        if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
+          return vec3f(1,1,1);
+        }
+
         return vec3f(0,0,0);
       }
 

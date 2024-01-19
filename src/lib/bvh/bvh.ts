@@ -1,3 +1,4 @@
+import type { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { bvhInfo } from '../../routes/stores/main';
 import { AABB } from './aabb';
@@ -10,7 +11,7 @@ export class BVH {
   public root: Node;
   public bvhFlatArray: Node[];
 
-  constructor(public triangles: Triangle[]) {
+  constructor(public triangles: Triangle[], public materials: Material[]) {
     if (triangles.length > 2147483648) {
       throw new Error(
         'Exceeded max primitives count, the webGPU primitives array holds i32 indexes'
@@ -140,8 +141,19 @@ export class BVH {
       BVHViews.primitives.set(primitives);
     });
 
+    const materialOffsetsByIndex: number[] = [];
+    for (let i = 0; i < this.materials.length; i++) {
+      if (i === 0) {
+        materialOffsetsByIndex.push(0);
+      } else {
+        let prevMax = materialOffsetsByIndex[i - 1];
+        let prevMat = this.materials[i - 1];
+        materialOffsetsByIndex.push(prevMax + prevMat.bytesCount);
+      }
+    }
+
     return {
-      ...Triangle.getBufferData(this.triangles),
+      ...Triangle.getBufferData(this.triangles, materialOffsetsByIndex),
       BVHBufferData,
       BVHBufferDataByteSize
     };

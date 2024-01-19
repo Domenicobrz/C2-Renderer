@@ -199,7 +199,7 @@ export class ComputeSegment {
     // reset samples count
     samplesInfo.reset();
 
-    const bvh = new BVH(triangles);
+    const bvh = new BVH(triangles, materials);
     let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
       bvh.getBufferData();
 

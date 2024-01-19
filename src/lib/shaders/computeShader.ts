@@ -1,6 +1,7 @@
 import { AABB } from '$lib/bvh/aabb';
 import { BVH } from '$lib/bvh/bvh';
 import { Diffuse } from '$lib/materials/diffuse';
+import { Emissive } from '$lib/materials/emissive';
 import { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { cameraPart } from './parts/camera';
@@ -9,6 +10,8 @@ import { mathUtilsPart } from './parts/mathUtils';
 export const computeShader = /* wgsl */ `
 // at the moment these have to be imported with this specific order
 ${mathUtilsPart}
+${Emissive.shaderStruct()}
+${Emissive.shaderCreateStruct()}
 ${Diffuse.shaderStruct()}
 ${Diffuse.shaderCreateStruct()}
 ${Material.shaderMaterialSelection()}
@@ -65,7 +68,8 @@ const PI = 3.14159265359;
 
   if (ires.hit) {
     let color = getAlbedo(ires.triangle.materialOffset);
-    data[idx] += color;
+    let emissive = getEmissive(ires.triangle.materialOffset);
+    data[idx] += color + emissive;
   } else {
     data[idx] += vec3f(0,0,0);
   }

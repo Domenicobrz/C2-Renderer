@@ -9,8 +9,8 @@ export class Triangle {
     public v1: Vector3,
     public v2: Vector3,
     public normal: Vector3,
-    public materialOffset: number
-  ) { }
+    public materialIndex: number
+  ) {}
 
   setIdxRef(idx: number) {
     this.idxRef = idx;
@@ -29,7 +29,7 @@ export class Triangle {
     return this.v0.clone().add(this.v1).add(this.v2).divideScalar(3);
   }
 
-  static getBufferData(triangles: Triangle[]) {
+  static getBufferData(triangles: Triangle[], materialOffsetsByIndex: number[]) {
     const STRUCT_SIZE = 64; /* determined with offset computer */
     const trianglesCount = triangles.length;
     const data = new ArrayBuffer(STRUCT_SIZE * trianglesCount);
@@ -47,7 +47,7 @@ export class Triangle {
       views.v1.set([t.v1.x, t.v1.y, t.v1.z]);
       views.v2.set([t.v2.x, t.v2.y, t.v2.z]);
       views.normal.set([t.normal.x, t.normal.y, t.normal.z]);
-      views.materialOffset.set([t.materialOffset]);
+      views.materialOffset.set([materialOffsetsByIndex[t.materialIndex]]);
     });
 
     return { trianglesBufferData: data, trianglesBufferDataByteSize: trianglesCount * STRUCT_SIZE };

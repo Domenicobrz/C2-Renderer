@@ -1,13 +1,14 @@
 import type { Color } from 'three';
-import { Material } from './material';
+import { MATERIAL_TYPE, Material } from './material';
 
 export class Diffuse extends Material {
   private color: Color;
 
   constructor(color: Color) {
     super();
-    this.type = 0;
+    this.type = MATERIAL_TYPE.DIFFUSE;
     this.color = color;
+    this.bytesCount = 4;
   }
 
   getFloatsArray(): number[] {

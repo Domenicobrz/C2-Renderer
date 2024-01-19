@@ -16,12 +16,14 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     let nr = function () {
       return Math.random() * 2 - 1;
     };
-    let s = r() * 0.1 + 0.035;
+    let s = r() * 0.15 + 0.05;
+    let rotAxis = new Vector3(nr(), nr(), nr()).normalize();
+    let rotAngle = r() * 10;
     let addV = new Vector3(nr() * 3, nr() * 3, nr() * 3);
     let t = new Triangle(
-      new Vector3(-1, 0, 0).multiplyScalar(s).add(addV),
-      new Vector3(0, 1.5, 0).multiplyScalar(s).add(addV),
-      new Vector3(+1, 0, 0).multiplyScalar(s).add(addV),
+      new Vector3(-1, 0, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
+      new Vector3(0, 1.5, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
+      new Vector3(+1, 0, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
       new Vector3(0, 0, -1),
       i % 2 === 0 ? 0 : 1
     );

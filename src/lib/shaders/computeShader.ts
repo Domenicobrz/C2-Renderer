@@ -6,9 +6,11 @@ import { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { cameraPart } from './parts/camera';
 import { mathUtilsPart } from './parts/mathUtils';
+import { randomPart } from './parts/random';
 
 export const computeShader = /* wgsl */ `
 // at the moment these have to be imported with this specific order
+${randomPart}
 ${mathUtilsPart}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
@@ -69,7 +71,9 @@ const PI = 3.14159265359;
   if (ires.hit) {
     let color = getAlbedo(ires.triangle.materialOffset);
     let emissive = getEmissive(ires.triangle.materialOffset);
-    data[idx] += color + emissive;
+    let r4 = rand4(gid.y * canvasSize.x + gid.x + u32(cameraSample.x * 1928373289 + cameraSample.y * 928373289));
+    // data[idx] += color + emissive;
+    data[idx] += r4.xyz;
   } else {
     data[idx] += vec3f(0,0,0);
   }

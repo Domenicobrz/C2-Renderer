@@ -51,7 +51,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
     computeSegment.updateCamera(orbit.position, orbit.fov, orbit.rotationMatrix);
   });
   // will fire the 'change' event
-  orbit.set(new Vector3(0, 5, -10), new Vector3(0, 0, 0));
+  orbit.set(new Vector3(0, 1, -10), new Vector3(0, 0, 0));
 
   onKey('l', () => computeSegment.logDebugResult());
   renderLoop();

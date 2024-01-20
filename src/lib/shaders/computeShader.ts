@@ -110,7 +110,7 @@ const PI = 3.14159265359;
       break;
     }
   }
-  data[idx] += rad * 2 * PI;
+  data[idx] += rad;
 
   if (debugPixelTarget.x == gid.x && debugPixelTarget.y == gid.y) {
     debugBuffer[0] = f32(debugPixelTarget.x);

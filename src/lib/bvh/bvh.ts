@@ -57,6 +57,9 @@ export class BVH {
 
       // safeguard for the edge case where all primitives have the same centroid
       if (leftPrims.length === 0 || rightPrims.length === 0) {
+        leftPrims = [];
+        rightPrims = [];
+
         let medianIdx = Math.floor(node.primitives.length / 2);
         for (let i = 0; i < node.primitives.length; i++) {
           if (i < medianIdx) {

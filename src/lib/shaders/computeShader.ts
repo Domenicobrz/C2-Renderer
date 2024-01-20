@@ -83,7 +83,7 @@ const PI = 3.14159265359;
       }
 
       rad += emissive * mult;
-      mult *= color * max(dot(N, -ray.direction), 0.0) * (1 / PI);
+      mult *= color * max(dot(N, -ray.direction), 0.0) * (1 / PI) * (2 * PI);
 
       ray.origin = ires.hitPoint - ray.direction * 0.001;
 

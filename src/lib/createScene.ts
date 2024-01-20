@@ -10,7 +10,7 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
     new Diffuse(new Color(0.05, 1, 0.05)),
-    new Emissive(new Color(1, 1, 1), 20)
+    new Emissive(new Color(1, 0.7, 0.5), 20)
   ];
   // for (let i = 0; i < 500; i++) {
   //   let r = Math.random;
@@ -85,8 +85,8 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     );
   }
 
-  const ls = 2;
-  const lt = new Vector3(0, 5.9, 0);
+  const ls = 0.75;
+  const lt = new Vector3(0, 4.5, 0);
   triangles.push(
     new Triangle(
       new Vector3(-1, -1, -1).multiplyScalar(ls).add(lt),

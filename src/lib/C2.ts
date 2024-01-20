@@ -79,9 +79,12 @@ function onCanvasResize(
 }
 
 function renderLoop() {
-  if (samplesInfo.count < samplesInfo.limit) {
-    computeSegment.compute();
-    renderSegment.render();
+  const samplesPerFrame = 1;
+  for (let i = 0; i < samplesPerFrame; i++) {
+    if (samplesInfo.count < samplesInfo.limit) {
+      computeSegment.compute();
+      renderSegment.render();
+    }
   }
   requestAnimationFrame(renderLoop);
 }

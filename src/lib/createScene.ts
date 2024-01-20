@@ -12,23 +12,23 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     new Diffuse(new Color(0.05, 1, 0.05)),
     new Emissive(new Color(1, 0.7, 0.5), 20)
   ];
-  // for (let i = 0; i < 500; i++) {
-  //   let r = Math.random;
-  //   let nr = function () {
-  //     return Math.random() * 2 - 1;
-  //   };
-  //   let s = r() * 0.5 + 0.25;
-  //   let rotAxis = new Vector3(nr(), nr(), nr()).normalize();
-  //   let rotAngle = r() * 10;
-  //   let addV = new Vector3(nr() * 4, nr() * 4, nr() * 4);
-  //   let t = new Triangle(
-  //     new Vector3(-1, 0, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
-  //     new Vector3(0, 1.5, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
-  //     new Vector3(+1, 0, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
-  //     i % 2 === 0 ? 0 : 1
-  //   );
-  //   triangles.push(t);
-  // }
+  for (let i = 0; i < 500; i++) {
+    let r = Math.random;
+    let nr = function () {
+      return Math.random() * 2 - 1;
+    };
+    let s = r() * 0.5 + 0.25;
+    let rotAxis = new Vector3(nr(), nr(), nr()).normalize();
+    let rotAngle = r() * 10;
+    let addV = new Vector3(nr() * 4, nr() * 2 - 2, nr() * 4);
+    let t = new Triangle(
+      new Vector3(-1, 0, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
+      new Vector3(0, 1.5, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
+      new Vector3(+1, 0, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
+      i % 2 === 0 ? 0 : 1
+    );
+    triangles.push(t);
+  }
 
   // triangles.push(
   //   new Triangle(

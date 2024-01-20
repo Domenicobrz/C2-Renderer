@@ -22,7 +22,7 @@
   <div>
     <br />
     <label>width: </label>
-    <input type="range" min="1" max="1000" bind:value={canvasWidth} />
+    <input type="range" min="1" max="1500" bind:value={canvasWidth} />
     <br />
     <label>height: </label>
     <input type="range" min="1" max="1000" bind:value={canvasHeight} />

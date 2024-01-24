@@ -41,4 +41,53 @@ export class Emissive extends Material {
       } 
     `;
   }
+
+  static shaderShadeEmissive(): string {
+    return /* wgsl */ `
+      fn shadeEmissive(
+        ires: BVHIntersectionResult, 
+        ray: ptr<function, Ray>,
+        mult: ptr<function, vec3f>, 
+        rad: ptr<function, vec3f>,
+        gid: vec3u,
+        i: i32
+      ) {
+        let hitPoint = ires.hitPoint;
+        let material: Emissive = createEmissive(ires.triangle.materialOffset);
+
+        let albedo = vec3f(1,1,1);
+        let emissive = material.color * material.intensity;
+
+        var N = ires.triangle.normal;
+        if (dot(N, (*ray).direction) > 0) {
+          N = -N;
+        }
+    
+        *rad += emissive * (*mult);
+        *mult *= albedo * max(dot(N, -(*ray).direction), 0.0) * (1 / PI) * (2 * PI);
+    
+        (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
+    
+        let rands = rand4(
+          gid.y * canvasSize.x + gid.x +
+          u32(cameraSample.x * 928373289 + cameraSample.y * 877973289) +
+          u32(i * 17325799),
+        );
+    
+        let r0 = 2.0 * PI * rands.x;
+        let r1 = acos(rands.y);
+        let nd = normalize(vec3f(
+          sin(r0) * sin(r1),
+          cos(r1),
+          cos(r0) * sin(r1),
+        ));
+    
+        var Nt = vec3f(0,0,0);
+        var Nb = vec3f(0,0,0);
+        getCoordinateSystem(N, &Nt, &Nb);
+    
+        (*ray).direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
+      } 
+    `;
+  }
 }

@@ -14,9 +14,12 @@ ${randomPart}
 ${mathUtilsPart}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
+${Emissive.shaderShadeEmissive()}
 ${Diffuse.shaderStruct()}
 ${Diffuse.shaderCreateStruct()}
+${Diffuse.shaderShadeDiffuse()}
 ${Material.shaderMaterialSelection()}
+${Material.shaderShade()}
 ${cameraPart}
 ${Triangle.shaderStruct()}
 ${Triangle.shaderIntersectionFn()}
@@ -73,39 +76,7 @@ const PI = 3.14159265359;
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
-      let hitPoint = ires.hitPoint;
-      let color = getAlbedo(ires.triangle.materialOffset);
-      let emissive = getEmissive(ires.triangle.materialOffset);
-
-      var N = ires.triangle.normal;
-      if (dot(N, ray.direction) > 0) {
-        N = -N;
-      }
-
-      rad += emissive * mult;
-      mult *= color * max(dot(N, -ray.direction), 0.0) * (1 / PI) * (2 * PI);
-
-      ray.origin = ires.hitPoint - ray.direction * 0.001;
-
-      let rands = rand4(
-        gid.y * canvasSize.x + gid.x +
-        u32(cameraSample.x * 928373289 + cameraSample.y * 877973289) +
-        u32(i * 17325799),
-      );
-
-      let r0 = 2.0 * PI * rands.x;
-      let r1 = acos(rands.y);
-      let nd = normalize(vec3f(
-        sin(r0) * sin(r1),
-        cos(r1),
-        cos(r0) * sin(r1),
-      ));
-
-      var Nt = vec3f(0,0,0);
-      var Nb = vec3f(0,0,0);
-      getCoordinateSystem(N, &Nt, &Nb);
-
-      ray.direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
+      shade(ires, &ray, &mult, &rad, gid, i);
     } else {
       break;
     }

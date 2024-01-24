@@ -1,6 +1,7 @@
 export const MATERIAL_TYPE = {
   DIFFUSE: 0,
-  EMISSIVE: 1
+  EMISSIVE: 1,
+  GGX: 2
 };
 
 export class Material {
@@ -51,6 +52,30 @@ export class Material {
         }
 
         return vec3f(0,0,0);
+      }
+    `;
+  }
+
+  static shaderShade() {
+    return /* wgsl */ `
+      fn shade(
+        ires: BVHIntersectionResult, 
+        ray: ptr<function, Ray>,
+        mult: ptr<function, vec3f>, 
+        rad: ptr<function, vec3f>,
+        gid: vec3u,
+        i: i32) 
+      {
+        let materialOffset = ires.triangle.materialOffset;
+        let materialType = materialsData[materialOffset];
+
+        if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
+          shadeDiffuse(ires, ray, mult, rad, gid, i);
+        }
+
+        if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
+          shadeEmissive(ires, ray, mult, rad, gid, i);
+        }
       }
     `;
   }

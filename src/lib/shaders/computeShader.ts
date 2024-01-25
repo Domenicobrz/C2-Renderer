@@ -2,6 +2,7 @@ import { AABB } from '$lib/bvh/aabb';
 import { BVH } from '$lib/bvh/bvh';
 import { Diffuse } from '$lib/materials/diffuse';
 import { Emissive } from '$lib/materials/emissive';
+import { GGX } from '$lib/materials/ggx';
 import { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { cameraPart } from './parts/camera';
@@ -18,7 +19,9 @@ ${Emissive.shaderShadeEmissive()}
 ${Diffuse.shaderStruct()}
 ${Diffuse.shaderCreateStruct()}
 ${Diffuse.shaderShadeDiffuse()}
-${Material.shaderMaterialSelection()}
+${GGX.shaderStruct()}
+${GGX.shaderCreateStruct()}
+${GGX.shaderShadeGGX()}
 ${Material.shaderShade()}
 ${cameraPart}
 ${Triangle.shaderStruct()}

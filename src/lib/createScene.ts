@@ -3,13 +3,14 @@ import { Diffuse } from './materials/diffuse';
 import { Emissive } from './materials/emissive';
 import type { Material } from './materials/material';
 import { Triangle } from './primitives/triangle';
+import { GGX } from './materials/ggx';
 
 export function createScene(): { triangles: Triangle[]; materials: Material[] } {
   let triangles: Triangle[] = [];
   let materials: Material[] = [
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
-    new Diffuse(new Color(0.05, 1, 0.05)),
+    new GGX(new Color(0.05, 1, 0.05), 0.02),
     new Emissive(new Color(1, 0.7, 0.5), 20)
   ];
   for (let i = 0; i < 500; i++) {
@@ -45,6 +46,10 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
 
     let raxis = new Vector3(1, 0, 0),
       rangle = 0;
+
+    if (i == 0) {
+      mi = 0;
+    }
 
     if (i == 1) {
       raxis = new Vector3(0, 0, 1);
@@ -109,7 +114,7 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
       new Vector3(+2, 0, +1).multiplyScalar(1.5).add(new Vector3(-1.5, 0, -1.5)),
       new Vector3(+3, 2, +2).multiplyScalar(1.5).add(new Vector3(-1.5, 0, -1.5)),
       new Vector3(+4, 0, +3).multiplyScalar(1.5).add(new Vector3(-1.5, 0, -1.5)),
-      0
+      4
     )
   );
 

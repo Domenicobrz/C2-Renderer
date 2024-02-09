@@ -32,6 +32,7 @@ export class ComputeSegment {
   #trianglesBuffer: GPUBuffer | null = null;
   #materialsBuffer: GPUBuffer | null = null;
   #bvhBuffer: GPUBuffer | null = null;
+  #lightsCDFBuffer: GPUBuffer | null = null;
 
   #resetSegment: ResetSegment;
 
@@ -62,6 +63,7 @@ export class ComputeSegment {
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
         ]),
         getBindGroupLayout(device, [
+          { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
           { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
           { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
           { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' }
@@ -203,6 +205,8 @@ export class ComputeSegment {
     let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
       bvh.getBufferData();
 
+    let { LightsCDFBufferData, LightsCDFBufferDataByteSize } = bvh.getLightsCDFBufferData();
+
     let materialsData = new Float32Array(materials.map((mat) => mat.getFloatsArray()).flat());
 
     this.#trianglesBuffer = this.#device.createBuffer({
@@ -220,9 +224,15 @@ export class ComputeSegment {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
+    this.#lightsCDFBuffer = this.#device.createBuffer({
+      size: LightsCDFBufferDataByteSize /* determined with offset computer */,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+    });
+
     this.#device.queue.writeBuffer(this.#trianglesBuffer, 0, trianglesBufferData);
     this.#device.queue.writeBuffer(this.#materialsBuffer, 0, materialsData);
     this.#device.queue.writeBuffer(this.#bvhBuffer, 0, BVHBufferData);
+    this.#device.queue.writeBuffer(this.#lightsCDFBuffer, 0, LightsCDFBufferData);
 
     // we need to re-create the bindgroup
     this.#bindGroup3 = this.#device.createBindGroup({
@@ -231,7 +241,8 @@ export class ComputeSegment {
       entries: [
         { binding: 0, resource: { buffer: this.#trianglesBuffer } },
         { binding: 1, resource: { buffer: this.#materialsBuffer } },
-        { binding: 2, resource: { buffer: this.#bvhBuffer } }
+        { binding: 2, resource: { buffer: this.#bvhBuffer } },
+        { binding: 3, resource: { buffer: this.#lightsCDFBuffer } }
       ]
     });
   }

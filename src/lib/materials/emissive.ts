@@ -2,8 +2,8 @@ import type { Color } from 'three';
 import { MATERIAL_TYPE, Material } from './material';
 
 export class Emissive extends Material {
-  private color: Color;
-  private intensity: number;
+  public color: Color;
+  public intensity: number;
 
   constructor(color: Color, intensity: number = 1) {
     super();

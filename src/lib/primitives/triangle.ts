@@ -1,4 +1,6 @@
 import { AABB } from '$lib/bvh/aabb';
+import { Emissive } from '$lib/materials/emissive';
+import type { Material } from '$lib/materials/material';
 import type { Vector3 } from 'three';
 
 export class Triangle {
@@ -34,8 +36,22 @@ export class Triangle {
     return aabb;
   }
 
+  getArea(): number {
+    let v1v0 = this.v1.clone().sub(this.v0);
+    let v2v0 = this.v2.clone().sub(this.v0);
+    return v1v0.cross(v2v0).length() * 0.5;
+  }
+
   getCentroid(): Vector3 {
     return this.v0.clone().add(this.v1).add(this.v2).divideScalar(3);
+  }
+
+  getLuminance(material: Material): number {
+    if (!(material instanceof Emissive))
+      throw new Error("can't get luminance of non-emissive material");
+
+    let t = (material.color.r + material.color.g + material.color.b) * material.intensity;
+    return t * this.getArea();
   }
 
   static getBufferData(triangles: Triangle[], materialOffsetsByIndex: number[]) {

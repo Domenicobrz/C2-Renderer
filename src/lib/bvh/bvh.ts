@@ -1,3 +1,4 @@
+import { Emissive } from '$lib/materials/emissive';
 import type { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { bvhInfo } from '../../routes/stores/main';
@@ -162,6 +163,40 @@ export class BVH {
     };
   }
 
+  getLightsCDFBufferData() {
+    let sum = 0;
+    let cdfToTriangleIndex: number[][] = [];
+
+    this.triangles.forEach((t) => {
+      let material = this.materials[t.materialIndex];
+      if (material instanceof Emissive) {
+        cdfToTriangleIndex.push([sum, t.idxRef]);
+        sum += t.getLuminance(material);
+      }
+    });
+
+    // normalize cdf
+    cdfToTriangleIndex.forEach((el) => {
+      el[0] /= sum;
+    });
+
+    const LightsCDFBufferDataByteSize = 8 * cdfToTriangleIndex.length;
+    const LightsCDFBufferData = new ArrayBuffer(LightsCDFBufferDataByteSize);
+    cdfToTriangleIndex.forEach((el, i) => {
+      let offs = 8 * i;
+
+      let cdf = new Float32Array(LightsCDFBufferData, offs + 0, 1);
+      cdf.set([el[0]]);
+      let triangleIndex = new Uint32Array(LightsCDFBufferData, offs + 4, 1);
+      triangleIndex.set([el[1]]);
+    });
+
+    return {
+      LightsCDFBufferData,
+      LightsCDFBufferDataByteSize
+    };
+  }
+
   static shaderStruct(): string {
     return /* wgsl */ `
       // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html
@@ -179,6 +214,11 @@ export class BVH {
         t: f32,
         hitPoint: vec3f,
         triangle: Triangle,
+      }
+
+      struct LightCDFEntry {
+        cdf: f32,
+        triangleIndex: u32,
       }
     `;
   }

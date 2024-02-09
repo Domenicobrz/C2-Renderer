@@ -9,6 +9,8 @@ import { cameraPart } from './parts/camera';
 import { mathUtilsPart } from './parts/mathUtils';
 import { randomPart } from './parts/random';
 
+// https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html
+
 export const computeShader = /* wgsl */ `
 // at the moment these have to be imported with this specific order
 ${randomPart}
@@ -46,6 +48,7 @@ ${BVH.shaderIntersect()}
 @group(3) @binding(0) var<storage> triangles: array<Triangle>;
 @group(3) @binding(1) var<storage> materialsData: array<f32>;
 @group(3) @binding(2) var<storage> bvhData: array<BVHNode>;
+@group(3) @binding(3) var<storage> lightsCDFData: array<LightCDFEntry>;
 
 const PI = 3.14159265359;
 

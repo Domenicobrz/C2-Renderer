@@ -5,3 +5,6 @@ of doing things ok?
 Rewrite the Triangle.idxRef logic such that it's not required to save the idxRef prop
 
 colors are using 1 byte per channel, this is likely wrong / problematic
+
+implement part 2 of:
+https://schuttejoe.github.io/post/ggximportancesamplingpart1/

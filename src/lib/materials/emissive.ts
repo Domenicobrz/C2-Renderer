@@ -64,8 +64,6 @@ export class Emissive extends Material {
         }
     
         *rad += emissive * (*mult);
-        *mult *= albedo * max(dot(N, -(*ray).direction), 0.0) * (1 / PI) * (2 * PI);
-    
         (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
     
         let rands = rand4(
@@ -87,6 +85,7 @@ export class Emissive extends Material {
         getCoordinateSystem(N, &Nt, &Nb);
     
         (*ray).direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
+        *mult *= albedo * max(dot(N, (*ray).direction), 0.0) * (1 / PI) * (2 * PI);
       } 
     `;
   }

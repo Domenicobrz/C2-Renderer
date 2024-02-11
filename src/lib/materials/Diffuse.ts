@@ -57,8 +57,6 @@ export class Diffuse extends Material {
           N = -N;
         }
     
-        *mult *= color * max(dot(N, -(*ray).direction), 0.0) * (1 / PI) * (2 * PI);
-    
         (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
     
         let rands = rand4(
@@ -80,6 +78,8 @@ export class Diffuse extends Material {
         getCoordinateSystem(N, &Nt, &Nb);
     
         (*ray).direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
+      
+        *mult *= color * max(dot(N, (*ray).direction), 0.0) * (1 / PI) * (2 * PI);
       } 
     `;
   }

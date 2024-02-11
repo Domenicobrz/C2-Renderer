@@ -170,7 +170,7 @@ export class BVH {
     this.triangles.forEach((t) => {
       let material = this.materials[t.materialIndex];
       if (material instanceof Emissive) {
-        cdfToTriangleIndex.push([sum, t.idxRef]);
+        cdfToTriangleIndex.push([sum, t.getLuminance(material), t.idxRef]);
         sum += t.getLuminance(material);
       }
     });
@@ -178,17 +178,20 @@ export class BVH {
     // normalize cdf
     cdfToTriangleIndex.forEach((el) => {
       el[0] /= sum;
+      el[1] /= sum;
     });
 
-    const LightsCDFBufferDataByteSize = 8 * cdfToTriangleIndex.length;
+    const LightsCDFBufferDataByteSize = 12 * cdfToTriangleIndex.length;
     const LightsCDFBufferData = new ArrayBuffer(LightsCDFBufferDataByteSize);
     cdfToTriangleIndex.forEach((el, i) => {
-      let offs = 8 * i;
+      let offs = 12 * i;
 
       let cdf = new Float32Array(LightsCDFBufferData, offs + 0, 1);
       cdf.set([el[0]]);
-      let triangleIndex = new Uint32Array(LightsCDFBufferData, offs + 4, 1);
-      triangleIndex.set([el[1]]);
+      let pdf = new Float32Array(LightsCDFBufferData, offs + 4, 1);
+      pdf.set([el[1]]);
+      let triangleIndex = new Uint32Array(LightsCDFBufferData, offs + 8, 1);
+      triangleIndex.set([el[2]]);
     });
 
     return {
@@ -218,6 +221,7 @@ export class BVH {
 
       struct LightCDFEntry {
         cdf: f32,
+        pdf: f32,
         triangleIndex: u32,
       }
     `;
@@ -225,6 +229,32 @@ export class BVH {
 
   static shaderIntersect() {
     return /* wgsl */ `
+      fn getLightCDFEntry(r: f32) -> LightCDFEntry {
+        var si: i32 = 0;
+        var ei: i32 = i32(arrayLength(&lightsCDFData));
+        
+        var mid: i32 = -2;
+        var fidx: i32 = -1;
+        
+        while (fidx != mid) {
+          mid = (si + ei) / 2;
+          fidx = mid;
+
+          let cdf = lightsCDFData[mid].cdf;
+
+          if (r > cdf) {
+            si = mid;
+            mid = (si + ei) / 2;
+          }
+          if (r < cdf) {
+            ei = mid;
+            mid = (si + ei) / 2;
+          }
+        }
+
+        return lightsCDFData[fidx];
+      }
+
       fn bvhIntersect(ray: Ray) -> BVHIntersectionResult {
         let rootNode = bvhData[0];
 

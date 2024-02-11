@@ -59,18 +59,21 @@ export class Triangle {
     const trianglesCount = triangles.length;
     const data = new ArrayBuffer(STRUCT_SIZE * trianglesCount);
 
+    // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001005701000000000000003d888b0237284d3025f2381bcb288abe3eafc62d6ca0d8042fc1971a88f51b3ff18869efcbe1877af43e5e4fd034ee05413b60296cdbdb3f53c78732caefece359691688a4e1b5274b5eed2696616a5993f7f3cbfb658410256f1f8a8688c290394a0e04baa72430c844d7c42eb7972f194a3ff475706727d9dd7cd6d29ccf80e1d4cef6b4719471ff7b8e5b5a3bf063d4d410af49db02464f4b6279c4d5112a9668ee9f175584fe719e3c5e79a4b3f53369df6c0ea12038c4d6a435d3224ce7bd7be81501de7e9834f18ece64a6432e13fe554bc6
     triangles.forEach((t, i) => {
       const offs = i * STRUCT_SIZE;
       const views = {
         v0: new Float32Array(data, offs + 0, 3),
         v1: new Float32Array(data, offs + 16, 3),
         v2: new Float32Array(data, offs + 32, 3),
+        area: new Float32Array(data, offs + 44, 1),
         normal: new Float32Array(data, offs + 48, 3),
         materialOffset: new Uint32Array(data, offs + 60, 1)
       };
       views.v0.set([t.v0.x, t.v0.y, t.v0.z]);
       views.v1.set([t.v1.x, t.v1.y, t.v1.z]);
       views.v2.set([t.v2.x, t.v2.y, t.v2.z]);
+      views.area.set([t.getArea()]);
       views.normal.set([t.normal.x, t.normal.y, t.normal.z]);
       views.materialOffset.set([materialOffsetsByIndex[t.materialIndex]]);
     });
@@ -87,13 +90,13 @@ export class Triangle {
       }
 
       // this layout saves some bytes because of padding
-      // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001000d01000000000000003d8888623728a306fc320e1a9be64fe4a78fb96672809837146b791dbfd602ece649c10ded4c6d44700b69a806355e6f8008795f3a1b099b84f7fd01cd321fc156a3d282b272856d2989c802b61dcac5696368aad51d177d2dc38a1df3bc687ee2b3a55aa6d9aa10112f3e56e06149cecd45408f4acb4eac34048021eb345d8e56e498e66aeea300847212f3dc175721ae58a5cd77ac2444642259d6a2b11637ffd8ec1f00
+      // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001005701000000000000003d888b0237284d3025f2381bcb288abe3eafc62d6ca0d8042fc1971a88f51b3ff18869efcbe1877af43e5e4fd034ee05413b60296cdbdb3f53c78732caefece359691688a4e1b5274b5eed2696616a5993f7f3cbfb658410256f1f8a8688c290394a0e04baa72430c844d7c42eb7972f194a3ff475706727d9dd7cd6d29ccf80e1d4cef6b4719471ff7b8e5b5a3bf063d4d410af49db02464f4b6279c4d5112a9668ee9f175584fe719e3c5e79a4b3f53369df6c0ea12038c4d6a435d3224ce7bd7be81501de7e9834f18ece64a6432e13fe554bc6
       struct Triangle {
         v0: vec3f,
         v1: vec3f,
         v2: vec3f,
+        area: f32,
         normal: vec3f,
-        // first element of a material tells us the type
         materialOffset: u32,
       }
     `;
@@ -101,6 +104,18 @@ export class Triangle {
 
   static shaderIntersectionFn(): string {
     return /* wgsl */ `
+      fn sampleTrianglePoint(triangle: Triangle, s: f32, t: f32) -> vec3f {
+        let v0v1 = triangle.v1 - triangle.v0;
+        let v0v2 = triangle.v2 - triangle.v0;
+        let in_triangle = s + t <= 1;
+
+        if (in_triangle) {
+          return v0v1 * s + v0v2 * t;
+        }
+
+        return v0v1 * (1.0 - s) + v0v2 * (1.0 - t);
+      }
+
       // https://github.com/johnnovak/raytriangle-test
       // Simple, direct implementation of the Möller–Trumbore intersection algorithm.
       fn intersectTriangle(triangle: Triangle, ray: Ray) -> IntersectionResult {

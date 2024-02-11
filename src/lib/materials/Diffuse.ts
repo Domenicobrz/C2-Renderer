@@ -39,6 +39,36 @@ export class Diffuse extends Material {
 
   static shaderShadeDiffuse(): string {
     return /* wgsl */ `
+      fn shadeDiffuseSampleBRDF(
+        rands: vec4f, 
+        N: vec3f, 
+        ray: ptr<function, Ray>, 
+        reflectance: ptr<function, vec3f>
+      ) {
+        let r0 = 2.0 * PI * rands.x;
+        let r1 = acos(rands.y);
+        let nd = normalize(vec3f(
+          sin(r0) * sin(r1),
+          cos(r1),
+          cos(r0) * sin(r1),
+        ));
+    
+        var Nt = vec3f(0,0,0);
+        var Nb = vec3f(0,0,0);
+        getCoordinateSystem(N, &Nt, &Nb);
+    
+        (*ray).direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
+
+        let brdf = 1 / PI;
+        // non-MIS pdf:
+        let pdf = 1 / (2 * PI);
+        // MIS pdf:
+        // ...
+
+        *reflectance *= brdf;
+        *reflectance /= pdf;
+      }
+
       fn shadeDiffuse(
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
@@ -65,21 +95,15 @@ export class Diffuse extends Material {
           u32(i * 17325799),
         );
     
-        let r0 = 2.0 * PI * rands.x;
-        let r1 = acos(rands.y);
-        let nd = normalize(vec3f(
-          sin(r0) * sin(r1),
-          cos(r1),
-          cos(r0) * sin(r1),
-        ));
-    
-        var Nt = vec3f(0,0,0);
-        var Nb = vec3f(0,0,0);
-        getCoordinateSystem(N, &Nt, &Nb);
-    
-        (*ray).direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
-      
-        *mult *= color * max(dot(N, (*ray).direction), 0.0) * (1 / PI) * (2 * PI);
+        // I need both pdfs, and have to sum them togheter
+        // but wait.. how do I get the area based pdf if I select to sample the brdf?
+        // apparently, according to gpt4, I should shoot a ray and if it hits a light source
+        // then calculate the pdf that way.
+        // also I shold look into "next event estimation"
+
+        shadeDiffuseSampleBRDF(rands, N, ray, mult);
+        *mult *= max(dot(N, (*ray).direction), 0.0);
+        *mult *= color;
       } 
     `;
   }

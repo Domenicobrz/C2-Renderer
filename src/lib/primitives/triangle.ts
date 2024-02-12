@@ -105,15 +105,15 @@ export class Triangle {
   static shaderIntersectionFn(): string {
     return /* wgsl */ `
       fn sampleTrianglePoint(triangle: Triangle, s: f32, t: f32) -> vec3f {
-        let v0v1 = triangle.v1 - triangle.v0;
-        let v0v2 = triangle.v2 - triangle.v0;
+        let v0v1 = (triangle.v1 - triangle.v0);
+        let v0v2 = (triangle.v2 - triangle.v0);
         let in_triangle = s + t <= 1;
 
         if (in_triangle) {
-          return v0v1 * s + v0v2 * t;
+          return v0v1 * s + v0v2 * t + triangle.v0;
         }
 
-        return v0v1 * (1.0 - s) + v0v2 * (1.0 - t);
+        return v0v1 * (1.0 - s) + v0v2 * (1.0 - t) + triangle.v0;
       }
 
       // https://github.com/johnnovak/raytriangle-test

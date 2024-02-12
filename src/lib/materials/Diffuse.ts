@@ -45,28 +45,87 @@ export class Diffuse extends Material {
         ray: ptr<function, Ray>, 
         reflectance: ptr<function, vec3f>
       ) {
-        let r0 = 2.0 * PI * rands.x;
-        let r1 = acos(rands.y);
-        let nd = normalize(vec3f(
-          sin(r0) * sin(r1),
-          cos(r1),
-          cos(r0) * sin(r1),
-        ));
-    
+        // why am I using uniform sampling? cosine weighted is better.
+        let rand_1 = rands.x;
+        let rand_2 = rands.y;
+        let phi = 2.0 * PI * rand_1;
+        let root = sqrt(1 - rand_2 * rand_2);
+        let nd = vec3f(cos(phi) * root, rand_2, sin(phi) * root);
+
+        let brdf = 1 / PI;
+        let brdfSamplePdf = 1 / (2 * PI);
+
+
         var Nt = vec3f(0,0,0);
         var Nb = vec3f(0,0,0);
         getCoordinateSystem(N, &Nt, &Nb);
     
         (*ray).direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
 
-        let brdf = 1 / PI;
         // non-MIS pdf:
-        let pdf = 1 / (2 * PI);
+        // let pdf = 1 / (2 * PI);
+        
         // MIS pdf:
-        // ...
+        let ires = bvhIntersect(*ray);
+        let materialType = materialsData[ires.triangle.materialOffset];
+        var lightSamplePdf = 0.0;
+        if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
+          let lD = (*ray).direction;
+          let r2 = squaredLength(ires.hitPoint - (*ray).origin);
+          var lN = ires.triangle.normal;
+          var lNolD = dot(lN, -lD);
+          if (lNolD < 0) {
+            lN = -lN;
+            lNolD = -lNolD;
+          }
+          let theta = lNolD;
+          lightSamplePdf = r2 / (lNolD * ires.triangle.area);
+        }
+        let pdf = (brdfSamplePdf + lightSamplePdf) * 0.5;
+        *reflectance /= pdf;
+        // MIS with power heuristic:
+        // let w = (brdfSamplePdf * brdfSamplePdf) / (brdfSamplePdf * brdfSamplePdf + lightSamplePdf * lightSamplePdf);
+        // *reflectance = (*reflectance / brdfSamplePdf) * w * 2;
 
         *reflectance *= brdf;
+      }
+
+      fn shadeDiffuseSampleLight(
+        rands: vec4f, 
+        N: vec3f,
+        ray: ptr<function, Ray>, 
+        reflectance: ptr<function, vec3f>,
+      ) {
+        let cdfEntry = getLightCDFEntry(rands.z);
+        let triangle = triangles[cdfEntry.triangleIndex];
+        let samplePoint = sampleTrianglePoint(triangle, rands.x, rands.y);
+
+        let lD = normalize(samplePoint - (*ray).origin);
+        (*ray).direction = lD;
+
+        let r2 = squaredLength(samplePoint - (*ray).origin);
+        var lN = triangle.normal;
+        var lNolD = dot(lN, -lD);
+        if (lNolD < 0) {
+          lN = -lN;
+          lNolD = -lNolD;
+        }
+        let theta = lNolD;
+        let lightSamplePdf = r2 / (lNolD * triangle.area);
+        let brdfSamplePdf = 1 / (2 * PI);
+
+        // non-MIS pdf:
+        // let pdf = lightSamplePdf * cdfEntry.pdf;
+        // MIS pdf:
+        let pdf = (brdfSamplePdf + lightSamplePdf * cdfEntry.pdf) * 0.5;
         *reflectance /= pdf;
+        // MIS with power heuristics:
+        // let w = (lightSamplePdf * cdfEntry.pdf * lightSamplePdf * cdfEntry.pdf) / (brdfSamplePdf * brdfSamplePdf + lightSamplePdf * cdfEntry.pdf * lightSamplePdf * cdfEntry.pdf);
+        // *reflectance = (*reflectance / (lightSamplePdf * cdfEntry.pdf)) * w * 2;
+
+        let brdf = 1 / PI;
+
+        *reflectance *= brdf;
       }
 
       fn shadeDiffuse(
@@ -95,15 +154,27 @@ export class Diffuse extends Material {
           u32(i * 17325799),
         );
     
-        // I need both pdfs, and have to sum them togheter
-        // but wait.. how do I get the area based pdf if I select to sample the brdf?
-        // apparently, according to gpt4, I should shoot a ray and if it hits a light source
-        // then calculate the pdf that way.
-        // also I shold look into "next event estimation"
+        if (rands.w < 0.5) {
+          shadeDiffuseSampleBRDF(rands, N, ray, mult);
+        } else {
+          shadeDiffuseSampleLight(rands, N, ray, mult);
+        }
 
-        shadeDiffuseSampleBRDF(rands, N, ray, mult);
-        *mult *= max(dot(N, (*ray).direction), 0.0);
+
+        // I think what I should do next is to actually try to get both samples and:
+        // think of it like if I'm doing:
+
+        // W1 * (F1 / P1)  +  W2 * (F2 / P2)
+        // for the second one, with light sampling, I can get everything:
+        // I can get W2, I can also get F2! by just sampling the light
+        // and obviously I have P2
+
+        // for the second one I can get everything EXCEPT F1.
+        // F1 sort of "arrives" later, and I need to understand how to factor that in
+
+
         *mult *= color;
+        *mult *= max(dot(N, (*ray).direction), 0.0);
       } 
     `;
   }

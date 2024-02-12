@@ -11,9 +11,11 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
     new GGX(new Color(0.05, 1, 0.05), 0.02),
-    new Emissive(new Color(1, 0.7, 0.5), 20)
+    // new Emissive(new Color(1, 0.7, 0.5), 20)
+    new Emissive(new Color(1, 0.7, 0.5), 2000)
   ];
-  for (let i = 0; i < 500; i++) {
+  // for (let i = 0; i < 500; i++) {
+  for (let i = 0; i < 0; i++) {
     let r = Math.random;
     let nr = function () {
       return Math.random() * 2 - 1;
@@ -90,24 +92,25 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     );
   }
 
-  const ls = 0.75;
-  const lt = new Vector3(0, 4.5, 0);
+  // const ls = 0.75;
+  const ls = 0.05;
+  const lt = new Vector3(0, 3.9, 0);
   triangles.push(
     new Triangle(
-      new Vector3(-1, -1, -1).multiplyScalar(ls).add(lt),
-      new Vector3(-1, -1, +1).multiplyScalar(ls).add(lt),
-      new Vector3(+1, -1, +1).multiplyScalar(ls).add(lt),
+      new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
+      new Vector3(-1, 0, +1).multiplyScalar(ls).add(lt),
+      new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
       3
     )
   );
-  triangles.push(
-    new Triangle(
-      new Vector3(+1, -1, +1).multiplyScalar(ls).add(lt),
-      new Vector3(-1, -1, -1).multiplyScalar(ls).add(lt),
-      new Vector3(+1, -1, -1).multiplyScalar(ls).add(lt),
-      3
-    )
-  );
+  // triangles.push(
+  //   new Triangle(
+  //     new Vector3(+1, -1, +1).multiplyScalar(ls).add(lt),
+  //     new Vector3(-1, -1, -1).multiplyScalar(ls).add(lt),
+  //     new Vector3(+1, -1, -1).multiplyScalar(ls).add(lt),
+  //     3
+  //   )
+  // );
 
   triangles.push(
     new Triangle(

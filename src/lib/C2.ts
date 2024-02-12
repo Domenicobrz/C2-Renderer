@@ -33,7 +33,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
 
   // *************** compute & render segments ****************
   computeSegment = new ComputeSegment(device);
-  computeSegment.setDebugPixelTarget(80, 485);
+  computeSegment.setDebugPixelTarget(280, 385);
   let { triangles, materials } = createScene();
   computeSegment.updateScene(triangles, materials);
   renderSegment = new RenderSegment(device, context, presentationFormat);

@@ -154,24 +154,23 @@ export class Diffuse extends Material {
           u32(i * 17325799),
         );
     
+        // as I'm doing all of this, remember that emissive.ts knows none of this
+        // as I'm doing all of this, remember that emissive.ts knows none of this
+        // as I'm doing all of this, remember that emissive.ts knows none of this
+        // as I'm doing all of this, remember that emissive.ts knows none of this
+
+        // something strange I noted...
+        // if I set r2 as a constant value here:
+        // let lightSamplePdf = r2 / (lNolD * triangle.area);
+        // in the light sampling routine, the image converges MUCH faster
+        // it seems that when r2 is extremely small, maybe when we get in the roof very
+        // close to the light source, the pdf shoots up and creates a crazy amount of fireflies
+
         if (rands.w < 0.5) {
           shadeDiffuseSampleBRDF(rands, N, ray, mult);
         } else {
           shadeDiffuseSampleLight(rands, N, ray, mult);
         }
-
-
-        // I think what I should do next is to actually try to get both samples and:
-        // think of it like if I'm doing:
-
-        // W1 * (F1 / P1)  +  W2 * (F2 / P2)
-        // for the second one, with light sampling, I can get everything:
-        // I can get W2, I can also get F2! by just sampling the light
-        // and obviously I have P2
-
-        // for the second one I can get everything EXCEPT F1.
-        // F1 sort of "arrives" later, and I need to understand how to factor that in
-
 
         *mult *= color;
         *mult *= max(dot(N, (*ray).direction), 0.0);

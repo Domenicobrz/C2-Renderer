@@ -61,9 +61,12 @@ export class Emissive extends Material {
         var N = ires.triangle.normal;
         if (dot(N, (*ray).direction) > 0) {
           N = -N;
+        } else {
+          // naive firefly reduction technique
+          // *rad += emissive * min((*mult), vec3f(0.01));
+          *rad += emissive * *mult;
         }
     
-        *rad += emissive * (*mult);
         (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
     
         let rands = rand4(

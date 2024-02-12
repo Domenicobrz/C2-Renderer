@@ -64,6 +64,7 @@ export class Diffuse extends Material {
 
         // non-MIS pdf:
         // let pdf = 1 / (2 * PI);
+        // *reflectance /= pdf;
         
         // MIS pdf:
         let ires = bvhIntersect(*ray);
@@ -83,6 +84,7 @@ export class Diffuse extends Material {
         }
         let pdf = (brdfSamplePdf + lightSamplePdf) * 0.5;
         *reflectance /= pdf;
+
         // MIS with power heuristic:
         // let w = (brdfSamplePdf * brdfSamplePdf) / (brdfSamplePdf * brdfSamplePdf + lightSamplePdf * lightSamplePdf);
         // *reflectance = (*reflectance / brdfSamplePdf) * w * 2;

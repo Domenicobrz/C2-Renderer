@@ -13,6 +13,7 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     new GGX(new Color(0.05, 1, 0.05), 0.02),
     // new Emissive(new Color(1, 0.7, 0.5), 20)
     new Emissive(new Color(1, 0.7, 0.5), 2000)
+    // new Emissive(new Color(1, 0.7, 0.5), 2)
   ];
   // for (let i = 0; i < 500; i++) {
   for (let i = 0; i < 0; i++) {

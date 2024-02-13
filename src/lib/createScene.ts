@@ -11,13 +11,13 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
     new GGX(new Color(0.05, 1, 0.05), 0.02),
-    new Emissive(new Color(1, 0.7, 0.5), 20),
-    // new Emissive(new Color(1, 0.7, 0.5), 3000),
+    new Emissive(new Color(1, 0.7, 0.5), 40),
+    // new Emissive(new Color(1, 0.7, 0.5), 6000),
+    // new Emissive(new Color(1, 0.7, 0.5), 2),
     new Diffuse(new Color(0.05, 1, 0.05))
-    // new Emissive(new Color(1, 0.7, 0.5), 2)
   ];
-  // for (let i = 0; i < 500; i++) {
-  for (let i = 0; i < 0; i++) {
+  for (let i = 0; i < 500; i++) {
+    // for (let i = 0; i < 0; i++) {
     let r = Math.random;
     let nr = function () {
       return Math.random() * 2 - 1;
@@ -68,8 +68,8 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     if (i == 3) {
       raxis = new Vector3(0, 0, 1);
       rangle = Math.PI * 1.5;
-      // mi = 2;
-      mi = 4;
+      // mi = 2; // metal green
+      mi = 4; // diffuse green
     }
 
     if (i == 4) {
@@ -97,6 +97,7 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
 
   const ls = 0.75;
   // const ls = 0.05;
+  // const ls = 4.05;
   const lt = new Vector3(0, 3.9, 0);
   triangles.push(
     new Triangle(

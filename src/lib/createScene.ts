@@ -11,8 +11,9 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
     new GGX(new Color(0.05, 1, 0.05), 0.02),
-    // new Emissive(new Color(1, 0.7, 0.5), 20)
-    new Emissive(new Color(1, 0.7, 0.5), 3000)
+    new Emissive(new Color(1, 0.7, 0.5), 20),
+    // new Emissive(new Color(1, 0.7, 0.5), 3000),
+    new Diffuse(new Color(0.05, 1, 0.05))
     // new Emissive(new Color(1, 0.7, 0.5), 2)
   ];
   // for (let i = 0; i < 500; i++) {
@@ -67,7 +68,8 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     if (i == 3) {
       raxis = new Vector3(0, 0, 1);
       rangle = Math.PI * 1.5;
-      mi = 2;
+      // mi = 2;
+      mi = 4;
     }
 
     if (i == 4) {
@@ -93,9 +95,8 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     );
   }
 
-  // const ls = 0.75;
+  const ls = 0.75;
   // const ls = 0.05;
-  const ls = 0.05;
   const lt = new Vector3(0, 3.9, 0);
   triangles.push(
     new Triangle(
@@ -119,7 +120,7 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
       new Vector3(+2, 0, +1).multiplyScalar(1.5).add(new Vector3(-1.5, 0, -1.5)),
       new Vector3(+3, 2, +2).multiplyScalar(1.5).add(new Vector3(-1.5, 0, -1.5)),
       new Vector3(+4, 0, +3).multiplyScalar(1.5).add(new Vector3(-1.5, 0, -1.5)),
-      4
+      0
     )
   );
 

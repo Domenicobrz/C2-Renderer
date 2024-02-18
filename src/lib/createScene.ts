@@ -4,6 +4,14 @@ import { Emissive } from './materials/emissive';
 import type { Material } from './materials/material';
 import { Triangle } from './primitives/triangle';
 import { GGX } from './materials/ggx';
+import random, { RNG } from 'random';
+
+random.use('test-string' as unknown as RNG);
+// random.use(Math.random() as unknown as RNG);
+let r = random.float;
+let nr = function () {
+  return r() * 2 - 1;
+};
 
 export function createScene(): { triangles: Triangle[]; materials: Material[] } {
   let triangles: Triangle[] = [];
@@ -16,13 +24,11 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     // new Emissive(new Color(1, 0.7, 0.5), 2),
     new Diffuse(new Color(0.05, 1, 0.05))
   ];
+
   for (let i = 0; i < 500; i++) {
     // for (let i = 0; i < 0; i++) {
-    let r = Math.random;
-    let nr = function () {
-      return Math.random() * 2 - 1;
-    };
     let s = r() * 0.5 + 0.25;
+    // let s = r() * 0.25 + 0.125;
     let rotAxis = new Vector3(nr(), nr(), nr()).normalize();
     let rotAngle = r() * 10;
     let addV = new Vector3(nr() * 4, nr() * 2 - 2, nr() * 4);
@@ -124,6 +130,9 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
       0
     )
   );
+
+  // apparently MIS stops working with GGX materials (that are exclusively sampling the brdf)
+  // and it makes sense, because we let variance creep into the integral...
 
   return { triangles, materials };
 }

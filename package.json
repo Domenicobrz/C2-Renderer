@@ -26,6 +26,7 @@
 	"type": "module",
 	"dependencies": {
 		"@webgpu/types": "^0.1.38",
+		"random": "^4.1.0",
 		"three": "^0.158.0"
 	}
 }

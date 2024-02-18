@@ -115,7 +115,7 @@ export class GGX extends Material {
       fn shadeGGX(
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
-        mult: ptr<function, vec3f>, 
+        reflectance: ptr<function, vec3f>, 
         rad: ptr<function, vec3f>,
         gid: vec3u,
         i: i32
@@ -138,7 +138,7 @@ export class GGX extends Material {
           u32(i * 17325799),
         );
 
-        var reflectance = vec3f(0,0,0);
+        var ggxReflectance = vec3f(0,0,0);
 
         var Nt = vec3f(0,0,0);
         var Nb = vec3f(0,0,0);
@@ -152,9 +152,9 @@ export class GGX extends Material {
         // some components cancel out when using this function, thus "reflectance"
         // takes into account cos(theta), the brdf, division by pdf and also the
         // color component
-        ImportanceSampleGgxD(wo, material, rands.x, rands.y, &wi, &reflectance);
+        ImportanceSampleGgxD(wo, material, rands.x, rands.y, &wi, &ggxReflectance);
 
-        *mult *= reflectance;
+        *reflectance *= ggxReflectance;
     
         (*ray).direction = normalize(Nt * wi.x + N * wi.y + Nb * wi.z);
       } 

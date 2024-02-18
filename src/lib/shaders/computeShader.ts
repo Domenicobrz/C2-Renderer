@@ -76,13 +76,13 @@ const PI = 3.14159265359;
 
   let idx = gid.y * canvasSize.x + gid.x;
 
-  var mult = vec3f(1.0);
+  var reflectance = vec3f(1.0);
   var rad = vec3f(0.0);
   for (var i = 0; i < 5; i++) {
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
-      shade(ires, &ray, &mult, &rad, gid, i);
+      shade(ires, &ray, &reflectance, &rad, gid, i);
     } else {
       break;
     }

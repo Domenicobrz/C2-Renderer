@@ -31,7 +31,7 @@ export class Material {
       fn shade(
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
-        mult: ptr<function, vec3f>, 
+        reflectance: ptr<function, vec3f>, 
         rad: ptr<function, vec3f>,
         gid: vec3u,
         i: i32) 
@@ -40,15 +40,15 @@ export class Material {
         let materialType = materialsData[materialOffset];
 
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-          shadeDiffuse(ires, ray, mult, rad, gid, i);
+          shadeDiffuse(ires, ray, reflectance, rad, gid, i);
         }
 
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-          shadeEmissive(ires, ray, mult, rad, gid, i);
+          shadeEmissive(ires, ray, reflectance, rad, gid, i);
         }
 
         if (materialType == ${MATERIAL_TYPE.GGX}) {
-          shadeGGX(ires, ray, mult, rad, gid, i);
+          shadeGGX(ires, ray, reflectance, rad, gid, i);
         }
       }
     `;

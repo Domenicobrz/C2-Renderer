@@ -47,7 +47,7 @@ export class Emissive extends Material {
       fn shadeEmissive(
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
-        mult: ptr<function, vec3f>, 
+        reflectance: ptr<function, vec3f>, 
         rad: ptr<function, vec3f>,
         gid: vec3u,
         i: i32
@@ -62,9 +62,7 @@ export class Emissive extends Material {
         if (dot(N, (*ray).direction) > 0) {
           N = -N;
         } else {
-          // naive firefly reduction technique
-          // *rad += emissive * min((*mult), vec3f(0.01));
-          *rad += emissive * *mult;
+          *rad += emissive * *reflectance;
         }
     
         (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
@@ -88,7 +86,7 @@ export class Emissive extends Material {
         getCoordinateSystem(N, &Nt, &Nb);
     
         (*ray).direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
-        *mult *= albedo * max(dot(N, (*ray).direction), 0.0) * (1 / PI) * (2 * PI);
+        *reflectance *= albedo * max(dot(N, (*ray).direction), 0.0) * (1 / PI) * (2 * PI);
       } 
     `;
   }

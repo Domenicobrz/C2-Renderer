@@ -62,7 +62,6 @@ export class Diffuse extends Material {
         let root = sqrt(1 - rand_2 * rand_2);
         let nd = vec3f(cos(phi) * root, rand_2, sin(phi) * root);
 
-        // let brdf = 1 / PI;
         var brdfSamplePdf = 1 / (2 * PI);
 
         var Nt = vec3f(0,0,0);
@@ -91,10 +90,6 @@ export class Diffuse extends Material {
             let theta = lNolD;
             lightSamplePdf = r2 / (lNolD * ires.triangle.area);
           }
-
-          // MIS with power heuristic:
-          // let w = (brdfSamplePdf * brdfSamplePdf) / (brdfSamplePdf * brdfSamplePdf + lightSamplePdf * lightSamplePdf);
-          // *reflectance = (*reflectance / brdfSamplePdf) * w * 2;
 
           if (MIS == MIS_ONE_SAMPLE_MODEL) {
             *pdf = brdfSamplePdf;
@@ -148,10 +143,6 @@ export class Diffuse extends Material {
         let theta = lNolD;
         var lightSamplePdf = r2 / (lNolD * triangle.area);
         var brdfSamplePdf = 1 / (2 * PI);
-
-        // // MIS with power heuristics:
-        // // let w = (lightSamplePdf * cdfEntry.pdf * lightSamplePdf * cdfEntry.pdf) / (brdfSamplePdf * brdfSamplePdf + lightSamplePdf * cdfEntry.pdf * lightSamplePdf * cdfEntry.pdf);
-        // // *reflectance = (*reflectance / (lightSamplePdf * cdfEntry.pdf)) * w * 2;
 
         if (MIS == MIS_ONE_SAMPLE_MODEL) {
           *pdf = (lightSamplePdf * cdfEntry.pdf);

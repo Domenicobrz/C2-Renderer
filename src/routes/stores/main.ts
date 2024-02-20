@@ -25,6 +25,12 @@ export const samplesInfo = (function createSamplesInfoStore() {
     get limit() {
       return get(store).limit;
     },
+    setLimit: (value: number) => {
+      store.update((si) => {
+        si.limit = value;
+        return si;
+      });
+    },
     increment: () =>
       store.update((si) => {
         si.count++;

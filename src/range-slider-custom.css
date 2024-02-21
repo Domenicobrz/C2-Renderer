@@ -1,0 +1,20 @@
+/* https://github.com/simeydotme/svelte-range-slider-pips */
+/* https://simeydotme.github.io/svelte-range-slider-pips/en/styling/ */
+
+div.rangeSlider {
+  height: 0.25em;
+  margin: 1em 0 1em 0;
+}
+
+.rangeSlider span.rangeHandle {
+  height: 1.1em;
+  width: 0.55em;
+  top: 0.15em;
+}
+
+:root {
+  --range-slider: #4b4b4b;
+  --range-handle-focus: #1f70ea;
+  --range-handle-border: #1f70ea;
+  --range-pip: #555555;
+}

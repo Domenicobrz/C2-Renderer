@@ -3,10 +3,11 @@
   import { onMount } from 'svelte';
   import { bvhInfo, samplesInfo } from '../stores/main';
   import Folder from './Folder.svelte';
+  import RangeSlider from 'svelte-range-slider-pips';
 
   let canvasRef: HTMLCanvasElement;
-  let canvasWidth = 800;
-  let canvasHeight = 600;
+  let canvasWidthSlidersValue = [800];
+  let canvasHeightSlidersValue = [600];
 
   onMount(async () => {
     try {
@@ -47,23 +48,45 @@
 
 <main>
   <div class="canvas-container">
-    <canvas width={canvasWidth} height={canvasHeight} bind:this={canvasRef} />
+    <canvas
+      width={canvasWidthSlidersValue[0]}
+      height={canvasHeightSlidersValue[0]}
+      bind:this={canvasRef}
+    />
   </div>
 
   <div class="sidebar">
-    <Folder name="canvas">
-      <label>width: </label>
-      <input type="range" min="1" max="1500" bind:value={canvasWidth} />
-      <br />
-      <label>height: </label>
-      <input type="range" min="1" max="1000" bind:value={canvasHeight} />
-      <br />
+    <Folder name="Canvas">
+      <div class="flex-row">
+        <label>width: </label>
+        <RangeSlider
+          min={1}
+          max={1500}
+          bind:values={canvasWidthSlidersValue}
+          pips
+          float
+          pipstep={100}
+          springValues={{ stiffness: 1, damping: 1 }}
+        />
+      </div>
+      <div class="flex-row">
+        <label>height: </label>
+        <RangeSlider
+          min={1}
+          max={1000}
+          bind:values={canvasHeightSlidersValue}
+          pips
+          float
+          pipstep={100}
+          springValues={{ stiffness: 1, damping: 1 }}
+        />
+      </div>
     </Folder>
-    <Folder name="info">
+    <Folder name="Info">
       <p>Bvh nodes count: {$bvhInfo.nodesCount}</p>
       <p>Sample: {$samplesInfo.count}</p>
     </Folder>
-    <Folder name="sampling">
+    <Folder name="Sampling">
       <span
         >Sample Limit: <input
           class="samples-limit-input"
@@ -76,7 +99,7 @@
       <button on:click={infiniteSamplesLimit}>∞</button>
       <button on:click={oneSampleLimit}>1</button>
     </Folder>
-    <Folder name="operate">
+    <Folder name="Operate">
       <button on:click={restart}>restart</button>
       <button on:click={stop}>stop</button>
     </Folder>
@@ -88,11 +111,55 @@
     width: 100%;
     height: 100%;
     margin: 0;
-    background: #181818;
+    background: #0e0e0e;
+    font-family: 'Inconsolata';
   }
 
   :global(*) {
     box-sizing: border-box;
+  }
+
+  .flex-row {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    margin: 0 0 -15px 0;
+  }
+
+  .flex-row label {
+    margin: 0 0 9px 0;
+    width: 100px;
+  }
+
+  :global(.flex-row > .rangeSlider) {
+    width: 100%;
+  }
+
+  p,
+  span,
+  label {
+    font-size: 15px;
+  }
+
+  @font-face {
+    font-family: 'Inconsolata';
+    src: url('/fonts/Inconsolata-Light.ttf') format('truetype');
+    font-weight: 300;
+  }
+  @font-face {
+    font-family: 'Inconsolata';
+    src: url('/fonts/Inconsolata-Regular.ttf') format('truetype');
+    font-weight: 400;
+  }
+  @font-face {
+    font-family: 'Inconsolata';
+    src: url('/fonts/Inconsolata-Medium.ttf') format('truetype');
+    font-weight: 500;
+  }
+  @font-face {
+    font-family: 'Inconsolata';
+    src: url('/fonts/Inconsolata-Bold.ttf') format('truetype');
+    font-weight: 700;
   }
 
   main {
@@ -121,6 +188,7 @@
     height: 100%;
     border: 1px solid #333;
     color: #ddd;
+    background: #191919;
   }
 
   .samples-limit-input {

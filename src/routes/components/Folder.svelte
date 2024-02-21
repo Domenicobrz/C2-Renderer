@@ -35,6 +35,8 @@
     background: #2f2f2f;
     border-bottom: 1px solid #4f4f4f;
     cursor: pointer;
+    font-weight: 700;
+    font-size: 15px;
   }
   header button {
     padding: 5px 10px;

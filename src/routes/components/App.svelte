@@ -86,7 +86,7 @@
       <p>Bvh nodes count: {$bvhInfo.nodesCount}</p>
       <p>Sample: {$samplesInfo.count}</p>
     </Folder>
-    <Folder name="Sampling">
+    <Folder name="Sampling" roundBox>
       <span
         >Sample Limit: <input
           class="samples-limit-input"
@@ -95,13 +95,14 @@
           on:change={onSampleLimitInputChange}
         /></span
       >
-      <button on:click={onOneStepLimitIncrement}>+</button>
-      <button on:click={infiniteSamplesLimit}>∞</button>
-      <button on:click={oneSampleLimit}>1</button>
-    </Folder>
-    <Folder name="Operate">
-      <button on:click={restart}>restart</button>
-      <button on:click={stop}>stop</button>
+      <button class="sample-limit-btn" on:click={onOneStepLimitIncrement}>+</button>
+      <button class="sample-limit-btn" on:click={infiniteSamplesLimit}>∞</button>
+      <button class="sample-limit-btn" on:click={oneSampleLimit}>1</button>
+
+      <Folder name="Operate" roundBox>
+        <button on:click={restart}>restart</button>
+        <button on:click={stop}>stop</button>
+      </Folder>
     </Folder>
   </div>
 </main>
@@ -193,5 +194,31 @@
 
   .samples-limit-input {
     width: 50px;
+  }
+
+  button {
+    background: #333;
+    color: #ddd;
+    border-radius: 4px;
+    padding: 5px 10px;
+    border: 1px solid #636363;
+  }
+
+  button:active {
+    background: #454545;
+  }
+
+  button.sample-limit-btn {
+    padding: 4px 8px;
+    margin: 0 -3px 0 0;
+  }
+
+  input[type='text'] {
+    background: #454545;
+    color: #ddd;
+    border-radius: 4px;
+    padding: 3px 7px;
+    border: 1px solid #636363;
+    font-size: 12px;
   }
 </style>

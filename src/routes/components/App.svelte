@@ -2,6 +2,7 @@
   import { Renderer } from '$lib/C2';
   import { onMount } from 'svelte';
   import { bvhInfo, samplesInfo } from '../stores/main';
+  import Folder from './Folder.svelte';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidth = 800;
@@ -50,16 +51,19 @@
   </div>
 
   <div class="sidebar">
-    <br />
-    <label>width: </label>
-    <input type="range" min="1" max="1500" bind:value={canvasWidth} />
-    <br />
-    <label>height: </label>
-    <input type="range" min="1" max="1000" bind:value={canvasHeight} />
-    <br />
-    <p>Bvh nodes count: {$bvhInfo.nodesCount}</p>
-    <p>Sample: {$samplesInfo.count}</p>
-    <div>
+    <Folder name="canvas">
+      <label>width: </label>
+      <input type="range" min="1" max="1500" bind:value={canvasWidth} />
+      <br />
+      <label>height: </label>
+      <input type="range" min="1" max="1000" bind:value={canvasHeight} />
+      <br />
+    </Folder>
+    <Folder name="info">
+      <p>Bvh nodes count: {$bvhInfo.nodesCount}</p>
+      <p>Sample: {$samplesInfo.count}</p>
+    </Folder>
+    <Folder name="sampling">
       <span
         >Sample Limit: <input
           class="samples-limit-input"
@@ -71,9 +75,11 @@
       <button on:click={onOneStepLimitIncrement}>+</button>
       <button on:click={infiniteSamplesLimit}>∞</button>
       <button on:click={oneSampleLimit}>1</button>
-    </div>
-    <button on:click={restart}>restart</button>
-    <button on:click={stop}>stop</button>
+    </Folder>
+    <Folder name="operate">
+      <button on:click={restart}>restart</button>
+      <button on:click={stop}>stop</button>
+    </Folder>
   </div>
 </main>
 
@@ -113,7 +119,6 @@
   .sidebar {
     flex: 0 0 300px;
     height: 100%;
-    padding: 20px;
     border: 1px solid #333;
     color: #ddd;
   }

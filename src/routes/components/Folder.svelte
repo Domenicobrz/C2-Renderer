@@ -10,7 +10,6 @@
   let containerEl: HTMLDivElement;
 
   onMount(() => {
-    console.log(containerEl!.parentElement);
     if (containerEl) {
       const parentEl = containerEl.parentElement;
       if (parentEl && parentEl.classList.contains('folder-slot-container')) {

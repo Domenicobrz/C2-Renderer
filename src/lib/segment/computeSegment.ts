@@ -208,6 +208,9 @@ export class ComputeSegment {
   }
 
   updateConfig(config: Config) {
+    // reset samples count
+    samplesInfo.reset();
+
     this.#device.queue.writeBuffer(this.#configUniformBuffer, 0, config.getOptionsBuffer());
   }
 

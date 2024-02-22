@@ -4,6 +4,7 @@
   import { bvhInfo, samplesInfo } from '../stores/main';
   import Folder from './Folder.svelte';
   import RangeSlider from 'svelte-range-slider-pips';
+  import MisOptions from './MisOptions.svelte';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidthSlidersValue = [800];
@@ -99,10 +100,13 @@
       <button class="sample-limit-btn" on:click={infiniteSamplesLimit}>∞</button>
       <button class="sample-limit-btn" on:click={oneSampleLimit}>1</button>
 
-      <Folder name="Operate" roundBox>
-        <button on:click={restart}>restart</button>
-        <button on:click={stop}>stop</button>
+      <Folder name="Mis Options" roundBox>
+        <MisOptions />
       </Folder>
+    </Folder>
+    <Folder name="Operate" roundBox>
+      <button on:click={restart}>restart</button>
+      <button on:click={stop}>stop</button>
     </Folder>
   </div>
 </main>

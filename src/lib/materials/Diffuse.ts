@@ -39,12 +39,6 @@ export class Diffuse extends Material {
 
   static shaderShadeDiffuse(): string {
     return /* wgsl */ `
-      const BRDF_ONLY: u32 = 0;
-      const MIS_ONE_SAMPLE_MODEL: u32 = 1;
-      const MIS_NEE: u32 = 2;
-      const USE_POWER_HEURISTIC: bool = false;
-      const MIS: u32 = MIS_NEE;
-
       fn shadeDiffuseSampleBRDF(
         rands: vec4f, 
         N: vec3f, 
@@ -70,11 +64,11 @@ export class Diffuse extends Material {
     
         (*ray).direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
 
-        if (MIS == BRDF_ONLY) {
+        if (config.MIS_TYPE == BRDF_ONLY) {
           *pdf = brdfSamplePdf;
         } 
 
-        if (MIS == MIS_ONE_SAMPLE_MODEL || MIS == MIS_NEE) {
+        if (config.MIS_TYPE == ONE_SAMPLE_MODEL || config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
           let ires = bvhIntersect(*ray);
           let materialType = materialsData[ires.triangle.materialOffset];
           var lightSamplePdf = 0.0;
@@ -91,20 +85,20 @@ export class Diffuse extends Material {
             lightSamplePdf = r2 / (lNolD * ires.triangle.area);
           }
 
-          if (MIS == MIS_ONE_SAMPLE_MODEL) {
+          if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
             *pdf = brdfSamplePdf;
             *misWeight = brdfSamplePdf / ((brdfSamplePdf + lightSamplePdf) * 0.5);
-            if (USE_POWER_HEURISTIC) {
+            if (config.USE_POWER_HEURISTIC == 1) {
               let b1 = brdfSamplePdf;
               let b2 = lightSamplePdf;
               *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
             }
           }
 
-          if (MIS == MIS_NEE) {
+          if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
             *pdf = brdfSamplePdf;
             *misWeight = brdfSamplePdf / (brdfSamplePdf + lightSamplePdf);
-            if (USE_POWER_HEURISTIC) {
+            if (config.USE_POWER_HEURISTIC == 1) {
               let b1 = brdfSamplePdf;
               let b2 = lightSamplePdf;
               *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
@@ -144,20 +138,20 @@ export class Diffuse extends Material {
         var lightSamplePdf = r2 / (lNolD * triangle.area);
         var brdfSamplePdf = 1 / (2 * PI);
 
-        if (MIS == MIS_ONE_SAMPLE_MODEL) {
+        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
           *pdf = (lightSamplePdf * cdfEntry.pdf);
           *misWeight = *pdf / ((brdfSamplePdf + *pdf) * 0.5);
-          if (USE_POWER_HEURISTIC) {
+          if (config.USE_POWER_HEURISTIC == 1) {
             let b1 = (lightSamplePdf * cdfEntry.pdf);
             let b2 = brdfSamplePdf;
             *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
           }
         }
 
-        if (MIS == MIS_NEE) {
+        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
           *pdf = (lightSamplePdf * cdfEntry.pdf);
           *misWeight = *pdf / (brdfSamplePdf + *pdf);
-          if (USE_POWER_HEURISTIC) {
+          if (config.USE_POWER_HEURISTIC == 1) {
             let b1 = (lightSamplePdf * cdfEntry.pdf);
             let b2 = brdfSamplePdf;
             *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
@@ -206,13 +200,13 @@ export class Diffuse extends Material {
 
         var brdf = 1 / PI;
 
-        if (MIS == BRDF_ONLY) {
+        if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32;
           shadeDiffuseSampleBRDF(rands, N, ray, &pdf, &w);
           *reflectance *= brdf * (1 / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
 
-        if (MIS == MIS_ONE_SAMPLE_MODEL) {
+        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
           var pdf: f32; var misWeight: f32; var ls: vec3f;
           if (rands.w < 0.5) {
             shadeDiffuseSampleBRDF(rands, N, ray, &pdf, &misWeight);
@@ -222,7 +216,7 @@ export class Diffuse extends Material {
           *reflectance *= brdf * (misWeight / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
 
-        if (MIS == MIS_NEE) {
+        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
           var brdfSamplePdf: f32; var brdfMisWeight: f32; 
           var lightSamplePdf: f32; var lightMisWeight: f32; var lightSample: vec3f;
           var rayBrdf = Ray((*ray).origin, (*ray).direction);

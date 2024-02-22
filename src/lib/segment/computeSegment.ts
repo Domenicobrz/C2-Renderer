@@ -8,6 +8,7 @@ import type { Matrix4, Vector2, Vector3 } from 'three';
 import { samplesInfo } from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
 import { HaltonSampler } from '$lib/samplers/Halton';
+import { Config } from '$lib/config';
 
 export class ComputeSegment {
   // private fields
@@ -24,6 +25,8 @@ export class ComputeSegment {
   #cameraUniformBuffer: GPUBuffer;
 
   #cameraSampleUniformBuffer: GPUBuffer;
+
+  #configUniformBuffer: GPUBuffer;
 
   #debugBuffer: GPUBuffer;
   #debugPixelTargetBuffer: GPUBuffer;
@@ -55,6 +58,7 @@ export class ComputeSegment {
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
         ]),
         getBindGroupLayout(device, [
+          { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
         ]),
@@ -93,6 +97,11 @@ export class ComputeSegment {
 
     this.#cameraSampleUniformBuffer = device.createBuffer({
       size: 2 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    this.#configUniformBuffer = device.createBuffer({
+      size: Config.bufferSize,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
@@ -192,9 +201,14 @@ export class ComputeSegment {
       layout: this.#pipeline.getBindGroupLayout(1),
       entries: [
         { binding: 0, resource: { buffer: this.#cameraUniformBuffer } },
-        { binding: 1, resource: { buffer: this.#cameraSampleUniformBuffer } }
+        { binding: 1, resource: { buffer: this.#cameraSampleUniformBuffer } },
+        { binding: 2, resource: { buffer: this.#configUniformBuffer } }
       ]
     });
+  }
+
+  updateConfig(config: Config) {
+    this.#device.queue.writeBuffer(this.#configUniformBuffer, 0, config.getOptionsBuffer());
   }
 
   updateScene(triangles: Triangle[], materials: Material[]) {

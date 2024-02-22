@@ -4,11 +4,9 @@ import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
 import { Orbit } from './controls/Orbit';
 import { onKey } from './utils/keys';
-import { Diffuse } from './materials/diffuse';
-import { Triangle } from './primitives/triangle';
 import { samplesInfo } from '../routes/stores/main';
-import { Emissive } from './materials/emissive';
 import { createScene } from './createScene';
+import { Config } from './config';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
@@ -52,6 +50,12 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   });
   // will fire the 'change' event
   orbit.set(new Vector3(0, 1, -10), new Vector3(0, 0, 0));
+
+  const config = new Config();
+  config.e.addEventListener('config-update', () => {
+    computeSegment.updateConfig(config);
+  });
+  computeSegment.updateConfig(config);
 
   onKey('l', () => computeSegment.logDebugResult());
   renderLoop();

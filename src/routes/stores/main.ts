@@ -1,3 +1,4 @@
+import type { ConfigOptions } from '$lib/config';
 import { get, writable } from 'svelte/store';
 
 type BVHInfo = {
@@ -43,3 +44,5 @@ export const samplesInfo = (function createSamplesInfoStore() {
       })
   };
 })();
+
+export const configOptions = writable<ConfigOptions>({ MIS_TYPE: 2, USE_POWER_HEURISTIC: 1 });

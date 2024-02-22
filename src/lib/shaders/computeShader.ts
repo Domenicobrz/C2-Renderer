@@ -1,5 +1,6 @@
 import { AABB } from '$lib/bvh/aabb';
 import { BVH } from '$lib/bvh/bvh';
+import { Config } from '$lib/config';
 import { Diffuse } from '$lib/materials/diffuse';
 import { Emissive } from '$lib/materials/emissive';
 import { GGX } from '$lib/materials/ggx';
@@ -15,6 +16,7 @@ export const computeShader = /* wgsl */ `
 // at the moment these have to be imported with this specific order
 ${randomPart}
 ${mathUtilsPart}
+${Config.shaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
 ${Emissive.shaderShadeEmissive()}
@@ -41,6 +43,7 @@ ${BVH.shaderIntersect()}
 // seems like maximum bindgroup count is 4 so I need to add the camera sample here 
 // unfortunately and I can't create a separate bindgroup for it
 @group(1) @binding(1) var<uniform> cameraSample: vec2f;
+@group(1) @binding(2) var<uniform> config: Config;
 
 @group(2) @binding(0) var<storage, read_write> debugBuffer: array<f32>;
 @group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;

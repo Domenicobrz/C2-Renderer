@@ -100,7 +100,7 @@ export class RenderSegment {
     });
   }
 
-  async render() {
+  render() {
     this.#updateSamplesCountBuffer();
 
     if (!this.#bindGroup0 || !this.#bindGroup1 || !this.#canvasSize) {
@@ -134,6 +134,5 @@ export class RenderSegment {
 
     const commandBuffer = encoder.finish();
     this.#device.queue.submit([commandBuffer]);
-    await this.#device.queue.onSubmittedWorkDone();
   }
 }

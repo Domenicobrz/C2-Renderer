@@ -87,15 +87,15 @@ async function renderLoop() {
   const samplesPerFrame = 1;
   for (let i = 0; i < samplesPerFrame; i++) {
     if (samplesInfo.count < samplesInfo.limit) {
-      computeSegment.compute();
-      // the render segment waits for all scheduled work to be completed,
-      // this includes all work done with the compute pass
-      await renderSegment.render();
+      await computeSegment.compute();
     }
   }
   let endTime = performance.now();
   let timeElapsed = endTime - startTime;
   console.log(timeElapsed);
+
+  renderSegment.render();
+
   requestAnimationFrame(renderLoop);
 }
 

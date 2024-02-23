@@ -299,7 +299,7 @@ export class ComputeSegment {
     });
   }
 
-  compute() {
+  async compute() {
     if (
       !this.#bindGroup0 ||
       !this.#bindGroup1 ||
@@ -354,5 +354,7 @@ export class ComputeSegment {
     this.#device.queue.submit([computeCommandBuffer]);
 
     samplesInfo.increment();
+
+    await this.#device.queue.onSubmittedWorkDone();
   }
 }

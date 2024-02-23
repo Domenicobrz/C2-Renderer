@@ -1,13 +1,18 @@
+import { TileSequence } from '$lib/tile';
+
 export const renderShader = /* wgsl */ `
 struct VSOutput {
   @builtin(position) position: vec4f,
   @location(0) texcoord: vec2f,
 };
 
+${TileSequence.shaderPart()}
+
 @group(0) @binding(0) var<storage> data: array<vec3f>;
 @group(0) @binding(1) var<uniform> canvasSize: vec2u;
 
 @group(1) @binding(0) var<uniform> samplesCount: u32;
+@group(1) @binding(1) var<uniform> tile: Tile;
 
 const toneMappingExposure = 1.0;
 
@@ -77,7 +82,14 @@ fn LinearTosRGB( value: vec4f ) -> vec4f {
   let y = u32(floor(fsInput.texcoord.y * f32(canvasSize.y)));
   let idx: u32 = y * canvasSize.x + x;
 
-  let radiance = data[idx] / f32(samplesCount);
+  var tileSamplesCount = samplesCount;
+  if (y >= tile.y + tile.h) {
+    tileSamplesCount = samplesCount - 1;
+  } else if (y >= tile.y && x >= tile.x + tile.w) {
+    tileSamplesCount = samplesCount - 1;
+  }
+
+  let radiance = data[idx] / f32(tileSamplesCount);
   let tonemapped = ACESFilmicToneMapping(radiance);
   let gammaCorrected = LinearTosRGB(vec4f(tonemapped, 1.0));
 

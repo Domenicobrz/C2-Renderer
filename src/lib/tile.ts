@@ -1,4 +1,5 @@
 import { Vector2 } from 'three';
+import { samplesInfo } from '../routes/stores/main';
 
 export type Tile = {
   x: number;
@@ -10,6 +11,7 @@ export type Tile = {
 export class TileSequence {
   #canvasSize: Vector2 = new Vector2(0, 0);
   #tile: Tile = { x: 0, y: 0, w: 0, h: 0 };
+  #tileIncrementCount = 0;
 
   constructor() {}
 
@@ -24,8 +26,14 @@ export class TileSequence {
   }
 
   increaseTileSizeAndResetPosition() {
-    this.#tile.w *= 2;
-    this.#tile.h *= 2;
+    // we're either increasing the width or the height,
+    // to increase the performance load of 2x
+    // (if we increase both performance load increases by 4x)
+    if (this.#tileIncrementCount % 2 === 0) {
+      this.#tile.w *= 2;
+    } else {
+      this.#tile.h *= 2;
+    }
     // by setting the tile position to the maximum values,
     // getNextTile() will pick the initial position as the next tile
     this.#tile.x = this.#canvasSize.x;
@@ -39,9 +47,14 @@ export class TileSequence {
       this.#tile.h = this.#canvasSize.y;
       this.#tile.h = Math.ceil(this.#tile.h / 8) * 8;
     }
+
+    this.#tileIncrementCount += 1;
+    samplesInfo.setTileSize(`${this.#tile.w} x ${this.#tile.h}`);
   }
 
   resetTile() {
+    const size = 16;
+    samplesInfo.setTileSize(`${size} x ${size}`);
     // we decided tilesize will be a multiple of 8
     this.#tile = { x: this.#canvasSize.x, y: this.#canvasSize.y, w: 16, h: 16 };
   }
@@ -60,6 +73,10 @@ export class TileSequence {
       onTileStart();
     }
 
+    return this.#tile;
+  }
+
+  getCurrentTile() {
     return this.#tile;
   }
 

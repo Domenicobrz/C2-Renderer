@@ -43,10 +43,11 @@ export class ComputeSegment {
 
   #haltonSampler: HaltonSampler = new HaltonSampler();
 
-  #tileSequence: TileSequence = new TileSequence();
+  #tileSequence: TileSequence;
 
-  constructor(device: GPUDevice) {
+  constructor(device: GPUDevice, tileSequence: TileSequence) {
     this.#device = device;
+    this.#tileSequence = tileSequence;
 
     this.#resetSegment = new ResetSegment(device);
 

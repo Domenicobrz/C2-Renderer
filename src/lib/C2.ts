@@ -7,6 +7,7 @@ import { onKey } from './utils/keys';
 import { samplesInfo } from '../routes/stores/main';
 import { createScene } from './createScene';
 import { Config } from './config';
+import { TileSequence } from './tile';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
@@ -30,11 +31,12 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   });
 
   // *************** compute & render segments ****************
-  computeSegment = new ComputeSegment(device);
+  const tileSequence = new TileSequence();
+  computeSegment = new ComputeSegment(device, tileSequence);
   computeSegment.setDebugPixelTarget(280, 385);
   let { triangles, materials } = createScene();
   computeSegment.updateScene(triangles, materials);
-  renderSegment = new RenderSegment(device, context, presentationFormat);
+  renderSegment = new RenderSegment(device, context, presentationFormat, tileSequence);
 
   const resizeObserver = new ResizeObserver((entries) => {
     onCanvasResize(canvas, device, computeSegment, renderSegment);
@@ -83,13 +85,19 @@ function onCanvasResize(
 }
 
 async function renderLoop() {
+  if (samplesInfo.count >= samplesInfo.limit) {
+    requestAnimationFrame(renderLoop);
+    return;
+  }
+
   let timeBudget = 30;
+  let totalTimeElapsed = 0;
 
   while (timeBudget > 0) {
     let startTime = performance.now();
-    if (samplesInfo.count < samplesInfo.limit) {
-      await computeSegment.compute();
-    }
+
+    await computeSegment.compute();
+
     let endTime = performance.now();
     let timeElapsed = endTime - startTime;
 
@@ -98,9 +106,12 @@ async function renderLoop() {
     }
 
     timeBudget -= timeElapsed;
+    totalTimeElapsed += timeElapsed;
   }
 
   renderSegment.render();
+
+  samplesInfo.setPerformance(totalTimeElapsed);
 
   requestAnimationFrame(renderLoop);
 }

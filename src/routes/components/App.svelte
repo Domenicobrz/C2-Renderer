@@ -84,8 +84,14 @@
       </div>
     </Folder>
     <Folder name="Info">
-      <p>Bvh nodes count: {$bvhInfo.nodesCount}</p>
-      <p>Sample: {$samplesInfo.count}</p>
+      <p>Bvh nodes count: <span>{$bvhInfo.nodesCount}</span></p>
+      <p>Sample: <span>{$samplesInfo.count}</span></p>
+      <p>Tile: <span>{$samplesInfo.tileSize}</span></p>
+      <p>
+        Performance: <span
+          >{$samplesInfo.count == $samplesInfo.limit ? 0 : $samplesInfo.ms.toFixed(0)} ms</span
+        >
+      </p>
     </Folder>
     <Folder name="Sampling" roundBox>
       <span
@@ -144,6 +150,10 @@
   span,
   label {
     font-size: 15px;
+  }
+
+  p span {
+    color: #aaa;
   }
 
   @font-face {

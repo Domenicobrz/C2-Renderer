@@ -2,6 +2,7 @@ import { renderShader } from '$lib/shaders/renderShader';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import type { Vector2 } from 'three';
 import { samplesInfo } from '../../routes/stores/main';
+import type { Tile, TileSequence } from '$lib/tile';
 
 export class RenderSegment {
   // private fields
@@ -16,9 +17,18 @@ export class RenderSegment {
   #canvasSizeUniformBuffer: GPUBuffer;
 
   #samplesCountUniformBuffer: GPUBuffer;
+  #tileUniformBuffer: GPUBuffer;
 
-  constructor(device: GPUDevice, context: GPUCanvasContext, presentationFormat: GPUTextureFormat) {
+  #tileSequence: TileSequence;
+
+  constructor(
+    device: GPUDevice,
+    context: GPUCanvasContext,
+    presentationFormat: GPUTextureFormat,
+    tileSequence: TileSequence
+  ) {
     this.#canvasSize = null;
+    this.#tileSequence = tileSequence;
 
     this.#context = context;
     this.#device = device;
@@ -35,7 +45,10 @@ export class RenderSegment {
           { visibility: GPUShaderStage.FRAGMENT, type: 'read-only-storage' },
           { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }
         ]),
-        getBindGroupLayout(device, [{ visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }])
+        getBindGroupLayout(device, [
+          { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' },
+          { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }
+        ])
       ]
     });
 
@@ -61,6 +74,11 @@ export class RenderSegment {
 
     this.#samplesCountUniformBuffer = device.createBuffer({
       size: 1 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    this.#tileUniformBuffer = device.createBuffer({
+      size: 4 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
   }
@@ -96,8 +114,19 @@ export class RenderSegment {
     // is a new buffer
     this.#bindGroup1 = this.#device.createBindGroup({
       layout: this.#pipeline.getBindGroupLayout(1),
-      entries: [{ binding: 0, resource: { buffer: this.#samplesCountUniformBuffer } }]
+      entries: [
+        { binding: 0, resource: { buffer: this.#samplesCountUniformBuffer } },
+        { binding: 1, resource: { buffer: this.#tileUniformBuffer } }
+      ]
     });
+  }
+
+  updateTile(tile: Tile) {
+    this.#device.queue.writeBuffer(
+      this.#tileUniformBuffer,
+      0,
+      new Uint32Array([tile.x, tile.y, tile.w, tile.h])
+    );
   }
 
   render() {
@@ -109,6 +138,8 @@ export class RenderSegment {
 
     if (this.#canvasSize.x === 0 || this.#canvasSize.y === 0)
       throw new Error('canvas size dimensions is 0');
+
+    this.updateTile(this.#tileSequence.getCurrentTile());
 
     // Get the current texture from the canvas context and
     // set it as the texture to render to.

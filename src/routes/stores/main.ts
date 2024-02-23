@@ -9,11 +9,15 @@ export const bvhInfo = writable<BVHInfo>({ nodesCount: 0 });
 type SamplesInfo = {
   limit: number;
   count: number;
+  ms: number;
+  tileSize: string;
 };
 export const samplesInfo = (function createSamplesInfoStore() {
   let store = writable<SamplesInfo>({
     limit: 50,
-    count: 0
+    count: 0,
+    ms: 0,
+    tileSize: ''
   });
 
   return {
@@ -25,6 +29,18 @@ export const samplesInfo = (function createSamplesInfoStore() {
     },
     get limit() {
       return get(store).limit;
+    },
+    setTileSize(value: string) {
+      store.update((si) => {
+        si.tileSize = value;
+        return si;
+      });
+    },
+    setPerformance: (value: number) => {
+      store.update((si) => {
+        si.ms = value;
+        return si;
+      });
     },
     setLimit: (value: number) => {
       store.update((si) => {

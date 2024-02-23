@@ -6,6 +6,7 @@ import { Emissive } from '$lib/materials/emissive';
 import { GGX } from '$lib/materials/ggx';
 import { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
+import { TileSequence } from '$lib/tile';
 import { cameraPart } from './parts/camera';
 import { mathUtilsPart } from './parts/mathUtils';
 import { randomPart } from './parts/random';
@@ -16,6 +17,7 @@ export const computeShader = /* wgsl */ `
 // at the moment these have to be imported with this specific order
 ${randomPart}
 ${mathUtilsPart}
+${TileSequence.shaderPart()}
 ${Config.shaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
@@ -44,6 +46,7 @@ ${BVH.shaderIntersect()}
 // unfortunately and I can't create a separate bindgroup for it
 @group(1) @binding(1) var<uniform> cameraSample: vec2f;
 @group(1) @binding(2) var<uniform> config: Config;
+@group(1) @binding(3) var<uniform> tile: Tile;
 
 @group(2) @binding(0) var<storage, read_write> debugBuffer: array<f32>;
 @group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;
@@ -59,12 +62,13 @@ const PI = 3.14159265359;
   @builtin(global_invocation_id) gid: vec3<u32>,
   @builtin(local_invocation_id) lid: vec3<u32>,
 ) {
-  if (gid.x >= canvasSize.x || gid.y >= canvasSize.y) { return; }
+  let tid = vec3u(tile.x + gid.x, tile.y + gid.y, 0);
+  if (tid.x >= canvasSize.x || tid.y >= canvasSize.y) { return; }
 
   // from [0...1] to [-1...+1]
   let nuv = vec2f(
-    (f32(gid.x) + cameraSample.x) / f32(canvasSize.x) * 2 - 1,
-    (f32(gid.y) + cameraSample.y) / f32(canvasSize.y) * 2 - 1,
+    (f32(tid.x) + cameraSample.x) / f32(canvasSize.x) * 2 - 1,
+    (f32(tid.y) + cameraSample.y) / f32(canvasSize.y) * 2 - 1,
   );
 
   let aspectRatio = f32(canvasSize.x) / f32(canvasSize.y);
@@ -77,7 +81,7 @@ const PI = 3.14159265359;
   let ro = camera.position;
   var ray = Ray(ro, rd);
 
-  let idx = gid.y * canvasSize.x + gid.x;
+  let idx = tid.y * canvasSize.x + tid.x;
 
   var reflectance = vec3f(1.0);
   var rad = vec3f(0.0);
@@ -85,19 +89,23 @@ const PI = 3.14159265359;
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
-      shade(ires, &ray, &reflectance, &rad, gid, i);
+      shade(ires, &ray, &reflectance, &rad, tid, i);
     } else {
       break;
     }
   }
   data[idx] += rad;
 
-  if (debugPixelTarget.x == gid.x && debugPixelTarget.y == gid.y) {
+  if (debugPixelTarget.x == tid.x && debugPixelTarget.y == tid.y) {
     debugBuffer[0] = f32(debugPixelTarget.x);
     debugBuffer[1] = f32(debugPixelTarget.y);
     debugBuffer[2] = 999;
     debugBuffer[3] = 999;
     debugBuffer[4] = 999;
+    debugBuffer[5] = f32(tile.x);
+    debugBuffer[6] = f32(tile.y);
+    debugBuffer[7] = f32(tile.w);
+    debugBuffer[8] = f32(tile.h);
     data[idx] += vec3f(0, 1, 0);
   }
 }

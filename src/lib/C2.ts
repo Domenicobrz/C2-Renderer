@@ -83,16 +83,22 @@ function onCanvasResize(
 }
 
 async function renderLoop() {
-  let startTime = performance.now();
-  const samplesPerFrame = 1;
-  for (let i = 0; i < samplesPerFrame; i++) {
+  let timeBudget = 30;
+
+  while (timeBudget > 0) {
+    let startTime = performance.now();
     if (samplesInfo.count < samplesInfo.limit) {
       await computeSegment.compute();
     }
+    let endTime = performance.now();
+    let timeElapsed = endTime - startTime;
+
+    if (timeElapsed < 15) {
+      computeSegment.increaseTileSize();
+    }
+
+    timeBudget -= timeElapsed;
   }
-  let endTime = performance.now();
-  let timeElapsed = endTime - startTime;
-  console.log(timeElapsed);
 
   renderSegment.render();
 

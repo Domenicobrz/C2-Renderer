@@ -9,6 +9,7 @@ import { samplesInfo } from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import { Config } from '$lib/config';
+import { TileSequence, type Tile } from '$lib/tile';
 
 export class ComputeSegment {
   // private fields
@@ -27,6 +28,7 @@ export class ComputeSegment {
   #cameraSampleUniformBuffer: GPUBuffer;
 
   #configUniformBuffer: GPUBuffer;
+  #tileUniformBuffer: GPUBuffer;
 
   #debugBuffer: GPUBuffer;
   #debugPixelTargetBuffer: GPUBuffer;
@@ -40,6 +42,8 @@ export class ComputeSegment {
   #resetSegment: ResetSegment;
 
   #haltonSampler: HaltonSampler = new HaltonSampler();
+
+  #tileSequence: TileSequence = new TileSequence();
 
   constructor(device: GPUDevice) {
     this.#device = device;
@@ -58,6 +62,7 @@ export class ComputeSegment {
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
         ]),
         getBindGroupLayout(device, [
+          { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
@@ -102,6 +107,11 @@ export class ComputeSegment {
 
     this.#configUniformBuffer = device.createBuffer({
       size: Config.bufferSize,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    this.#tileUniformBuffer = device.createBuffer({
+      size: 4 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
@@ -168,8 +178,7 @@ export class ComputeSegment {
   }
 
   updateCamera(position: Vector3, fov: number, rotationMatrix: Matrix4) {
-    // reset samples count
-    samplesInfo.reset();
+    this.resetSamplesAndTile();
 
     this.#device.queue.writeBuffer(
       this.#cameraUniformBuffer,
@@ -202,21 +211,28 @@ export class ComputeSegment {
       entries: [
         { binding: 0, resource: { buffer: this.#cameraUniformBuffer } },
         { binding: 1, resource: { buffer: this.#cameraSampleUniformBuffer } },
-        { binding: 2, resource: { buffer: this.#configUniformBuffer } }
+        { binding: 2, resource: { buffer: this.#configUniformBuffer } },
+        { binding: 3, resource: { buffer: this.#tileUniformBuffer } }
       ]
     });
   }
 
   updateConfig(config: Config) {
-    // reset samples count
-    samplesInfo.reset();
+    this.resetSamplesAndTile();
 
     this.#device.queue.writeBuffer(this.#configUniformBuffer, 0, config.getOptionsBuffer());
   }
 
+  updateTile(tile: Tile) {
+    this.#device.queue.writeBuffer(
+      this.#tileUniformBuffer,
+      0,
+      new Uint32Array([tile.x, tile.y, tile.w, tile.h])
+    );
+  }
+
   updateScene(triangles: Triangle[], materials: Material[]) {
-    // reset samples count
-    samplesInfo.reset();
+    this.resetSamplesAndTile();
 
     const bvh = new BVH(triangles, materials);
     let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
@@ -275,9 +291,9 @@ export class ComputeSegment {
 
   resize(canvasSize: Vector2, workBuffer: GPUBuffer) {
     this.#resetSegment.resize(canvasSize, workBuffer);
+    this.#tileSequence.setCanvasSize(canvasSize);
 
-    // reset samples count
-    samplesInfo.reset();
+    this.resetSamplesAndTile();
 
     this.#canvasSize = canvasSize;
 
@@ -299,6 +315,18 @@ export class ComputeSegment {
     });
   }
 
+  resetSamplesAndTile() {
+    this.#tileSequence.resetTile();
+    samplesInfo.reset();
+  }
+
+  increaseTileSize() {
+    if (this.#tileSequence.canTileSizeBeIncreased()) {
+      this.#tileSequence.increaseTileSizeAndResetPosition();
+      samplesInfo.reset();
+    }
+  }
+
   async compute() {
     if (
       !this.#bindGroup0 ||
@@ -318,13 +346,16 @@ export class ComputeSegment {
       this.#haltonSampler.reset();
     }
 
-    this.updateCameraSample();
+    let tile = this.#tileSequence.getNextTile(
+      /* on tile start */ () => {
+        this.updateCameraSample();
+        samplesInfo.increment();
+      }
+    );
+    this.updateTile(tile);
 
     // work group size in the shader is set to 8,8
-    const workGroupsCount = vec2(
-      Math.ceil(this.#canvasSize.x / 8),
-      Math.ceil(this.#canvasSize.y / 8)
-    );
+    const workGroupsCount = this.#tileSequence.getWorkGroupCount();
 
     // Encode commands to do the computation
     const encoder = this.#device.createCommandEncoder({
@@ -352,8 +383,6 @@ export class ComputeSegment {
     // Finish encoding and submit the commands
     const computeCommandBuffer = encoder.finish();
     this.#device.queue.submit([computeCommandBuffer]);
-
-    samplesInfo.increment();
 
     await this.#device.queue.onSubmittedWorkDone();
   }

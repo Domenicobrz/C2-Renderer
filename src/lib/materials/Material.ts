@@ -33,22 +33,22 @@ export class Material {
         ray: ptr<function, Ray>,
         reflectance: ptr<function, vec3f>, 
         rad: ptr<function, vec3f>,
-        gid: vec3u,
+        tid: vec3u,
         i: i32) 
       {
         let materialOffset = ires.triangle.materialOffset;
         let materialType = materialsData[materialOffset];
 
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-          shadeDiffuse(ires, ray, reflectance, rad, gid, i);
+          shadeDiffuse(ires, ray, reflectance, rad, tid, i);
         }
 
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-          shadeEmissive(ires, ray, reflectance, rad, gid, i);
+          shadeEmissive(ires, ray, reflectance, rad, tid, i);
         }
 
         if (materialType == ${MATERIAL_TYPE.GGX}) {
-          shadeGGX(ires, ray, reflectance, rad, gid, i);
+          shadeGGX(ires, ray, reflectance, rad, tid, i);
         }
       }
     `;

@@ -82,14 +82,20 @@ function onCanvasResize(
   renderSegment.resize(canvasSize, workBuffer);
 }
 
-function renderLoop() {
+async function renderLoop() {
+  let startTime = performance.now();
   const samplesPerFrame = 1;
   for (let i = 0; i < samplesPerFrame; i++) {
     if (samplesInfo.count < samplesInfo.limit) {
       computeSegment.compute();
-      renderSegment.render();
+      // the render segment waits for all scheduled work to be completed,
+      // this includes all work done with the compute pass
+      await renderSegment.render();
     }
   }
+  let endTime = performance.now();
+  let timeElapsed = endTime - startTime;
+  console.log(timeElapsed);
   requestAnimationFrame(renderLoop);
 }
 

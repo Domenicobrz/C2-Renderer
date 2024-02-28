@@ -5,18 +5,54 @@
   import Folder from './Folder.svelte';
   import RangeSlider from 'svelte-range-slider-pips';
   import MisOptions from './MisOptions.svelte';
+  import Toggle from './Toggle.svelte';
+  import Spacer from './Spacer.svelte';
 
   let canvasRef: HTMLCanvasElement;
-  let canvasWidthSlidersValue = [800];
-  let canvasHeightSlidersValue = [600];
+  let canvasWidthSlidersValue = [0];
+  let canvasHeightSlidersValue = [0];
+  let canvasContainerEl: HTMLDivElement;
+  let fullScreenCanvas = false;
+  let maxCanvasSize = 0;
 
   onMount(async () => {
+    setMaxCanvasSize();
+    canvasWidthSlidersValue = [800];
+    canvasHeightSlidersValue = [600];
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      setMaxCanvasSize();
+      // surprisingly, svelte "knows" the proper value of fullScreenCanvas
+      // even if this callback is being specified inside the onMount event
+      // listener
+      if (fullScreenCanvas) {
+        setFullScreenCanvasSize();
+      }
+    });
+    resizeObserver.observe(canvasContainerEl);
+
     try {
       const renderer = await Renderer(canvasRef);
     } catch (error) {
       console.error(error);
     }
   });
+
+  function setMaxCanvasSize() {
+    maxCanvasSize = Math.floor(Math.max(innerHeight, innerWidth) * 1.0);
+  }
+
+  function setFullScreenCanvasSize() {
+    const cr = canvasContainerEl.getBoundingClientRect();
+    canvasWidthSlidersValue = [cr.width - 30];
+    canvasHeightSlidersValue = [cr.height - 30];
+  }
+
+  function toggleFullScreen() {
+    if (fullScreenCanvas) {
+      setFullScreenCanvasSize();
+    }
+  }
 
   function restart() {
     samplesInfo.reset();
@@ -48,7 +84,7 @@
 </script>
 
 <main>
-  <div class="canvas-container">
+  <div class="canvas-container" bind:this={canvasContainerEl}>
     <canvas
       width={canvasWidthSlidersValue[0]}
       height={canvasHeightSlidersValue[0]}
@@ -62,7 +98,7 @@
         <label>width: </label>
         <RangeSlider
           min={1}
-          max={1500}
+          max={maxCanvasSize}
           bind:values={canvasWidthSlidersValue}
           pips
           float
@@ -74,7 +110,7 @@
         <label>height: </label>
         <RangeSlider
           min={1}
-          max={1000}
+          max={maxCanvasSize}
           bind:values={canvasHeightSlidersValue}
           pips
           float
@@ -82,6 +118,8 @@
           springValues={{ stiffness: 1, damping: 1 }}
         />
       </div>
+      <Spacer vertical={10} />
+      <Toggle label="Full screen:" bind:checked={fullScreenCanvas} on:change={toggleFullScreen} />
     </Folder>
     <Folder name="Info">
       <p>Bvh nodes count: <span>{$bvhInfo.nodesCount}</span></p>
@@ -191,10 +229,13 @@
     flex: 1 0 0;
     max-width: calc(100% - 300px);
     overflow: auto;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
   canvas {
-    margin: auto;
     display: block;
   }
 

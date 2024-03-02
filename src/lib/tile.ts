@@ -20,6 +20,20 @@ export class TileSequence {
     this.resetTile();
   }
 
+  // we're only going to measure the performance of tiles that are
+  // almost fully contained inside the canvas, to avoid the scenario where
+  // a tile that is 90% outside the canvas can return a performance metric
+  // that doesn't consider all the pixels we haven't computed
+  isTilePerformanceMeasureable() {
+    // we're subtracting 8 because each tile will be a multiple of 8
+    if (
+      this.#tile.x + this.#tile.w - 8 <= this.#canvasSize.x &&
+      this.#tile.y + this.#tile.h - 8 <= this.#canvasSize.y
+    )
+      return true;
+    return false;
+  }
+
   canTileSizeBeIncreased() {
     if (this.#tile.w < this.#canvasSize.x || this.#tile.h < this.#canvasSize.y) return true;
     return false;
@@ -40,12 +54,10 @@ export class TileSequence {
     this.#tile.y = this.#canvasSize.y;
 
     if (this.#tile.w > this.#canvasSize.x) {
-      this.#tile.w = this.#canvasSize.x;
-      this.#tile.w = Math.ceil(this.#tile.w / 8) * 8;
+      this.#tile.w = Math.ceil(this.#canvasSize.x / 8) * 8;
     }
     if (this.#tile.h > this.#canvasSize.y) {
-      this.#tile.h = this.#canvasSize.y;
-      this.#tile.h = Math.ceil(this.#tile.h / 8) * 8;
+      this.#tile.h = Math.ceil(this.#canvasSize.y / 8) * 8;
     }
 
     this.#tileIncrementCount += 1;

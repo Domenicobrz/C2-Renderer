@@ -9,9 +9,12 @@ import { samplesInfo } from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import { Config } from '$lib/config';
-import { TileSequence, type Tile } from '$lib/tile';
+import type { TileSequence, Tile } from '$lib/tile';
+import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 
 export class ComputeSegment {
+  public passPerformance: ComputePassPerformance;
+
   // private fields
   #device: GPUDevice;
   #pipeline: GPUComputePipeline;
@@ -50,6 +53,8 @@ export class ComputeSegment {
     this.#tileSequence = tileSequence;
 
     this.#resetSegment = new ResetSegment(device);
+
+    this.passPerformance = new ComputePassPerformance(device);
 
     const computeModule = device.createShaderModule({
       label: 'compute module',
@@ -328,7 +333,7 @@ export class ComputeSegment {
     }
   }
 
-  async compute() {
+  compute() {
     if (
       !this.#bindGroup0 ||
       !this.#bindGroup1 ||
@@ -348,7 +353,7 @@ export class ComputeSegment {
     }
 
     let tile = this.#tileSequence.getNextTile(
-      /* on tile start */ () => {
+      /* on new sample / tile start */ () => {
         this.updateCameraSample();
         samplesInfo.increment();
       }
@@ -362,9 +367,11 @@ export class ComputeSegment {
     const encoder = this.#device.createCommandEncoder({
       label: 'compute encoder'
     });
-    const pass = encoder.beginComputePass({
+    const passDescriptor = {
       label: 'compute pass'
-    });
+    };
+    this.passPerformance.updateComputePassDescriptor(passDescriptor);
+    const pass = encoder.beginComputePass(passDescriptor);
     pass.setPipeline(this.#pipeline);
     pass.setBindGroup(0, this.#bindGroup0);
     pass.setBindGroup(1, this.#bindGroup1);
@@ -372,6 +379,10 @@ export class ComputeSegment {
     pass.setBindGroup(3, this.#bindGroup3);
     pass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
     pass.end();
+
+    if (this.#tileSequence.isTilePerformanceMeasureable()) {
+      this.passPerformance.resolve(encoder);
+    }
 
     encoder.copyBufferToBuffer(
       this.#debugBuffer,
@@ -384,7 +395,5 @@ export class ComputeSegment {
     // Finish encoding and submit the commands
     const computeCommandBuffer = encoder.finish();
     this.#device.queue.submit([computeCommandBuffer]);
-
-    await this.#device.queue.onSubmittedWorkDone();
   }
 }

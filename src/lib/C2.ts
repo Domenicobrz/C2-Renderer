@@ -17,7 +17,10 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   // https://github.com/gpuweb/types
   // apparently the standard installation didn't include WebGPU types
   const adapter = await navigator.gpu?.requestAdapter();
-  const device = await adapter?.requestDevice();
+  const canTimestamp = adapter?.features.has('timestamp-query');
+  const device = await (adapter as any)?.requestDevice({
+    requiredFeatures: [...(canTimestamp ? ['timestamp-query'] : [])]
+  });
   const context = canvas.getContext('webgpu');
 
   if (!device || !context) {
@@ -90,28 +93,24 @@ async function renderLoop() {
     return;
   }
 
-  let timeBudget = 30;
-  let totalTimeElapsed = 0;
+  /*
+    vedo più di un problema
 
-  while (timeBudget > 0) {
-    let startTime = performance.now();
+    [RISOLTO] da un lato alcune volte finiamo subito perchè la tile era piccola
+    dall'altro alcuni punti della scena sono più complessi di altri
+  */
 
-    await computeSegment.compute();
-
-    let endTime = performance.now();
-    let timeElapsed = endTime - startTime;
-
-    if (timeElapsed < 15) {
-      computeSegment.increaseTileSize();
-    }
-
-    timeBudget -= timeElapsed;
-    totalTimeElapsed += timeElapsed;
-  }
-
+  computeSegment.compute();
+  computeSegment.passPerformance
+    .getDeltaInMilliseconds()
+    .then((delta) => {
+      if (delta < 30) {
+        computeSegment.increaseTileSize();
+      }
+      samplesInfo.setPerformance(delta);
+    })
+    .catch(() => {});
   renderSegment.render();
-
-  samplesInfo.setPerformance(totalTimeElapsed);
 
   requestAnimationFrame(renderLoop);
 }

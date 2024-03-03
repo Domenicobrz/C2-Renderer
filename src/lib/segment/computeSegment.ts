@@ -65,6 +65,7 @@ export class ComputeSegment {
       bindGroupLayouts: [
         getBindGroupLayout(device, [
           { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
+          { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
         ]),
         getBindGroupLayout(device, [
@@ -295,8 +296,8 @@ export class ComputeSegment {
     );
   }
 
-  resize(canvasSize: Vector2, workBuffer: GPUBuffer) {
-    this.#resetSegment.resize(canvasSize, workBuffer);
+  resize(canvasSize: Vector2, workBuffer: GPUBuffer, samplesCountBuffer: GPUBuffer) {
+    this.#resetSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
     this.#tileSequence.setCanvasSize(canvasSize);
 
     this.resetSamplesAndTile();
@@ -316,7 +317,8 @@ export class ComputeSegment {
       layout: this.#pipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: { buffer: workBuffer } },
-        { binding: 1, resource: { buffer: this.#canvasSizeUniformBuffer } }
+        { binding: 1, resource: { buffer: samplesCountBuffer } },
+        { binding: 2, resource: { buffer: this.#canvasSizeUniformBuffer } }
       ]
     });
   }
@@ -328,8 +330,23 @@ export class ComputeSegment {
 
   increaseTileSize() {
     if (this.#tileSequence.canTileSizeBeIncreased()) {
-      this.#tileSequence.increaseTileSizeAndResetPosition();
-      samplesInfo.reset();
+      this.#tileSequence.increaseTileSize();
+      // when we increase the tile size, the position doesn't change,
+      // thus we'll re-draw a portion of the pixels that were part of the previous tile,
+      // those pixels will need a new camera sample to properly accumulate new radiance values
+      // otherwise they would count twice the results of the same camera sample
+      this.updateCameraSample();
+    }
+  }
+
+  decreaseTileSize() {
+    if (this.#tileSequence.canTileSizeBeDecreased()) {
+      this.#tileSequence.decreaseTileSize();
+      // when we decrease the tile size, the position doesn't change,
+      // thus we'll re-draw a portion of the pixels that were part of the previous tile,
+      // those pixels will need a new camera sample to properly accumulate new radiance values
+      // otherwise they would count twice the results of the same camera sample
+      this.updateCameraSample();
     }
   }
 
@@ -348,6 +365,7 @@ export class ComputeSegment {
       throw new Error('canvas size dimensions is 0');
 
     if (samplesInfo.count === 0) {
+      this.#tileSequence.resetTile();
       this.#resetSegment.reset();
       this.#haltonSampler.reset();
     }

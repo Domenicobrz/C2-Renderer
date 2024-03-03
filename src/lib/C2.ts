@@ -82,9 +82,16 @@ function onCanvasResize(
   });
   device.queue.writeBuffer(workBuffer, 0, input);
 
+  const samplesCountBuffer = device.createBuffer({
+    label: 'work buffer',
+    size: input.byteLength,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+  });
+  device.queue.writeBuffer(samplesCountBuffer, 0, new Uint32Array(canvasSize.x * canvasSize.y));
+
   // we need to resize before we're able to render
-  computeSegment.resize(canvasSize, workBuffer);
-  renderSegment.resize(canvasSize, workBuffer);
+  computeSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
+  renderSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
 }
 
 async function renderLoop() {
@@ -93,19 +100,19 @@ async function renderLoop() {
     return;
   }
 
-  /*
-    vedo più di un problema
-
-    [RISOLTO] da un lato alcune volte finiamo subito perchè la tile era piccola
-    dall'altro alcuni punti della scena sono più complessi di altri
-  */
-
   computeSegment.compute();
   computeSegment.passPerformance
     .getDeltaInMilliseconds()
     .then((delta) => {
-      if (delta < 30) {
+      if (delta < 25) {
         computeSegment.increaseTileSize();
+      } else if (delta > 100) {
+        // unfortunately some pixels in the long run might be computed much less than others
+        // by following this approach of increasing / decreasing tile size.
+        // I did find however that having a "range" of performance values helped with the issue
+        // instead of having e.g. increase if < 30 or decrease if > 30, having a range
+        // helped with dealing with the issue of some pixels not being computed as often as others
+        computeSegment.decreaseTileSize();
       }
       samplesInfo.setPerformance(delta);
     })

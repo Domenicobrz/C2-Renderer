@@ -3,6 +3,8 @@ export class ComputePassPerformance {
   #resolveBuffer: GPUBuffer;
   #resultBuffer: GPUBuffer;
 
+  #average: number[] = [];
+
   constructor(device: GPUDevice) {
     this.#querySet = device.createQuerySet({
       type: 'timestamp',
@@ -45,6 +47,29 @@ export class ComputePassPerformance {
         this.#resultBuffer.mapAsync(GPUMapMode.READ).then(() => {
           const times = new BigInt64Array(this.#resultBuffer.getMappedRange());
           res(Number(times[1] - times[0]) / 1000000);
+          this.#resultBuffer.unmap();
+        });
+      } else {
+        rej();
+      }
+    });
+  }
+
+  reset() {
+    this.#average = [];
+  }
+
+  getAverageDeltaInMilliseconds(): Promise<number> {
+    return new Promise((res, rej) => {
+      if (this.#resultBuffer.mapState === 'unmapped') {
+        this.#resultBuffer.mapAsync(GPUMapMode.READ).then(() => {
+          const times = new BigInt64Array(this.#resultBuffer.getMappedRange());
+
+          this.#average.push(Number(times[1] - times[0]) / 1000000);
+          if (this.#average.length > 30) this.#average.splice(0, 1);
+
+          res(this.#average.reduce((prev, curr) => prev + curr / this.#average.length));
+
           this.#resultBuffer.unmap();
         });
       } else {

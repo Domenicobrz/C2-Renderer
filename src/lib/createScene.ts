@@ -26,9 +26,7 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
   ];
 
   for (let i = 0; i < 500; i++) {
-    // for (let i = 0; i < 0; i++) {
     let s = r() * 0.5 + 0.25;
-    // let s = r() * 0.25 + 0.125;
     let rotAxis = new Vector3(nr(), nr(), nr()).normalize();
     let rotAngle = r() * 10;
     let addV = new Vector3(nr() * 4, nr() * 2 - 2, nr() * 4);
@@ -40,6 +38,21 @@ export function createScene(): { triangles: Triangle[]; materials: Material[] } 
     );
     triangles.push(t);
   }
+
+  // for (let i = 0; i < 150000; i++) {
+  //   let s = r() * 0.15 + 0.025;
+  //   let rotAxis = new Vector3(nr(), nr(), nr()).normalize();
+  //   let rotAngle = r() * 10;
+  //   // let addV = new Vector3(nr() * 4, nr() * 0.32 - 3, nr() * 1 - 3);
+  //   let addV = new Vector3(nr() * 4, nr() * 2 - 2, nr() * 4);
+  //   let t = new Triangle(
+  //     new Vector3(-1, 0, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
+  //     new Vector3(0, 1.5, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
+  //     new Vector3(+1, 0, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
+  //     i % 2 === 0 ? 0 : 1
+  //   );
+  //   triangles.push(t);
+  // }
 
   // triangles.push(
   //   new Triangle(

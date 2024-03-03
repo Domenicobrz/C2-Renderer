@@ -11,6 +11,7 @@ export type Tile = {
 export class TileSequence {
   #canvasSize: Vector2 = new Vector2(0, 0);
   #tile: Tile = { x: 0, y: 0, w: 0, h: 0 };
+  // used for both increments and decrements
   #tileIncrementCount = 0;
 
   constructor() {}
@@ -39,7 +40,42 @@ export class TileSequence {
     return false;
   }
 
-  increaseTileSizeAndResetPosition() {
+  canTileSizeBeDecreased() {
+    if (this.#tile.w > 16 || this.#tile.h > 16) return true;
+    return false;
+  }
+
+  decreaseTileSize() {
+    // we're either decreasing the width or the height,
+    // to decrease the performance load of 2x
+    // (if we decrease both performance load decreases by 4x)
+    // also notice that % 2 === is 1 here and 0 in the other function
+    if (this.#tileIncrementCount % 2 === 1) {
+      this.#tile.w /= 2;
+      this.#tile.w = Math.ceil(this.#tile.w / 8) * 8;
+    } else {
+      this.#tile.h /= 2;
+      this.#tile.h = Math.ceil(this.#tile.h / 8) * 8;
+    }
+
+    if (this.#tile.w < 16) {
+      this.#tile.w = 16;
+    }
+    if (this.#tile.h < 16) {
+      this.#tile.h = 16;
+    }
+
+    // by subtracting tile.w to the x position,
+    // getNextTile() will pick the previous position as the next tile position
+    // basically when we increase the tile size we want the tile to remain
+    // in place
+    // this.#tile.x -= this.#tile.w;
+
+    this.#tileIncrementCount -= 1;
+    samplesInfo.setTileSize(`${this.#tile.w} x ${this.#tile.h}`);
+  }
+
+  increaseTileSize() {
     // we're either increasing the width or the height,
     // to increase the performance load of 2x
     // (if we increase both performance load increases by 4x)
@@ -48,10 +84,6 @@ export class TileSequence {
     } else {
       this.#tile.h *= 2;
     }
-    // by setting the tile position to the maximum values,
-    // getNextTile() will pick the initial position as the next tile
-    this.#tile.x = this.#canvasSize.x;
-    this.#tile.y = this.#canvasSize.y;
 
     if (this.#tile.w > this.#canvasSize.x) {
       this.#tile.w = Math.ceil(this.#canvasSize.x / 8) * 8;
@@ -60,11 +92,18 @@ export class TileSequence {
       this.#tile.h = Math.ceil(this.#canvasSize.y / 8) * 8;
     }
 
+    // by subtracting tile.w to the x position,
+    // getNextTile() will pick the previous position as the next tile position
+    // basically when we increase the tile size we want the tile to remain
+    // in place
+    this.#tile.x -= this.#tile.w;
+
     this.#tileIncrementCount += 1;
     samplesInfo.setTileSize(`${this.#tile.w} x ${this.#tile.h}`);
   }
 
   resetTile() {
+    this.#tileIncrementCount = 0;
     const size = 16;
     samplesInfo.setTileSize(`${size} x ${size}`);
     // we decided tilesize will be a multiple of 8

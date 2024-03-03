@@ -16,7 +16,6 @@ export class RenderSegment {
   #canvasSize: Vector2 | null;
   #canvasSizeUniformBuffer: GPUBuffer;
 
-  #samplesCountUniformBuffer: GPUBuffer;
   #tileUniformBuffer: GPUBuffer;
 
   #tileSequence: TileSequence;
@@ -43,12 +42,10 @@ export class RenderSegment {
       bindGroupLayouts: [
         getBindGroupLayout(device, [
           { visibility: GPUShaderStage.FRAGMENT, type: 'read-only-storage' },
+          { visibility: GPUShaderStage.FRAGMENT, type: 'read-only-storage' },
           { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }
         ]),
-        getBindGroupLayout(device, [
-          { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' },
-          { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }
-        ])
+        getBindGroupLayout(device, [{ visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }])
       ]
     });
 
@@ -72,18 +69,18 @@ export class RenderSegment {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
-    this.#samplesCountUniformBuffer = device.createBuffer({
-      size: 1 * 4,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-
     this.#tileUniformBuffer = device.createBuffer({
       size: 4 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
+
+    this.#bindGroup1 = this.#device.createBindGroup({
+      layout: this.#pipeline.getBindGroupLayout(1),
+      entries: [{ binding: 0, resource: { buffer: this.#tileUniformBuffer } }]
+    });
   }
 
-  resize(canvasSize: Vector2, workBuffer: GPUBuffer) {
+  resize(canvasSize: Vector2, workBuffer: GPUBuffer, samplesCountBuffer: GPUBuffer) {
     this.#canvasSize = canvasSize;
 
     this.#device.queue.writeBuffer(
@@ -98,25 +95,8 @@ export class RenderSegment {
       layout: this.#pipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: { buffer: workBuffer, size: workBuffer.size } },
-        { binding: 1, resource: { buffer: this.#canvasSizeUniformBuffer } }
-      ]
-    });
-  }
-
-  #updateSamplesCountBuffer() {
-    this.#device.queue.writeBuffer(
-      this.#samplesCountUniformBuffer,
-      0,
-      new Uint32Array([samplesInfo.count])
-    );
-
-    // we need to re-create the bindgroup since samplesCount
-    // is a new buffer
-    this.#bindGroup1 = this.#device.createBindGroup({
-      layout: this.#pipeline.getBindGroupLayout(1),
-      entries: [
-        { binding: 0, resource: { buffer: this.#samplesCountUniformBuffer } },
-        { binding: 1, resource: { buffer: this.#tileUniformBuffer } }
+        { binding: 1, resource: { buffer: samplesCountBuffer, size: samplesCountBuffer.size } },
+        { binding: 2, resource: { buffer: this.#canvasSizeUniformBuffer } }
       ]
     });
   }
@@ -130,8 +110,6 @@ export class RenderSegment {
   }
 
   render() {
-    this.#updateSamplesCountBuffer();
-
     if (!this.#bindGroup0 || !this.#bindGroup1 || !this.#canvasSize) {
       throw new Error('undefined render bind group');
     }

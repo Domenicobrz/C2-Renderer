@@ -8,10 +8,10 @@ struct VSOutput {
 
 ${TileSequence.shaderPart()}
 
-@group(0) @binding(0) var<storage> data: array<vec3f>;
-@group(0) @binding(1) var<uniform> canvasSize: vec2u;
+@group(0) @binding(0) var<storage> radianceInput: array<vec3f>;
+@group(0) @binding(1) var<storage> samplesCount: array<u32>;
+@group(0) @binding(2) var<uniform> canvasSize: vec2u;
 
-@group(1) @binding(0) var<uniform> samplesCount: u32;
 @group(1) @binding(1) var<uniform> tile: Tile;
 
 const toneMappingExposure = 1.0;
@@ -72,27 +72,30 @@ fn LinearTosRGB( value: vec4f ) -> vec4f {
   return vec4f( mix( pow( value.rgb, vec3f( 0.41666 ) ) * 1.055 - vec3f( 0.055 ), value.rgb * 12.92, vec3f( lessThanEqual( value.rgb, vec3f( 0.0031308 ) ) ) ), value.a );
 }
 
-// vec3 tonemapped = ACESFilmicToneMapping(totalRadiance);
-// vec4 gammaCorrected = LinearTosRGB(vec4(tonemapped, 1.0));
-// gl_FragColor = gammaCorrected;
-
-
 @fragment fn fs(fsInput: VSOutput) -> @location(0) vec4f {
   let x = u32(floor(fsInput.texcoord.x * f32(canvasSize.x)));
   let y = u32(floor(fsInput.texcoord.y * f32(canvasSize.y)));
   let idx: u32 = y * canvasSize.x + x;
 
-  var tileSamplesCount = samplesCount;
-  if (y >= tile.y + tile.h) {
-    tileSamplesCount = samplesCount - 1;
-  } else if (y >= tile.y && x >= tile.x + tile.w) {
-    tileSamplesCount = samplesCount - 1;
-  }
-
-  let radiance = data[idx] / f32(tileSamplesCount);
+  let radiance = radianceInput[idx] / f32(samplesCount[idx]);
   let tonemapped = ACESFilmicToneMapping(radiance);
   let gammaCorrected = LinearTosRGB(vec4f(tonemapped, 1.0));
 
   return gammaCorrected;  
+
+
+  // Tile filling rate test
+
+  // var col = vec4f(1, 0, 0, 1);
+  // if (samplesCount[idx] % 3 == 1) { col = vec4f(0, 1, 0, 1); }
+  // if (samplesCount[idx] % 3 == 2) { col = vec4f(0, 0, 1, 1); }
+
+  // col = vec4f(
+  //   f32(samplesCount[idx]) / 50.0, 
+  //   f32(samplesCount[idx]) / 50.0,
+  //   f32(samplesCount[idx]) / 50.0,
+  //   1);
+
+  // return col;
 }
 `;

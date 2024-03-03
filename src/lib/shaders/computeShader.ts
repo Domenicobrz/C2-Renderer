@@ -37,8 +37,9 @@ ${AABB.shaderIntersect()}
 ${BVH.shaderStruct()}
 ${BVH.shaderIntersect()}
 
-@group(0) @binding(0) var<storage, read_write> data: array<vec3f>;
-@group(0) @binding(1) var<uniform> canvasSize: vec2u;
+@group(0) @binding(0) var<storage, read_write> radianceOutput: array<vec3f>;
+@group(0) @binding(1) var<storage, read_write> samplesCount: array<u32>;
+@group(0) @binding(2) var<uniform> canvasSize: vec2u;
 
 // on a separate bind group since camera changes more often than data/canvasSize
 @group(1) @binding(0) var<uniform> camera: Camera;
@@ -94,7 +95,8 @@ const PI = 3.14159265359;
       break;
     }
   }
-  data[idx] += rad;
+  radianceOutput[idx] += rad;
+  samplesCount[idx] += 1;
 
   if (debugPixelTarget.x == tid.x && debugPixelTarget.y == tid.y) {
     debugBuffer[0] = f32(debugPixelTarget.x);
@@ -106,7 +108,7 @@ const PI = 3.14159265359;
     debugBuffer[6] = f32(tile.y);
     debugBuffer[7] = f32(tile.w);
     debugBuffer[8] = f32(tile.h);
-    data[idx] += vec3f(0, 1, 0);
+    radianceOutput[idx] += vec3f(0, 1, 0);
   }
 }
 `;

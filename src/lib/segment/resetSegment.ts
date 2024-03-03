@@ -25,6 +25,7 @@ export class ResetSegment {
       bindGroupLayouts: [
         getBindGroupLayout(device, [
           { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
+          { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
           { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
         ])
       ]
@@ -46,7 +47,7 @@ export class ResetSegment {
     });
   }
 
-  resize(canvasSize: Vector2, workBuffer: GPUBuffer) {
+  resize(canvasSize: Vector2, workBuffer: GPUBuffer, samplesCountBuffer: GPUBuffer) {
     this.#canvasSize = canvasSize;
 
     this.#device.queue.writeBuffer(
@@ -62,7 +63,8 @@ export class ResetSegment {
       layout: this.#pipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: { buffer: workBuffer } },
-        { binding: 1, resource: { buffer: this.#canvasSizeUniformBuffer } }
+        { binding: 1, resource: { buffer: samplesCountBuffer } },
+        { binding: 2, resource: { buffer: this.#canvasSizeUniformBuffer } }
       ]
     });
   }

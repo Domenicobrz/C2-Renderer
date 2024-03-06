@@ -17,7 +17,17 @@ export function misTestScene(): { triangles: Triangle[]; materials: Material[] }
 
     gpu4 and claude sonnet seem to agree on having NEE also test for visibility
     however this wouldn't explain why I'm seeing the lower energy on this particular test
-  */
+
+    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+    A possible explanation for the differences in this particular test:
+    OSM when it hits the light source it will then continue bouncing off of it, and
+    it will very likely hit the ground close to the light source, which then bounces off again
+    and it hits again the light source
+
+    whereas NEE only picks the light sample, samples it, but doesn't continue the bouncing journey
+
+    */
 
   let triangles: Triangle[] = [];
   let materials: Material[] = [

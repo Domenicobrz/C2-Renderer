@@ -162,7 +162,7 @@ export class Diffuse extends Material {
           let materialType = materialsData[ires.triangle.materialOffset];
           if (
             materialType == ${MATERIAL_TYPE.EMISSIVE} && 
-            dot(triangle.normal, -lD) > 0
+            !backSideHit
           ) {
             let material: Emissive = createEmissive(ires.triangle.materialOffset);
             let emissive = material.color * material.intensity;

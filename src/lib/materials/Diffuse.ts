@@ -124,15 +124,12 @@ export class Diffuse extends Material {
 
         let r2 = squaredLength(samplePoint - (*ray).origin);
         var lN = triangle.normal;
-        // THIS ONE IS LIKELY WRONG, PDF SHOULD BE ZERO IF DOT IS < 0 
-        // THIS ONE IS LIKELY WRONG, PDF SHOULD BE ZERO IF DOT IS < 0 
-        // THIS ONE IS LIKELY WRONG, PDF SHOULD BE ZERO IF DOT IS < 0 
-        // THIS ONE IS LIKELY WRONG, PDF SHOULD BE ZERO IF DOT IS < 0 
-        // THIS ONE IS LIKELY WRONG, PDF SHOULD BE ZERO IF DOT IS < 0 
         var lNolD = dot(lN, -lD);
+        var backSideHit = false;
         if (lNolD < 0) {
           lN = -lN;
           lNolD = -lNolD;
+          backSideHit = true;
         }
         let theta = lNolD;
         var lightSamplePdf = r2 / (lNolD * triangle.area);
@@ -145,6 +142,10 @@ export class Diffuse extends Material {
             let b1 = (lightSamplePdf * cdfEntry.pdf);
             let b2 = brdfSamplePdf;
             *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
+          }
+
+          if (backSideHit) {
+            *misWeight = 0.0;
           }
         }
 

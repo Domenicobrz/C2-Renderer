@@ -232,7 +232,7 @@ export class Diffuse extends Material {
           *reflectance *= brdf * color;
           // light contribution
           *rad += lightSample * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
-          *reflectance *= (brdfMisWeight / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);
+          *reflectance *= (brdfMisWeight / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);
         }
       } 
     `;

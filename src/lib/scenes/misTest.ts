@@ -13,7 +13,10 @@ export function misTestScene(): { triangles: Triangle[]; materials: Material[] }
     than both OSM and BRDF_ONLY 
 
     OSM and BRDF_ONLY seem to agree on this particular test
-  
+
+
+    gpu4 and claude sonnet seem to agree on having NEE also test for visibility
+    however this wouldn't explain why I'm seeing the lower energy on this particular test
   */
 
   let triangles: Triangle[] = [];

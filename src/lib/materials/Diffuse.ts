@@ -81,7 +81,6 @@ export class Diffuse extends Material {
               lN = -lN;
               lNolD = -lNolD;
             }
-            let theta = lNolD;
             lightSamplePdf = r2 / (lNolD * ires.triangle.area);
           }
 
@@ -131,7 +130,6 @@ export class Diffuse extends Material {
           lNolD = -lNolD;
           backSideHit = true;
         }
-        let theta = lNolD;
         var lightSamplePdf = r2 / (lNolD * triangle.area);
         var brdfSamplePdf = 1 / (2 * PI);
 

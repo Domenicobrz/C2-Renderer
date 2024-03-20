@@ -52,6 +52,16 @@ export class Emissive extends Material {
         tid: vec3u,
         i: i32
       ) {
+        /*
+          **************************
+          ***** important note *****
+          **************************
+
+          If you ever decide to apply MIS / NEE on emissive surfaces,
+          remember to invalidate light source samples that selected the same light source 
+          that is being shaded
+        */
+
         let hitPoint = ires.hitPoint;
         let material: Emissive = createEmissive(ires.triangle.materialOffset);
 

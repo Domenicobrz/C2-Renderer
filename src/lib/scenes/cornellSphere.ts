@@ -18,7 +18,7 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
   let materials: Material[] = [
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
-    new GGX(new Color(0.05, 1, 0.05), 0.02),
+    new GGX(new Color(0.05, 0.95, 0.05), 0.02),
     new Emissive(new Color(1, 0.7, 0.5), 20),
     // new Emissive(new Color(1, 0.7, 0.5), 6000),
     // new Emissive(new Color(1, 0.7, 0.5), 2),
@@ -130,13 +130,14 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
 
       const rad = 2;
       const transl = new Vector3(0, 0, 2);
+      const materialIndex = 0;
 
       triangles.push(
         new Triangle(
           v0.clone().multiplyScalar(rad).add(transl),
           v1.clone().multiplyScalar(rad).add(transl),
           v3.clone().multiplyScalar(rad).add(transl),
-          0
+          materialIndex
         )
       );
 
@@ -145,7 +146,7 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
           v3.clone().multiplyScalar(rad).add(transl),
           v0.clone().multiplyScalar(rad).add(transl),
           v2.clone().multiplyScalar(rad).add(transl),
-          0
+          materialIndex
         )
       );
     }

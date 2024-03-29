@@ -57,8 +57,6 @@ ${BVH.shaderIntersect()}
 @group(3) @binding(2) var<storage> bvhData: array<BVHNode>;
 @group(3) @binding(3) var<storage> lightsCDFData: array<LightCDFEntry>;
 
-const PI = 3.14159265359;
-
 @compute @workgroup_size(8, 8) fn computeSomething(
   @builtin(global_invocation_id) gid: vec3<u32>,
   @builtin(local_invocation_id) lid: vec3<u32>,
@@ -104,10 +102,6 @@ const PI = 3.14159265359;
     debugBuffer[2] = 999;
     debugBuffer[3] = 999;
     debugBuffer[4] = 999;
-    debugBuffer[5] = f32(tile.x);
-    debugBuffer[6] = f32(tile.y);
-    debugBuffer[7] = f32(tile.w);
-    debugBuffer[8] = f32(tile.h);
     radianceOutput[idx] += vec3f(0, 1, 0);
   }
 }

@@ -1,5 +1,7 @@
 export const mathUtilsPart = /* wgsl */ `
 
+const PI = 3.14159265359;
+
 fn squaredLength(v: vec3f) -> f32 {
   return dot(v, v);
 }

@@ -49,4 +49,11 @@ fn expressInAnotherCoordinateSystem(
   
   return vec3f(hmox, hmoy, hmoz); 
 }
+
+// a NaN is never equal to any other floating point number,
+// even another NaN.
+// https://www.w3.org/TR/WGSL/#indeterminate-values
+fn isFloatNaN(value: f32) -> bool {
+  return !(value == value);
+}
 `;

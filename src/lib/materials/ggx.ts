@@ -196,27 +196,6 @@ export class GGX extends Material {
         // whereas the implementation in pbrt v4 has wo pointing to the camera 
         *wi = reflect(-wo, wm);
 
-        // if (debugPixelTarget.x == tid.x && debugPixelTarget.y == tid.y) {
-        //   debugBuffer[5] = 999.0;
-        //   debugBuffer[6] = 999.0;
-        //   debugBuffer[7] = 999.0;
-        //   debugBuffer[8]  = (wo).x;
-        //   debugBuffer[9]  = (wo).y;
-        //   debugBuffer[10] = (wo).z;
-        //   debugBuffer[11] = 999.0;
-        //   debugBuffer[12] = 999.0;
-        //   debugBuffer[13] = 999.0;
-        //   debugBuffer[14] = (*wi).x;
-        //   debugBuffer[15] = (*wi).y;
-        //   debugBuffer[16] = (*wi).z;
-        //   debugBuffer[17] = 999.0;
-        //   debugBuffer[18] = 999.0;
-        //   debugBuffer[19] = 999.0;
-        //   debugBuffer[20] = wm.x;
-        //   debugBuffer[21] = wm.y;
-        //   debugBuffer[22] = wm.z;
-        // }
-
         if (!SameHemisphere(wo, *wi)) {
           *f = vec3f(0.0);
           *pdf = 1.0;
@@ -232,6 +211,19 @@ export class GGX extends Material {
 
         *f = D(wm, alpha_x, alpha_y) * F * G(wo, *wi, alpha_x, alpha_y) /
                             (4 * cosTheta_i * cosTheta_o);
+
+        if (*pdf <= 0.0) {
+          *f = vec3f(0.0);
+          *pdf = 1.0;
+        }
+
+        // brdf values might be NaN, without this check on a cornell box scene with diffuse walls
+        // and a glossy sphere at the center, after around 1500 samples with ax & ay set to 0.25
+        // I'll start seeing black / broken pixels
+        if(isFloatNaN((*f).x) || isFloatNaN((*f).y) || isFloatNaN((*f).z)) {
+          *f = vec3f(0.0);
+          *pdf = 1.0;
+        }
       }
 
       // I honestly don't understand why we need this one, it seems useless
@@ -241,24 +233,30 @@ export class GGX extends Material {
       // randomly throwing rays into the hemisphere
       fn f(wo: vec3f, wi: vec3f, alpha_x: f32, alpha_y: f32, color: vec3f) -> vec3f {
         if (!SameHemisphere(wo, wi)) {
-          return vec3f(0.0);
+          return vec3f(0);
         }
 
         let cosTheta_o = AbsCosTheta(wo);
         let cosTheta_i = AbsCosTheta(wi);
         if (cosTheta_i == 0 || cosTheta_o == 0) {
-          return vec3f(0, 0, 0);
+          return vec3f(0);
         }
         var wm = wi + wo;
         if (LengthSquared(wm) == 0) {
-          return vec3f(0, 0, 0);
+          return vec3f(0);
         }
         wm = normalize(wm);
 
         let F = SchlickFresnel(color, dot(wi, wm));
+
+        var f = D(wm, alpha_x, alpha_y) * F * G(wo, wi, alpha_x, alpha_y) /
+          (4 * cosTheta_i * cosTheta_o);
+
+        if (isFloatNaN(f.x) || isFloatNaN(f.y) || isFloatNaN(f.z)) {
+          return vec3f(0);
+        }
         
-        return D(wm, alpha_x, alpha_y) * F * G(wo, wi, alpha_x, alpha_y) /
-               (4 * cosTheta_i * cosTheta_o);
+        return f;
       }
 
       fn shadeGGX(
@@ -308,9 +306,13 @@ export class GGX extends Material {
         // color component
         var pdf = 0.0;
         var brdf = vec3f(1.0);
-        Sample_f(wo, rands.xy, 0.01, 0.01, color, &wi, &pdf, &brdf, tid, i);
+        Sample_f(wo, rands.xy, 0.25, 0.25, color, &wi, &pdf, &brdf, tid, i);
 
         (*ray).direction = normalize(Nt * wi.x + Nb * wi.y + N * wi.z);
+
+        // after you fix that, it's time to refactor
+        // after you fix that, it's time to refactor
+        // after you fix that, it's time to refactor, also see what to do with ggx - backup.ts
 
         *reflectance *= brdf / pdf * max(dot((*ray).direction, N), 0.0);
       } 

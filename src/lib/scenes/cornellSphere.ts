@@ -97,8 +97,8 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
   );
 
   // sphere
-  let tcount = 70;
-  let pcount = 100;
+  let tcount = 100;
+  let pcount = 170;
   for (let i = 0; i < tcount; i++) {
     for (let j = 0; j < pcount; j++) {
       let theta0 = (i / tcount) * Math.PI;
@@ -129,7 +129,8 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
       );
 
       const rad = 2;
-      const transl = new Vector3(0, 0, 2);
+      // const transl = new Vector3(0, 0, 2);
+      const transl = new Vector3(2, 0, 2);
       const materialIndex = 2;
 
       triangles.push(

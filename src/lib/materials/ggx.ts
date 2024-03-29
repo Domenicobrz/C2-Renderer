@@ -310,10 +310,9 @@ export class GGX extends Material {
         var brdf = vec3f(1.0);
         Sample_f(wo, rands.xy, 0.01, 0.01, color, &wi, &pdf, &brdf, tid, i);
 
-    
         (*ray).direction = normalize(Nt * wi.x + Nb * wi.y + N * wi.z);
 
-        *reflectance *= brdf / pdf; // * max(dot((*ray).direction, N), 0.0);
+        *reflectance *= brdf / pdf * max(dot((*ray).direction, N), 0.0);
       } 
     `;
   }

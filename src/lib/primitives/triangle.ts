@@ -1,18 +1,24 @@
 import { AABB } from '$lib/bvh/aabb';
 import { Emissive } from '$lib/materials/emissive';
 import type { Material } from '$lib/materials/material';
-import type { Vector3 } from 'three';
+import { Vector2, Vector3 } from 'three';
 
 export class Triangle {
   public idxRef: number = -1;
   public normal: Vector3;
+  public uv0: Vector2 = new Vector2(0, 0);
+  public uv1: Vector2 = new Vector2(0, 0);
+  public uv2: Vector2 = new Vector2(0, 0);
 
   constructor(
     public v0: Vector3,
     public v1: Vector3,
     public v2: Vector3,
     public materialIndex: number,
-    normal?: Vector3
+    normal?: Vector3,
+    uv0?: Vector2,
+    uv1?: Vector2,
+    uv2?: Vector2
   ) {
     if (normal) {
       this.normal = normal;
@@ -21,6 +27,10 @@ export class Triangle {
       let v2v0 = v2.clone().sub(v0);
       this.normal = v1v0.cross(v2v0).normalize();
     }
+
+    if (uv0) this.uv0 = uv0;
+    if (uv1) this.uv1 = uv1;
+    if (uv2) this.uv2 = uv2;
   }
 
   setIdxRef(idx: number) {
@@ -55,24 +65,30 @@ export class Triangle {
   }
 
   static getBufferData(triangles: Triangle[], materialOffsetsByIndex: number[]) {
-    const STRUCT_SIZE = 64; /* determined with offset computer */
+    const STRUCT_SIZE = 96; /* determined with offset computer */
     const trianglesCount = triangles.length;
     const data = new ArrayBuffer(STRUCT_SIZE * trianglesCount);
 
-    // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001005701000000000000003d888b0237284d3025f2381bcb288abe3eafc62d6ca0d8042fc1971a88f51b3ff18869efcbe1877af43e5e4fd034ee05413b60296cdbdb3f53c78732caefece359691688a4e1b5274b5eed2696616a5993f7f3cbfb658410256f1f8a8688c290394a0e04baa72430c844d7c42eb7972f194a3ff475706727d9dd7cd6d29ccf80e1d4cef6b4719471ff7b8e5b5a3bf063d4d410af49db02464f4b6279c4d5112a9668ee9f175584fe719e3c5e79a4b3f53369df6c0ea12038c4d6a435d3224ce7bd7be81501de7e9834f18ece64a6432e13fe554bc6
+    // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001008401000000000000003d888b0237284d3025f2381bcb288abe3eafc62d6ca0d8042fc1971a88f51b3ff18869efcbe1877af43e5e4fd0b7625f6439325a1f16083a6b0a7bb0996446ac9a036e2faff7f3dc83b7312639a457959688af3cfba5180e2e8a030b88bbda0c78bcfe6fa57d75b4c893b02933da320fbaef2d5f6287f13c6f34fbe4feb439d47a0c35be7484bf17ff57b7182f4c8e1881a36e6a9d9ef929ad3b889a0faf52bc96fc39279ccd1b68f0265879282f7f13a6ca93520b28e6671acbcf0bc905b4659207572b37b3963a352617092b936bd52647d847b02d993b024e20fe1a8393
     triangles.forEach((t, i) => {
       const offs = i * STRUCT_SIZE;
       const views = {
         v0: new Float32Array(data, offs + 0, 3),
         v1: new Float32Array(data, offs + 16, 3),
         v2: new Float32Array(data, offs + 32, 3),
-        area: new Float32Array(data, offs + 44, 1),
-        normal: new Float32Array(data, offs + 48, 3),
-        materialOffset: new Uint32Array(data, offs + 60, 1)
+        uv0: new Float32Array(data, offs + 48, 2),
+        uv1: new Float32Array(data, offs + 56, 2),
+        uv2: new Float32Array(data, offs + 64, 2),
+        area: new Float32Array(data, offs + 72, 1),
+        normal: new Float32Array(data, offs + 80, 3),
+        materialOffset: new Uint32Array(data, offs + 92, 1)
       };
       views.v0.set([t.v0.x, t.v0.y, t.v0.z]);
       views.v1.set([t.v1.x, t.v1.y, t.v1.z]);
       views.v2.set([t.v2.x, t.v2.y, t.v2.z]);
+      views.uv0.set([t.uv0.x, t.uv0.y]);
+      views.uv1.set([t.uv1.x, t.uv1.y]);
+      views.uv2.set([t.uv2.x, t.uv2.y]);
       views.area.set([t.getArea()]);
       views.normal.set([t.normal.x, t.normal.y, t.normal.z]);
       views.materialOffset.set([materialOffsetsByIndex[t.materialIndex]]);
@@ -95,6 +111,9 @@ export class Triangle {
         v0: vec3f,
         v1: vec3f,
         v2: vec3f,
+        uv0: vec2f,
+        uv1: vec2f,
+        uv2: vec2f,
         area: f32,
         normal: vec3f,
         materialOffset: u32,

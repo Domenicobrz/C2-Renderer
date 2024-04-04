@@ -271,7 +271,7 @@ export class GGX extends Material {
         let material: GGX = createGGX(ires.triangle.materialOffset);
 
         let color = material.color;
-    
+
         var N = ires.triangle.normal;
         if (dot(N, (*ray).direction) > 0) {
           N = -N;
@@ -306,7 +306,7 @@ export class GGX extends Material {
         // color component
         var pdf = 0.0;
         var brdf = vec3f(1.0);
-        Sample_f(wo, rands.xy, 0.25, 0.25, color, &wi, &pdf, &brdf, tid, i);
+        Sample_f(wo, rands.xy, 0.025, 0.025, color, &wi, &pdf, &brdf, tid, i);
 
         (*ray).direction = normalize(Nt * wi.x + Nb * wi.y + N * wi.z);
 

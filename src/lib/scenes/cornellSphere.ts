@@ -1,4 +1,4 @@
-import { Color, Vector3 } from 'three';
+import { Color, Vector2, Vector3 } from 'three';
 import { Diffuse } from './../materials/diffuse';
 import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';
@@ -127,6 +127,10 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
         Math.cos(theta1),
         Math.sin(phi1) * Math.sin(theta1)
       );
+      let uv0 = new Vector2(phi0 / (Math.PI * 2), 1 - theta0 / Math.PI);
+      let uv1 = new Vector2(phi0 / (Math.PI * 2), 1 - theta1 / Math.PI);
+      let uv2 = new Vector2(phi1 / (Math.PI * 2), 1 - theta0 / Math.PI);
+      let uv3 = new Vector2(phi1 / (Math.PI * 2), 1 - theta1 / Math.PI);
 
       const rad = 2;
       // const transl = new Vector3(0, 0, 2);
@@ -138,7 +142,11 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
           v0.clone().multiplyScalar(rad).add(transl),
           v1.clone().multiplyScalar(rad).add(transl),
           v3.clone().multiplyScalar(rad).add(transl),
-          materialIndex
+          materialIndex,
+          undefined,
+          uv0.clone(),
+          uv1.clone(),
+          uv3.clone()
         )
       );
 
@@ -147,7 +155,11 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
           v3.clone().multiplyScalar(rad).add(transl),
           v0.clone().multiplyScalar(rad).add(transl),
           v2.clone().multiplyScalar(rad).add(transl),
-          materialIndex
+          materialIndex,
+          undefined,
+          uv3.clone(),
+          uv0.clone(),
+          uv2.clone()
         )
       );
     }

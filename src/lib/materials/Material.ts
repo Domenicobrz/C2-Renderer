@@ -5,13 +5,13 @@ export const MATERIAL_TYPE = {
 };
 
 export class Material {
-  public bytesCount: number;
+  public offsetCount: number;
 
   protected type: number;
 
   constructor() {
     this.type = -1;
-    this.bytesCount = 0;
+    this.offsetCount = 0;
   }
 
   getFloatsArray(): number[] {

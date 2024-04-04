@@ -8,7 +8,7 @@ export class Diffuse extends Material {
     super();
     this.type = MATERIAL_TYPE.DIFFUSE;
     this.color = color;
-    this.bytesCount = 4;
+    this.offsetCount = 4;
   }
 
   getFloatsArray(): number[] {

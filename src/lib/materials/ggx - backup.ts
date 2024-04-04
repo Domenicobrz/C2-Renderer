@@ -11,7 +11,7 @@ export class GGX extends Material {
     this.type = MATERIAL_TYPE.GGX;
     this.color = color;
     this.roughness = roughness;
-    this.bytesCount = 5;
+    this.offsetCount = 5;
   }
 
   getFloatsArray(): number[] {

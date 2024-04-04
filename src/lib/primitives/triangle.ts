@@ -31,6 +31,9 @@ export class Triangle {
     if (uv0) this.uv0 = uv0;
     if (uv1) this.uv1 = uv1;
     if (uv2) this.uv2 = uv2;
+    if (!uv0) this.uv0 = new Vector2(v0.x, v0.y);
+    if (!uv1) this.uv1 = new Vector2(v1.x, v1.y);
+    if (!uv2) this.uv2 = new Vector2(v2.x, v2.y);
   }
 
   setIdxRef(idx: number) {

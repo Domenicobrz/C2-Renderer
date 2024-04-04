@@ -4,25 +4,28 @@ import { MATERIAL_TYPE, Material } from './material';
 // from: https://schuttejoe.github.io/post/ggximportancesamplingpart1/
 export class GGX extends Material {
   private color: Color;
-  private roughness: number;
+  private ax: number;
+  private ay: number;
 
-  constructor(color: Color, roughness: number) {
+  constructor(color: Color, ax: number, ay: number) {
     super();
     this.type = MATERIAL_TYPE.GGX;
     this.color = color;
-    this.roughness = roughness;
-    this.bytesCount = 5;
+    this.ax = ax;
+    this.ay = ay;
+    this.offsetCount = 6;
   }
 
   getFloatsArray(): number[] {
-    return [this.type, this.color.r, this.color.g, this.color.b, this.roughness];
+    return [this.type, this.color.r, this.color.g, this.color.b, this.ax, this.ay];
   }
 
   static shaderStruct(): string {
     return /* wgsl */ `
       struct GGX {
         color: vec3f,
-        roughness: f32,
+        ax: f32,
+        ay: f32,
       }
     `;
   }
@@ -36,7 +39,8 @@ export class GGX extends Material {
           materialsData[offset + 2],
           materialsData[offset + 3],
         );
-        ggx.roughness = materialsData[offset + 4];
+        ggx.ax = materialsData[offset + 4];
+        ggx.ay = materialsData[offset + 5];
         return ggx;
       } 
     `;
@@ -287,28 +291,45 @@ export class GGX extends Material {
 
         var ggxReflectance = vec3f(0,0,0);
 
-        var Nt = vec3f(0,0,0);
-        var Nb = vec3f(0,0,0);
-        getCoordinateSystem(N, &Nt, &Nb);
+        // we need to calculate a TBN matrix
+        let t = ires.triangle;
+        let edge1 = t.v1 - t.v0;
+        let edge2 = t.v2 - t.v0;
+        let deltaUV1 = t.uv1 - t.uv0;
+        let deltaUV2 = t.uv2 - t.uv0;  
+
+        let f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+        let tangent1 = normalize(vec3f(
+          f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x),
+          f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y),
+          f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z)
+        ));
+        let bitangent1 = normalize(vec3f(
+          f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x),
+          f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y),
+          f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z)
+        ));
+        // normal could be flipped at some point, should we also flip TB?
+        // normal could be flipped at some point, should we also flip TB?
+        // normal could be flipped at some point, should we also flip TB?
+        let TBN = mat3x3f(tangent1, bitangent1, N);
+        // to transform vectors from world space to tangent space, we multiply by
+        // the inverse of the TBN
+        let TBNinverse = transpose(TBN);
 
         var wi = vec3f(0,0,0); 
-        let wo = expressInAnotherCoordinateSystem(
-          // note that in pbrt the normal points in the Z direction,
-          // thus compared to the other implementation, here we're doing Nt, Nb, N instead of
-          // Nt, N, Nb
-          // this change is also reflected in the penultima line when we're setting
-          // the ray direction
-          -(*ray).direction, Nt, Nb, N
-        );
+        let wo = TBNinverse * -(*ray).direction;
 
         // some components cancel out when using this function, thus "reflectance"
         // takes into account cos(theta), the brdf, division by pdf and also the
         // color component
         var pdf = 0.0;
         var brdf = vec3f(1.0);
-        Sample_f(wo, rands.xy, 0.025, 0.025, color, &wi, &pdf, &brdf, tid, i);
+        Sample_f(wo, rands.xy, material.ax, material.ay, color, &wi, &pdf, &brdf, tid, i);
 
-        (*ray).direction = normalize(Nt * wi.x + Nb * wi.y + N * wi.z);
+        // to transform vectors from tangent space to world space, we multiply by
+        // the TBN     
+        (*ray).direction = TBN * wi;
 
         // after you fix that, it's time to refactor
         // after you fix that, it's time to refactor

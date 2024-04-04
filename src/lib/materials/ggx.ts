@@ -312,6 +312,7 @@ export class GGX extends Material {
         // normal could be flipped at some point, should we also flip TB?
         // normal could be flipped at some point, should we also flip TB?
         // normal could be flipped at some point, should we also flip TB?
+        // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
         let TBN = mat3x3f(tangent1, bitangent1, N);
         // to transform vectors from world space to tangent space, we multiply by
         // the inverse of the TBN

@@ -1,17 +1,18 @@
 export const MATERIAL_TYPE = {
   DIFFUSE: 0,
   EMISSIVE: 1,
-  GGX: 2
+  COOK_TORRANCE: 2,
+  TORRANCE_SPARROW: 3
 };
 
 export class Material {
-  public bytesCount: number;
+  public offsetCount: number;
 
   protected type: number;
 
   constructor() {
     this.type = -1;
-    this.bytesCount = 0;
+    this.offsetCount = 0;
   }
 
   getFloatsArray(): number[] {
@@ -47,8 +48,12 @@ export class Material {
           shadeEmissive(ires, ray, reflectance, rad, tid, i);
         }
 
-        if (materialType == ${MATERIAL_TYPE.GGX}) {
-          shadeGGX(ires, ray, reflectance, rad, tid, i);
+        if (materialType == ${MATERIAL_TYPE.COOK_TORRANCE}) {
+          shadeCookTorrance(ires, ray, reflectance, rad, tid, i);
+        }
+
+        if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
+          shadeTorranceSparrow(ires, ray, reflectance, rad, tid, i);
         }
       }
     `;

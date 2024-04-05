@@ -1,10 +1,11 @@
-import { Color, Vector3 } from 'three';
+import { Color, Vector2, Vector3 } from 'three';
 import { Diffuse } from './../materials/diffuse';
 import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';
 import { Triangle } from './../primitives/triangle';
-import { GGX } from './../materials/ggx';
+import { TorranceSparrow } from './../materials/torranceSparrow';
 import random, { RNG } from 'random';
+import { CookTorrance } from '$lib/materials/cookTorrance';
 
 random.use('test-string' as unknown as RNG);
 // random.use(Math.random() as unknown as RNG);
@@ -13,16 +14,90 @@ let nr = function () {
   return r() * 2 - 1;
 };
 
+function createSphere(
+  materialIndex: number,
+  triangles: Triangle[],
+  translation: Vector3,
+  radius: number,
+  tcount: number = 80,
+  pcount: number = 180
+) {
+  for (let i = 0; i < tcount; i++) {
+    for (let j = 0; j < pcount; j++) {
+      let theta0 = (i / tcount) * Math.PI;
+      if (i === 0) theta0 = 0.01;
+      let theta1 = ((i + 1) / tcount) * Math.PI;
+      let phi0 = (j / pcount) * Math.PI * 2;
+      let phi1 = ((j + 1) / pcount) * Math.PI * 2;
+
+      let v0 = new Vector3(
+        Math.cos(phi0) * Math.sin(theta0),
+        Math.cos(theta0),
+        Math.sin(phi0) * Math.sin(theta0)
+      );
+      let v1 = new Vector3(
+        Math.cos(phi0) * Math.sin(theta1),
+        Math.cos(theta1),
+        Math.sin(phi0) * Math.sin(theta1)
+      );
+      let v2 = new Vector3(
+        Math.cos(phi1) * Math.sin(theta0),
+        Math.cos(theta0),
+        Math.sin(phi1) * Math.sin(theta0)
+      );
+      let v3 = new Vector3(
+        Math.cos(phi1) * Math.sin(theta1),
+        Math.cos(theta1),
+        Math.sin(phi1) * Math.sin(theta1)
+      );
+      let uv0 = new Vector2(phi0 / (Math.PI * 2), 1 - theta0 / Math.PI);
+      let uv1 = new Vector2(phi0 / (Math.PI * 2), 1 - theta1 / Math.PI);
+      let uv2 = new Vector2(phi1 / (Math.PI * 2), 1 - theta0 / Math.PI);
+      let uv3 = new Vector2(phi1 / (Math.PI * 2), 1 - theta1 / Math.PI);
+
+      triangles.push(
+        new Triangle(
+          v0.clone().multiplyScalar(radius).add(translation),
+          v1.clone().multiplyScalar(radius).add(translation),
+          v3.clone().multiplyScalar(radius).add(translation),
+          materialIndex,
+          undefined,
+          uv0.clone(),
+          uv1.clone(),
+          uv3.clone()
+        )
+      );
+
+      triangles.push(
+        new Triangle(
+          v3.clone().multiplyScalar(radius).add(translation),
+          v0.clone().multiplyScalar(radius).add(translation),
+          v2.clone().multiplyScalar(radius).add(translation),
+          materialIndex,
+          undefined,
+          uv3.clone(),
+          uv0.clone(),
+          uv2.clone()
+        )
+      );
+    }
+  }
+}
+
 export function cornellSphereScene(): { triangles: Triangle[]; materials: Material[] } {
   let triangles: Triangle[] = [];
   let materials: Material[] = [
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
-    new GGX(new Color(0.05, 0.95, 0.05), 0.02),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.125, 0.025),
     new Emissive(new Color(1, 0.7, 0.5), 20),
-    // new Emissive(new Color(1, 0.7, 0.5), 6000),
-    // new Emissive(new Color(1, 0.7, 0.5), 2),
-    new Diffuse(new Color(0.05, 1, 0.05))
+    new Diffuse(new Color(0.05, 1, 0.05)),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.45, 0.45),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.175, 0.175),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.025, 0.025),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.25, 0.025),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.725, 0.025),
+    new CookTorrance(new Color(0.95, 0.95, 0.95), 0.725)
   ];
 
   for (let i = 0; i < 5; i++) {
@@ -96,61 +171,13 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
     )
   );
 
-  // sphere
-  let tcount = 70;
-  let pcount = 100;
-  for (let i = 0; i < tcount; i++) {
-    for (let j = 0; j < pcount; j++) {
-      let theta0 = (i / tcount) * Math.PI;
-      if (i === 0) theta0 = 0.01;
-      let theta1 = ((i + 1) / tcount) * Math.PI;
-      let phi0 = (j / pcount) * Math.PI * 2;
-      let phi1 = ((j + 1) / pcount) * Math.PI * 2;
+  createSphere(5, triangles, new Vector3(2.75, -2, 1.5), 1.25);
+  createSphere(6, triangles, new Vector3(0, -2, 1.5), 1.25);
+  createSphere(7, triangles, new Vector3(-2.75, -2, 1.5), 1.25);
 
-      let v0 = new Vector3(
-        Math.cos(phi0) * Math.sin(theta0),
-        Math.cos(theta0),
-        Math.sin(phi0) * Math.sin(theta0)
-      );
-      let v1 = new Vector3(
-        Math.cos(phi0) * Math.sin(theta1),
-        Math.cos(theta1),
-        Math.sin(phi0) * Math.sin(theta1)
-      );
-      let v2 = new Vector3(
-        Math.cos(phi1) * Math.sin(theta0),
-        Math.cos(theta0),
-        Math.sin(phi1) * Math.sin(theta0)
-      );
-      let v3 = new Vector3(
-        Math.cos(phi1) * Math.sin(theta1),
-        Math.cos(theta1),
-        Math.sin(phi1) * Math.sin(theta1)
-      );
-
-      const rad = 2;
-      const transl = new Vector3(0, 0, 2);
-      const materialIndex = 0;
-
-      triangles.push(
-        new Triangle(
-          v0.clone().multiplyScalar(rad).add(transl),
-          v1.clone().multiplyScalar(rad).add(transl),
-          v3.clone().multiplyScalar(rad).add(transl),
-          materialIndex
-        )
-      );
-
-      triangles.push(
-        new Triangle(
-          v3.clone().multiplyScalar(rad).add(transl),
-          v0.clone().multiplyScalar(rad).add(transl),
-          v2.clone().multiplyScalar(rad).add(transl),
-          materialIndex
-        )
-      );
-    }
-  }
+  createSphere(9, triangles, new Vector3(2.75, 1, 2), 1.25);
+  createSphere(8, triangles, new Vector3(0, 1, 2), 1.25);
+  createSphere(2, triangles, new Vector3(-2.75, 1, 2), 1.25);
 
   return { triangles, materials };
 }

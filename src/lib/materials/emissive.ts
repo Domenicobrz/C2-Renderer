@@ -10,7 +10,7 @@ export class Emissive extends Material {
     this.type = MATERIAL_TYPE.EMISSIVE;
     this.color = color;
     this.intensity = intensity;
-    this.bytesCount = 5;
+    this.offsetCount = 5;
   }
 
   getFloatsArray(): number[] {

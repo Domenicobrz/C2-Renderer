@@ -2,16 +2,17 @@ import type { Color } from 'three';
 import { MATERIAL_TYPE, Material } from './material';
 
 // from: https://schuttejoe.github.io/post/ggximportancesamplingpart1/
-export class GGX extends Material {
+// !!! TODO: IMPLEMENT PART 2 !!!
+export class CookTorrance extends Material {
   private color: Color;
   private roughness: number;
 
   constructor(color: Color, roughness: number) {
     super();
-    this.type = MATERIAL_TYPE.GGX;
+    this.type = MATERIAL_TYPE.COOK_TORRANCE;
     this.color = color;
     this.roughness = roughness;
-    this.bytesCount = 5;
+    this.offsetCount = 5;
   }
 
   getFloatsArray(): number[] {
@@ -20,7 +21,7 @@ export class GGX extends Material {
 
   static shaderStruct(): string {
     return /* wgsl */ `
-      struct GGX {
+      struct COOK_TORRANCE {
         color: vec3f,
         roughness: f32,
       }
@@ -29,40 +30,33 @@ export class GGX extends Material {
 
   static shaderCreateStruct(): string {
     return /* wgsl */ `
-      fn createGGX(offset: u32) -> GGX {
-        var ggx: GGX;
-        ggx.color = vec3f(
+      fn createCookTorrance(offset: u32) -> COOK_TORRANCE {
+        var ct: COOK_TORRANCE;
+        ct.color = vec3f(
           materialsData[offset + 1],
           materialsData[offset + 2],
           materialsData[offset + 3],
         );
-        ggx.roughness = materialsData[offset + 4];
-        return ggx;
+        ct.roughness = materialsData[offset + 4];
+        return ct;
       } 
     `;
   }
 
-  static shaderShadeGGX(): string {
+  static shaderShadeCookTorrance(): string {
     return /* wgsl */ `
       // -- Ensure our sample is in the upper hemisphere
       // -- Since we are in tangent space with a y-up coordinate
-      // -- system BsdfNDot(wi) simply returns wi.y
-      fn BsdfNDot(direction: vec3f) -> f32 {
+      // -- system CT_BsdfNDot(wi) simply returns wi.y
+      fn CT_BsdfNDot(direction: vec3f) -> f32 {
         return direction.y;
       }
 
       //====================================================================
-      fn SchlickFresnel(r0: vec3f, radians: f32) -> vec3f {
-        // -- The common Schlick Fresnel approximation
-        let exponential = pow(1.0 - radians, 5.0);
-        return r0 + (1.0f - r0) * exponential;
-      }
-
-      //====================================================================
       // non height-correlated masking-shadowing function is described here:
-      fn SmithGGXMaskingShadowing(wi: vec3f, wo: vec3f, a2: f32) -> f32 {
-        let dotNL = BsdfNDot(wi);
-        let dotNV = BsdfNDot(wo);
+      fn CT_SmithGGXMaskingShadowing(wi: vec3f, wo: vec3f, a2: f32) -> f32 {
+        let dotNL = CT_BsdfNDot(wi);
+        let dotNV = CT_BsdfNDot(wo);
       
         let denomA = dotNV * sqrt(a2 + (1.0 - a2) * dotNL * dotNL);
         let denomB = dotNL * sqrt(a2 + (1.0 - a2) * dotNV * dotNV);
@@ -73,8 +67,8 @@ export class GGX extends Material {
       //====================================================================
       // normal (wg) is assumed to be (0, 1, 0)
       // wo needs to be the negation of ray.direction
-      fn ImportanceSampleGgxD(
-        wo: vec3f, material: GGX, e0: f32, e1: f32,
+      fn CT_ImportanceSampleGgxD(
+        wo: vec3f, material: COOK_TORRANCE, e0: f32, e1: f32,
         wi: ptr<function, vec3f>, reflectance: ptr<function, vec3f>)
       {
         let a = material.roughness;
@@ -93,17 +87,17 @@ export class GGX extends Material {
       
         // -- Ensure our sample is in the upper hemisphere
         // -- Since we are in tangent space with a y-up coordinate
-        // -- system BsdfNDot(wi) simply returns wi.y
-        if (BsdfNDot(*wi) > 0.0 && dot(*wi, wm) > 0.0) {
+        // -- system CT_BsdfNDot(wi) simply returns wi.y
+        if (CT_BsdfNDot(*wi) > 0.0 && dot(*wi, wm) > 0.0) {
         
         	let dotWiWm = dot(*wi, wm);
         
           // -- calculate the reflectance to multiply by the energy
           // -- retrieved in direction wi
           let F = SchlickFresnel(material.color, dotWiWm);
-          let G = SmithGGXMaskingShadowing(*wi, wo, a2);
+          let G = CT_SmithGGXMaskingShadowing(*wi, wo, a2);
           let weight = abs(dot(wo, wm))
-                       / (BsdfNDot(wo) * BsdfNDot(wm));
+                       / (CT_BsdfNDot(wo) * CT_BsdfNDot(wm));
         
           *reflectance = F * G * weight; 
         }
@@ -112,7 +106,7 @@ export class GGX extends Material {
         }
       }
 
-      fn shadeGGX(
+      fn shadeCookTorrance(
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
         reflectance: ptr<function, vec3f>, 
@@ -121,7 +115,7 @@ export class GGX extends Material {
         i: i32
       ) {
         let hitPoint = ires.hitPoint;
-        let material: GGX = createGGX(ires.triangle.materialOffset);
+        let material: COOK_TORRANCE = createCookTorrance(ires.triangle.materialOffset);
 
         let color = material.color;
     
@@ -138,7 +132,7 @@ export class GGX extends Material {
           u32(i * 17325799),
         );
 
-        var ggxReflectance = vec3f(0,0,0);
+        var ctReflectance = vec3f(0,0,0);
 
         var Nt = vec3f(0,0,0);
         var Nb = vec3f(0,0,0);
@@ -152,9 +146,9 @@ export class GGX extends Material {
         // some components cancel out when using this function, thus "reflectance"
         // takes into account cos(theta), the brdf, division by pdf and also the
         // color component
-        ImportanceSampleGgxD(wo, material, rands.x, rands.y, &wi, &ggxReflectance);
+        CT_ImportanceSampleGgxD(wo, material, rands.x, rands.y, &wi, &ctReflectance);
 
-        *reflectance *= ggxReflectance;
+        *reflectance *= ctReflectance;
     
         (*ray).direction = normalize(Nt * wi.x + N * wi.y + Nb * wi.z);
       } 

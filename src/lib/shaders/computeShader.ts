@@ -3,13 +3,15 @@ import { BVH } from '$lib/bvh/bvh';
 import { Config } from '$lib/config';
 import { Diffuse } from '$lib/materials/diffuse';
 import { Emissive } from '$lib/materials/emissive';
-import { GGX } from '$lib/materials/ggx';
+import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 import { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { TileSequence } from '$lib/tile';
 import { cameraPart } from './parts/camera';
 import { mathUtilsPart } from './parts/mathUtils';
+import { pbrtMathUtilsPart } from './parts/pbrtMathUtils';
 import { randomPart } from './parts/random';
+import { CookTorrance } from '$lib/materials/cookTorrance';
 
 // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html
 
@@ -17,6 +19,7 @@ export const computeShader = /* wgsl */ `
 // at the moment these have to be imported with this specific order
 ${randomPart}
 ${mathUtilsPart}
+${pbrtMathUtilsPart}
 ${TileSequence.shaderPart()}
 ${Config.shaderPart()}
 ${Emissive.shaderStruct()}
@@ -25,9 +28,12 @@ ${Emissive.shaderShadeEmissive()}
 ${Diffuse.shaderStruct()}
 ${Diffuse.shaderCreateStruct()}
 ${Diffuse.shaderShadeDiffuse()}
-${GGX.shaderStruct()}
-${GGX.shaderCreateStruct()}
-${GGX.shaderShadeGGX()}
+${TorranceSparrow.shaderStruct()}
+${TorranceSparrow.shaderCreateStruct()}
+${TorranceSparrow.shaderShadeTorranceSparrow()}
+${CookTorrance.shaderStruct()}
+${CookTorrance.shaderCreateStruct()}
+${CookTorrance.shaderShadeCookTorrance()}
 ${Material.shaderShade()}
 ${cameraPart}
 ${Triangle.shaderStruct()}
@@ -56,8 +62,6 @@ ${BVH.shaderIntersect()}
 @group(3) @binding(1) var<storage> materialsData: array<f32>;
 @group(3) @binding(2) var<storage> bvhData: array<BVHNode>;
 @group(3) @binding(3) var<storage> lightsCDFData: array<LightCDFEntry>;
-
-const PI = 3.14159265359;
 
 @compute @workgroup_size(8, 8) fn computeSomething(
   @builtin(global_invocation_id) gid: vec3<u32>,
@@ -104,10 +108,6 @@ const PI = 3.14159265359;
     debugBuffer[2] = 999;
     debugBuffer[3] = 999;
     debugBuffer[4] = 999;
-    debugBuffer[5] = f32(tile.x);
-    debugBuffer[6] = f32(tile.y);
-    debugBuffer[7] = f32(tile.w);
-    debugBuffer[8] = f32(tile.h);
     radianceOutput[idx] += vec3f(0, 1, 0);
   }
 }

@@ -1,5 +1,7 @@
 export const mathUtilsPart = /* wgsl */ `
 
+const PI = 3.14159265359;
+
 fn squaredLength(v: vec3f) -> f32 {
   return dot(v, v);
 }
@@ -46,5 +48,35 @@ fn expressInAnotherCoordinateSystem(
   let hmoz = dot(direction, basisZ);
   
   return vec3f(hmox, hmoy, hmoz); 
+}
+
+// a NaN is never equal to any other floating point number,
+// even another NaN.
+// https://www.w3.org/TR/WGSL/#indeterminate-values
+fn isFloatNaN(value: f32) -> bool {
+  return !(value == value);
+}
+
+// https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+fn getTangentFromTriangle(
+  triangle: Triangle, tangent: ptr<function, vec3f>, bitangent: ptr<function, vec3f>
+) {
+  let t = triangle;
+  let edge1 = t.v1 - t.v0;
+  let edge2 = t.v2 - t.v0;
+  let deltaUV1 = t.uv1 - t.uv0;
+  let deltaUV2 = t.uv2 - t.uv0;  
+
+  let f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+  *tangent = normalize(vec3f(
+    f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x),
+    f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y),
+    f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z)
+  ));
+  *bitangent = normalize(vec3f(
+    f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x),
+    f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y),
+    f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z)
+  ));
 }
 `;

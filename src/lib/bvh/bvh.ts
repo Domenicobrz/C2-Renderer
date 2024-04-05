@@ -152,7 +152,7 @@ export class BVH {
       } else {
         let prevMax = materialOffsetsByIndex[i - 1];
         let prevMat = this.materials[i - 1];
-        materialOffsetsByIndex.push(prevMax + prevMat.bytesCount);
+        materialOffsetsByIndex.push(prevMax + prevMat.offsetCount);
       }
     }
 

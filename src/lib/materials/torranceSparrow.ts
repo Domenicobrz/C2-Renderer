@@ -1,15 +1,15 @@
 import type { Color } from 'three';
 import { MATERIAL_TYPE, Material } from './material';
 
-// from: https://schuttejoe.github.io/post/ggximportancesamplingpart1/
-export class GGX extends Material {
+// from: https://www.pbr-book.org/4ed/Reflection_Models/Roughness_Using_Microfacet_Theory
+export class TorranceSparrow extends Material {
   private color: Color;
   private ax: number;
   private ay: number;
 
   constructor(color: Color, ax: number, ay: number) {
     super();
-    this.type = MATERIAL_TYPE.GGX;
+    this.type = MATERIAL_TYPE.TORRANCE_SPARROW;
     this.color = color;
     this.ax = ax;
     this.ay = ay;
@@ -22,7 +22,7 @@ export class GGX extends Material {
 
   static shaderStruct(): string {
     return /* wgsl */ `
-      struct GGX {
+      struct TORRANCE_SPARROW {
         color: vec3f,
         ax: f32,
         ay: f32,
@@ -32,96 +32,24 @@ export class GGX extends Material {
 
   static shaderCreateStruct(): string {
     return /* wgsl */ `
-      fn createGGX(offset: u32) -> GGX {
-        var ggx: GGX;
-        ggx.color = vec3f(
+      fn createTorranceSparrow(offset: u32) -> TORRANCE_SPARROW {
+        var ts: TORRANCE_SPARROW;
+        ts.color = vec3f(
           materialsData[offset + 1],
           materialsData[offset + 2],
           materialsData[offset + 3],
         );
-        ggx.ax = materialsData[offset + 4];
-        ggx.ay = materialsData[offset + 5];
-        return ggx;
+        ts.ax = materialsData[offset + 4];
+        ts.ay = materialsData[offset + 5];
+        return ts;
       } 
     `;
   }
 
-  static shaderShadeGGX(): string {
+  static shaderShadeTorranceSparrow(): string {
     return /* wgsl */ `
-
-      // TrowbridgeReitzDistribution mfDistrib;
-      // SampledSpectrum eta, k;
-      fn SameHemisphere(w: vec3f, wp: vec3f) -> bool {
-        return w.z * wp.z > 0;
-      }
-      fn AbsDot(v1: vec3f, v2: vec3f) -> f32 { 
-        return abs(dot(v1, v2)); 
-      }
-      fn FaceForward(n: vec3f, v: vec3f) -> vec3f {
-        if (dot(n, v) < 0) { 
-          return -n;
-        } else {
-          return n;
-        }
-      }
-      fn LengthSquared(v: vec3f) -> f32 { 
-        return Sqr(v.x) + Sqr(v.y) + Sqr(v.z); 
-      }
-      fn LengthSquaredV2(v: vec2f) -> f32 { 
-        return Sqr(v.x) + Sqr(v.y); 
-      }
-      fn SampleUniformDiskPolar(u: vec2f) -> vec2f {
-        let r = sqrt(u.x);
-        let theta = 2 * PI * u.y;
-        return vec2f(r * cos(theta), r * sin(theta));
-      }
-      fn Lerp(x: f32, a: f32, b: f32) -> f32 {
-        return (1 - x) * a + x * b;
-      }
-      fn AbsCosTheta(w: vec3f) -> f32 { 
-        return abs(w.z); 
-      }
-      fn Sqr(v: f32) -> f32 {
-        return v * v;
-      }
-      fn Cos2Theta(w: vec3f) -> f32 { 
-        return Sqr(w.z); 
-      }
-      fn Sin2Theta(w: vec3f) -> f32 { 
-        return max(0, 1 - Cos2Theta(w)); 
-      }
-      fn SinTheta(w: vec3f) -> f32 { 
-        return sqrt(Sin2Theta(w)); 
-      }
-      fn Tan2Theta(w: vec3f) -> f32 { 
-        return Sin2Theta(w) / Cos2Theta(w); 
-      }
-      fn CosPhi(w: vec3f) -> f32 {
-        let sinTheta = SinTheta(w);
-        if (sinTheta == 0) {
-          return 1;
-        } else {
-          return clamp(w.x / sinTheta, -1, 1);
-        }
-      }
-      fn SinPhi(w: vec3f) -> f32 {
-        let sinTheta = SinTheta(w);
-        if (sinTheta == 0) {
-          return 0;
-        } else {
-          return clamp(w.y / sinTheta, -1, 1);
-        }
-      }
-      fn IsInf(v: f32) -> bool {
-        return v > 999999999999999.0;
-      }
-      fn SchlickFresnel(r0: vec3f, radians: f32) -> vec3f {
-        // -- The common Schlick Fresnel approximation
-        let exponential = pow(1.0 - radians, 5.0);
-        return r0 + (1.0f - r0) * exponential;
-      }
       // throwbridge reitz distribution
-      fn D(wm: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
+      fn TR_D(wm: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
         let tan2Theta = Tan2Theta(wm);
         if (IsInf(tan2Theta)) {
           return 0;
@@ -132,7 +60,7 @@ export class GGX extends Material {
                                Sqr(SinPhi(wm) / alpha_y));
         return 1 / (PI * alpha_x * alpha_y * cos4Theta * Sqr(1 + e));
       }
-      fn Lambda(w: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
+      fn TR_Lambda(w: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
         let tan2Theta = Tan2Theta(w);
         if (IsInf(tan2Theta)) {
           return 0;
@@ -140,21 +68,21 @@ export class GGX extends Material {
         let alpha2 = Sqr(CosPhi(w) * alpha_x) + Sqr(SinPhi(w) * alpha_y);
         return (sqrt(1 + alpha2 * tan2Theta) - 1) / 2;
       }
-      fn G1(w: vec3f, alpha_x: f32, alpha_y: f32) -> f32 { 
-        return 1 / (1 + Lambda(w, alpha_x, alpha_y)); 
+      fn TR_G1(w: vec3f, alpha_x: f32, alpha_y: f32) -> f32 { 
+        return 1 / (1 + TR_Lambda(w, alpha_x, alpha_y)); 
       }
-      fn G(wo: vec3f, wi: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
-        return 1 / (1 + Lambda(wo, alpha_x, alpha_y) + Lambda(wi, alpha_x, alpha_y));
+      fn TR_G(wo: vec3f, wi: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
+        return 1 / (1 + TR_Lambda(wo, alpha_x, alpha_y) + TR_Lambda(wi, alpha_x, alpha_y));
       }
       // overloading will be supported in the future, so for now it's D2...
       // https://github.com/gpuweb/gpuweb/issues/4507#issuecomment-1989674670
-      fn D2(w: vec3f, wm: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
-        return G1(w, alpha_x, alpha_y) / AbsCosTheta(w) * D(wm, alpha_x, alpha_y) * AbsDot(w, wm);
+      fn TR_D2(w: vec3f, wm: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
+        return TR_G1(w, alpha_x, alpha_y) / AbsCosTheta(w) * TR_D(wm, alpha_x, alpha_y) * AbsDot(w, wm);
       }
-      fn throwbridgeReitzDistributionPDF(w: vec3f, wm: vec3f, alpha_x: f32, alpha_y: f32) -> f32 { 
-        return D2(w, wm, alpha_x, alpha_y); 
+      fn TR_DistributionPDF(w: vec3f, wm: vec3f, alpha_x: f32, alpha_y: f32) -> f32 { 
+        return TR_D2(w, wm, alpha_x, alpha_y); 
       }
-      fn Sample_wm(w: vec3f, u: vec2f, alpha_x: f32, alpha_y: f32) -> vec3f {
+      fn TS_Sample_wm(w: vec3f, u: vec2f, alpha_x: f32, alpha_y: f32) -> vec3f {
         var wh = normalize(vec3f(alpha_x * w.x, alpha_y * w.y, w.z));
         if (wh.z < 0) {
           wh = -wh;
@@ -173,7 +101,7 @@ export class GGX extends Material {
         let nh = p.x * T1 + p.y * T2 + pz * wh;
         return normalize(vec3f(alpha_x * nh.x, alpha_y * nh.y, max(1e-6, nh.z)));
       }
-      fn PDF(wo: vec3f, wi: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
+      fn TS_PDF(wo: vec3f, wi: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
         if (!SameHemisphere(wo, wi)) {
           return 0;
         }
@@ -182,11 +110,10 @@ export class GGX extends Material {
           return 0;
         }
         wm = FaceForward(normalize(wm), vec3f(0, 0, 1)); 
-        return throwbridgeReitzDistributionPDF(wo, wm, alpha_x, alpha_y) / (4 * AbsDot(wo, wm));
+        return TR_DistributionPDF(wo, wm, alpha_x, alpha_y) / (4 * AbsDot(wo, wm));
       }
-
       // this function samples the new wi direction, and returns the brdf and pdf
-      fn Sample_f(
+      fn TS_Sample_f(
         wo:  vec3f, u: vec2f, alpha_x: f32, alpha_y: f32, 
         color: vec3f,
         wi:  ptr<function, vec3f>,
@@ -195,7 +122,7 @@ export class GGX extends Material {
         tid: vec3u,
         i: i32
       ) {
-        let wm = Sample_wm(wo, u, alpha_x, alpha_y);
+        let wm = TS_Sample_wm(wo, u, alpha_x, alpha_y);
         // reflect from wgsl needs the wo vector to point "inside" the surface
         // whereas the implementation in pbrt v4 has wo pointing to the camera 
         *wi = reflect(-wo, wm);
@@ -206,14 +133,14 @@ export class GGX extends Material {
           return;
         }
 
-        *pdf = PDF(wo, *wi, alpha_x, alpha_y);
+        *pdf = TS_PDF(wo, *wi, alpha_x, alpha_y);
       
         let cosTheta_o = AbsCosTheta(wo);
         let cosTheta_i = AbsCosTheta(*wi);
 
         let F = SchlickFresnel(color, dot(*wi, wm));
 
-        *f = D(wm, alpha_x, alpha_y) * F * G(wo, *wi, alpha_x, alpha_y) /
+        *f = TR_D(wm, alpha_x, alpha_y) * F * TR_G(wo, *wi, alpha_x, alpha_y) /
                             (4 * cosTheta_i * cosTheta_o);
 
         if (*pdf <= 0.0) {
@@ -235,7 +162,7 @@ export class GGX extends Material {
       // unless it's being used to get the brdf when we sample light sources
       // or if for some strange reason we're not importance sampling the brdf and we're 
       // randomly throwing rays into the hemisphere
-      fn f(wo: vec3f, wi: vec3f, alpha_x: f32, alpha_y: f32, color: vec3f) -> vec3f {
+      fn TS_f(wo: vec3f, wi: vec3f, alpha_x: f32, alpha_y: f32, color: vec3f) -> vec3f {
         if (!SameHemisphere(wo, wi)) {
           return vec3f(0);
         }
@@ -253,7 +180,7 @@ export class GGX extends Material {
 
         let F = SchlickFresnel(color, dot(wi, wm));
 
-        var f = D(wm, alpha_x, alpha_y) * F * G(wo, wi, alpha_x, alpha_y) /
+        var f = TR_D(wm, alpha_x, alpha_y) * F * TR_G(wo, wi, alpha_x, alpha_y) /
           (4 * cosTheta_i * cosTheta_o);
 
         if (isFloatNaN(f.x) || isFloatNaN(f.y) || isFloatNaN(f.z)) {
@@ -263,7 +190,7 @@ export class GGX extends Material {
         return f;
       }
 
-      fn shadeGGX(
+      fn shadeTorranceSparrow(
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
         reflectance: ptr<function, vec3f>, 
@@ -272,7 +199,7 @@ export class GGX extends Material {
         i: i32
       ) {
         let hitPoint = ires.hitPoint;
-        let material: GGX = createGGX(ires.triangle.materialOffset);
+        let material: TORRANCE_SPARROW = createTorranceSparrow(ires.triangle.materialOffset);
 
         let color = material.color;
 
@@ -292,28 +219,15 @@ export class GGX extends Material {
         var ggxReflectance = vec3f(0,0,0);
 
         // we need to calculate a TBN matrix
-        let t = ires.triangle;
-        let edge1 = t.v1 - t.v0;
-        let edge2 = t.v2 - t.v0;
-        let deltaUV1 = t.uv1 - t.uv0;
-        let deltaUV2 = t.uv2 - t.uv0;  
+        var tangent = vec3f(0.0);
+        var bitangent = vec3f(0.0);
+        getTangentFromTriangle(ires.triangle, &tangent, &bitangent);
 
-        let f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-        let tangent1 = normalize(vec3f(
-          f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x),
-          f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y),
-          f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z)
-        ));
-        let bitangent1 = normalize(vec3f(
-          f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x),
-          f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y),
-          f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z)
-        ));
         // normal could be flipped at some point, should we also flip TB?
         // normal could be flipped at some point, should we also flip TB?
         // normal could be flipped at some point, should we also flip TB?
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
-        let TBN = mat3x3f(tangent1, bitangent1, N);
+        let TBN = mat3x3f(tangent, bitangent, N);
         // to transform vectors from world space to tangent space, we multiply by
         // the inverse of the TBN
         let TBNinverse = transpose(TBN);
@@ -326,14 +240,12 @@ export class GGX extends Material {
         // color component
         var pdf = 0.0;
         var brdf = vec3f(1.0);
-        Sample_f(wo, rands.xy, material.ax, material.ay, color, &wi, &pdf, &brdf, tid, i);
+        TS_Sample_f(wo, rands.xy, material.ax, material.ay, color, &wi, &pdf, &brdf, tid, i);
 
         // to transform vectors from tangent space to world space, we multiply by
         // the TBN     
         (*ray).direction = TBN * wi;
 
-        // after you fix that, it's time to refactor
-        // after you fix that, it's time to refactor
         // after you fix that, it's time to refactor, also see what to do with ggx - backup.ts
 
         *reflectance *= brdf / pdf * max(dot((*ray).direction, N), 0.0);

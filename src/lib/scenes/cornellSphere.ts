@@ -3,7 +3,7 @@ import { Diffuse } from './../materials/diffuse';
 import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';
 import { Triangle } from './../primitives/triangle';
-import { GGX } from './../materials/ggx';
+import { TorranceSparrow } from './../materials/torranceSparrow';
 import random, { RNG } from 'random';
 
 random.use('test-string' as unknown as RNG);
@@ -88,14 +88,14 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
   let materials: Material[] = [
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
-    new GGX(new Color(0.95, 0.95, 0.95), 0.125, 0.025),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.125, 0.025),
     new Emissive(new Color(1, 0.7, 0.5), 20),
     new Diffuse(new Color(0.05, 1, 0.05)),
-    new GGX(new Color(0.95, 0.95, 0.95), 0.45, 0.45),
-    new GGX(new Color(0.95, 0.95, 0.95), 0.175, 0.175),
-    new GGX(new Color(0.95, 0.95, 0.95), 0.025, 0.025),
-    new GGX(new Color(0.95, 0.95, 0.95), 0.25, 0.025),
-    new GGX(new Color(0.95, 0.95, 0.95), 0.725, 0.025)
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.45, 0.45),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.175, 0.175),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.025, 0.025),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.25, 0.025),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.725, 0.025)
   ];
 
   for (let i = 0; i < 5; i++) {

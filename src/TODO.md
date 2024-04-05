@@ -10,5 +10,7 @@ Rewrite the Triangle.idxRef logic such that it's not required to save the idxRef
 
 colors are using 1 byte per channel, this is likely wrong / problematic
 
-implement part 2 of:
-https://schuttejoe.github.io/post/ggximportancesamplingpart1/
+---
+
+IsInf(...)
+doesn't really check if the number is infinite

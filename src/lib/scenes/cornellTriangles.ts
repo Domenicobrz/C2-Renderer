@@ -3,7 +3,7 @@ import { Diffuse } from './../materials/diffuse';
 import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';
 import { Triangle } from './../primitives/triangle';
-import { GGX } from './../materials/ggx';
+import { TorranceSparrow } from './../materials/torranceSparrow';
 import random, { RNG } from 'random';
 
 random.use('test-string' as unknown as RNG);
@@ -18,10 +18,8 @@ export function cornellTrianglesScene(): { triangles: Triangle[]; materials: Mat
   let materials: Material[] = [
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
-    new GGX(new Color(0.05, 1, 0.05), 0.02),
+    new TorranceSparrow(new Color(0.05, 1, 0.05), 0.02, 0.02),
     new Emissive(new Color(1, 0.7, 0.5), 40),
-    // new Emissive(new Color(1, 0.7, 0.5), 6000),
-    // new Emissive(new Color(1, 0.7, 0.5), 2),
     new Diffuse(new Color(0.05, 1, 0.05))
   ];
 
@@ -38,30 +36,6 @@ export function cornellTrianglesScene(): { triangles: Triangle[]; materials: Mat
     );
     triangles.push(t);
   }
-
-  // for (let i = 0; i < 150000; i++) {
-  //   let s = r() * 0.15 + 0.025;
-  //   let rotAxis = new Vector3(nr(), nr(), nr()).normalize();
-  //   let rotAngle = r() * 10;
-  //   // let addV = new Vector3(nr() * 4, nr() * 0.32 - 3, nr() * 1 - 3);
-  //   let addV = new Vector3(nr() * 4, nr() * 2 - 2, nr() * 4);
-  //   let t = new Triangle(
-  //     new Vector3(-1, 0, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
-  //     new Vector3(0, 1.5, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
-  //     new Vector3(+1, 0, 0).multiplyScalar(s).applyAxisAngle(rotAxis, rotAngle).add(addV),
-  //     i % 2 === 0 ? 0 : 1
-  //   );
-  //   triangles.push(t);
-  // }
-
-  // triangles.push(
-  //   new Triangle(
-  //     new Vector3(-1, 0, -5).multiplyScalar(2),
-  //     new Vector3(0, 1.5, -5).multiplyScalar(2),
-  //     new Vector3(+1, 0, -5).multiplyScalar(2),
-  //     2
-  //   )
-  // );
 
   for (let i = 0; i < 5; i++) {
     let ps = 4;
@@ -126,14 +100,6 @@ export function cornellTrianglesScene(): { triangles: Triangle[]; materials: Mat
       3
     )
   );
-  // triangles.push(
-  //   new Triangle(
-  //     new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
-  //     new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
-  //     new Vector3(+1, 0, -1).multiplyScalar(ls).add(lt),
-  //     3
-  //   )
-  // );
 
   triangles.push(
     new Triangle(
@@ -145,7 +111,7 @@ export function cornellTrianglesScene(): { triangles: Triangle[]; materials: Mat
   );
 
   // apparently MIS stops working with GGX materials (that are exclusively sampling the brdf)
-  // and it makes sense, because we let variance creep into the integral...
+  // and it makes sense, because we let variance creep into the integral
 
   return { triangles, materials };
 }

@@ -3,12 +3,13 @@ import { BVH } from '$lib/bvh/bvh';
 import { Config } from '$lib/config';
 import { Diffuse } from '$lib/materials/diffuse';
 import { Emissive } from '$lib/materials/emissive';
-import { GGX } from '$lib/materials/ggx';
+import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 import { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { TileSequence } from '$lib/tile';
 import { cameraPart } from './parts/camera';
 import { mathUtilsPart } from './parts/mathUtils';
+import { pbrtMathUtilsPart } from './parts/pbrtMathUtils';
 import { randomPart } from './parts/random';
 
 // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html
@@ -17,6 +18,7 @@ export const computeShader = /* wgsl */ `
 // at the moment these have to be imported with this specific order
 ${randomPart}
 ${mathUtilsPart}
+${pbrtMathUtilsPart}
 ${TileSequence.shaderPart()}
 ${Config.shaderPart()}
 ${Emissive.shaderStruct()}
@@ -25,9 +27,9 @@ ${Emissive.shaderShadeEmissive()}
 ${Diffuse.shaderStruct()}
 ${Diffuse.shaderCreateStruct()}
 ${Diffuse.shaderShadeDiffuse()}
-${GGX.shaderStruct()}
-${GGX.shaderCreateStruct()}
-${GGX.shaderShadeGGX()}
+${TorranceSparrow.shaderStruct()}
+${TorranceSparrow.shaderCreateStruct()}
+${TorranceSparrow.shaderShadeTorranceSparrow()}
 ${Material.shaderShade()}
 ${cameraPart}
 ${Triangle.shaderStruct()}

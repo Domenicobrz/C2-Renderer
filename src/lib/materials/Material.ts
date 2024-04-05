@@ -1,7 +1,8 @@
 export const MATERIAL_TYPE = {
   DIFFUSE: 0,
   EMISSIVE: 1,
-  GGX: 2
+  GGX: 2,
+  TORRANCE_SPARROW: 3
 };
 
 export class Material {
@@ -47,8 +48,12 @@ export class Material {
           shadeEmissive(ires, ray, reflectance, rad, tid, i);
         }
 
-        if (materialType == ${MATERIAL_TYPE.GGX}) {
-          shadeGGX(ires, ray, reflectance, rad, tid, i);
+        // if (materialType == ${MATERIAL_TYPE.GGX}) {
+        //   shadeGGX(ires, ray, reflectance, rad, tid, i);
+        // }
+
+        if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
+          shadeTorranceSparrow(ires, ray, reflectance, rad, tid, i);
         }
       }
     `;

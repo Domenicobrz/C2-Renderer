@@ -5,6 +5,7 @@ import type { Material } from './../materials/material';
 import { Triangle } from './../primitives/triangle';
 import { TorranceSparrow } from './../materials/torranceSparrow';
 import random, { RNG } from 'random';
+import { CookTorrance } from '$lib/materials/cookTorrance';
 
 random.use('test-string' as unknown as RNG);
 // random.use(Math.random() as unknown as RNG);
@@ -95,7 +96,8 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.175, 0.175),
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.025, 0.025),
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.25, 0.025),
-    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.725, 0.025)
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.725, 0.025),
+    new CookTorrance(new Color(0.95, 0.95, 0.95), 0.725)
   ];
 
   for (let i = 0; i < 5; i++) {

@@ -11,6 +11,7 @@ import { cameraPart } from './parts/camera';
 import { mathUtilsPart } from './parts/mathUtils';
 import { pbrtMathUtilsPart } from './parts/pbrtMathUtils';
 import { randomPart } from './parts/random';
+import { CookTorrance } from '$lib/materials/cookTorrance';
 
 // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html
 
@@ -30,6 +31,9 @@ ${Diffuse.shaderShadeDiffuse()}
 ${TorranceSparrow.shaderStruct()}
 ${TorranceSparrow.shaderCreateStruct()}
 ${TorranceSparrow.shaderShadeTorranceSparrow()}
+${CookTorrance.shaderStruct()}
+${CookTorrance.shaderCreateStruct()}
+${CookTorrance.shaderShadeCookTorrance()}
 ${Material.shaderShade()}
 ${cameraPart}
 ${Triangle.shaderStruct()}

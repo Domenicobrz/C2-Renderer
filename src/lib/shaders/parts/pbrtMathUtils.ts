@@ -26,6 +26,9 @@ fn SampleUniformDiskPolar(u: vec2f) -> vec2f {
 fn Lerp(x: f32, a: f32, b: f32) -> f32 {
   return (1 - x) * a + x * b;
 }
+fn CosTheta(w: vec3f) -> f32 { 
+  return w.z; 
+}
 fn AbsCosTheta(w: vec3f) -> f32 { 
   return abs(w.z); 
 }
@@ -67,5 +70,31 @@ fn SchlickFresnel(r0: vec3f, radians: f32) -> vec3f {
   // -- The common Schlick Fresnel approximation
   let exponential = pow(1.0 - radians, 5.0);
   return r0 + (1.0f - r0) * exponential;
+}
+fn Refract(
+  wi: vec3f, _n: vec3f, _eta: f32, etap: ptr<function, f32>, wt: ptr<function, vec3f>
+) -> bool {
+  var n = _n;
+  var eta = _eta;
+  var cosTheta_i = dot(n, wi);
+
+  if (cosTheta_i < 0) {
+    eta = 1 / eta;
+    cosTheta_i = -cosTheta_i;
+    n = -n;
+  }
+
+  let sin2Theta_i = max(0, 1 - Sqr(cosTheta_i));
+  let sin2Theta_t = sin2Theta_i / Sqr(eta);
+  if (sin2Theta_t >= 1) {
+    return false;
+  }
+
+  let cosTheta_t = sqrt(1 - sin2Theta_t);
+
+  *wt = -wi / eta + (cosTheta_i / eta - cosTheta_t) * n;
+  *etap = eta;
+
+  return true;
 }
 `;

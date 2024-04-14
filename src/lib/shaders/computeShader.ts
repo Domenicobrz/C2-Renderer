@@ -12,6 +12,7 @@ import { mathUtilsPart } from './parts/mathUtils';
 import { pbrtMathUtilsPart } from './parts/pbrtMathUtils';
 import { randomPart } from './parts/random';
 import { CookTorrance } from '$lib/materials/cookTorrance';
+import { Dielectric } from '$lib/materials/dielectric';
 
 // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html
 
@@ -34,6 +35,9 @@ ${TorranceSparrow.shaderShadeTorranceSparrow()}
 ${CookTorrance.shaderStruct()}
 ${CookTorrance.shaderCreateStruct()}
 ${CookTorrance.shaderShadeCookTorrance()}
+${Dielectric.shaderStruct()}
+${Dielectric.shaderCreateStruct()}
+${Dielectric.shaderShadeDielectric()}
 ${Material.shaderShade()}
 ${cameraPart}
 ${Triangle.shaderStruct()}

@@ -6,6 +6,7 @@ import { Triangle } from './../primitives/triangle';
 import { TorranceSparrow } from './../materials/torranceSparrow';
 import random, { RNG } from 'random';
 import { CookTorrance } from '$lib/materials/cookTorrance';
+import { Dielectric } from '$lib/materials/dielectric';
 
 random.use('test-string' as unknown as RNG);
 // random.use(Math.random() as unknown as RNG);
@@ -57,13 +58,13 @@ function createSphere(
 
       triangles.push(
         new Triangle(
-          v0.clone().multiplyScalar(radius).add(translation),
           v1.clone().multiplyScalar(radius).add(translation),
+          v0.clone().multiplyScalar(radius).add(translation),
           v3.clone().multiplyScalar(radius).add(translation),
           materialIndex,
           undefined,
-          uv0.clone(),
           uv1.clone(),
+          uv0.clone(),
           uv3.clone()
         )
       );
@@ -97,7 +98,8 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.025, 0.025),
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.25, 0.025),
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.725, 0.025),
-    new CookTorrance(new Color(0.95, 0.95, 0.95), 0.725)
+    new CookTorrance(new Color(0.95, 0.95, 0.95), 0.725),
+    new Dielectric(new Color(0.95, 0.95, 0.95), 0, 0, 1.5)
   ];
 
   for (let i = 0; i < 5; i++) {
@@ -171,13 +173,26 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
     )
   );
 
-  createSphere(5, triangles, new Vector3(2.75, -2, 1.5), 1.25);
-  createSphere(6, triangles, new Vector3(0, -2, 1.5), 1.25);
-  createSphere(7, triangles, new Vector3(-2.75, -2, 1.5), 1.25);
+  // createSphere(5, triangles, new Vector3(2.75, -2, 1.5), 1.25);
+  // createSphere(6, triangles, new Vector3(0, -2, 1.5), 1.25);
+  // createSphere(7, triangles, new Vector3(-2.75, -2, 1.5), 1.25);
 
-  createSphere(9, triangles, new Vector3(2.75, 1, 2), 1.25);
-  createSphere(8, triangles, new Vector3(0, 1, 2), 1.25);
-  createSphere(2, triangles, new Vector3(-2.75, 1, 2), 1.25);
+  // createSphere(9, triangles, new Vector3(2.75, 1, 2), 1.25);
+  // createSphere(8, triangles, new Vector3(0, 1, 2), 1.25);
+  // createSphere(2, triangles, new Vector3(-2.75, 1, 2), 1.25);
+
+  // 1, 4
+  for (let i = -1; i < 2; i++) {
+    for (let j = -1; j < 2; j++) {
+      // let mat = (i + j) % 2 === 0 ? 1 : 4;
+      let mat = 0;
+      if (j === 0) mat = 1;
+      if (j === 1) mat = 4;
+      createSphere(mat, triangles, new Vector3(i * 2, j * 2, 3), 0.85, 30, 30);
+    }
+  }
+
+  createSphere(11, triangles, new Vector3(0, 0, 0), 1.75);
 
   return { triangles, materials };
 }

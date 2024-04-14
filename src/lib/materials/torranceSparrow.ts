@@ -216,8 +216,6 @@ export class TorranceSparrow extends Material {
           u32(i * 17325799),
         );
 
-        var ggxReflectance = vec3f(0,0,0);
-
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
@@ -245,8 +243,6 @@ export class TorranceSparrow extends Material {
         // to transform vectors from tangent space to world space, we multiply by
         // the TBN     
         (*ray).direction = TBN * wi;
-
-        // after you fix that, it's time to refactor, also see what to do with ggx - backup.ts
 
         *reflectance *= brdf / pdf * max(dot((*ray).direction, N), 0.0);
       } 

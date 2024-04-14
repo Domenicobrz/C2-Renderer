@@ -2,7 +2,8 @@ export const MATERIAL_TYPE = {
   DIFFUSE: 0,
   EMISSIVE: 1,
   COOK_TORRANCE: 2,
-  TORRANCE_SPARROW: 3
+  TORRANCE_SPARROW: 3,
+  DIELECTRIC: 4
 };
 
 export class Material {
@@ -54,6 +55,10 @@ export class Material {
 
         if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
           shadeTorranceSparrow(ires, ray, reflectance, rad, tid, i);
+        }
+
+        if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
+          shadeDielectric(ires, ray, reflectance, rad, tid, i);
         }
       }
     `;

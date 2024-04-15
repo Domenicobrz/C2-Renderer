@@ -71,6 +71,9 @@ fn SchlickFresnel(r0: vec3f, radians: f32) -> vec3f {
   let exponential = pow(1.0 - radians, 5.0);
   return r0 + (1.0f - r0) * exponential;
 }
+fn Reflect(wo: vec3f, n: vec3f) -> vec3f {
+  return -wo + 2.0 * dot(wo, n) * n;
+}
 fn Refract(
   wi: vec3f, _n: vec3f, _eta: f32, etap: ptr<function, f32>, wt: ptr<function, vec3f>
 ) -> bool {

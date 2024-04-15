@@ -99,7 +99,7 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.25, 0.025),
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.725, 0.025),
     new CookTorrance(new Color(0.95, 0.95, 0.95), 0.725),
-    new Dielectric(new Color(0.95, 0.95, 0.95), 0, 0, 1.5)
+    new Dielectric(new Color(0.95, 0.95, 0.95), 0.85, 0.85, 1.5)
   ];
 
   for (let i = 0; i < 5; i++) {

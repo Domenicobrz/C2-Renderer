@@ -80,21 +80,70 @@ export class Dielectric extends Material {
         let r_perp = (cosTheta_i - eta * cosTheta_t) / (cosTheta_i + eta * cosTheta_t);
 
         return (Sqr(r_parl) + Sqr(r_perp)) / 2;
-    }
+      }
 
-      // fn D_Sample_wm(w: vec3f, u: vec2f, alpha_x: f32, alpha_y: f32) -> vec3f {
-      //   return vec3f(0);
-      // }
-      // fn D_PDF(wo: vec3f, wi: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
-      //   return 0;
-      // }
+      fn D_Sample_wm(w: vec3f, u: vec2f, alpha_x: f32, alpha_y: f32) -> vec3f {
+      
+      
+      
+        return vec3f(0);
+      
+      
+      
+      }
+
+      fn D_PDF(wo: vec3f, wi: vec3f, material: DIELECTRIC) -> f32 {
+        if (material.eta == 1 || (material.ax < 0.0005 && material.ay < 0.0005)) {
+          return 1;
+        }
+
+        // Evaluate sampling PDF of rough dielectric BSDF
+        let cosTheta_o = CosTheta(wo);
+        let cosTheta_i = CosTheta(wi);
+        let reflect: bool = cosTheta_i * cosTheta_o > 0;
+        var etap = 1.0;
+        if (!reflect) {
+          if (cosTheta_o > 0) {
+            etap = material.eta;
+          } else {
+            etap = (1.0 / material.eta);
+          }
+        }
+        var wm = wi * etap + wo;
+        if (cosTheta_i == 0 || cosTheta_o == 0 || LengthSquared(wm) == 0) {
+          // fragment should be discarded, lets return a super high pdf
+          return 9999999999999999;
+        }
+        wm = FaceForward(normalize(wm), vec3f(0, 0, 1));
+
+        if (dot(wm, wi) * cosTheta_i < 0 || dot(wm, wo) * cosTheta_o < 0) {
+          // fragment should be discarded, lets return a super high pdf
+          return 9999999999999999;
+        }
+
+        let R = FrDielectric(dot(wo, wm), material.eta);
+        let T = 1.0 - R;
+        let pr = R;
+        let pt = T;
+
+        var pdf = 1.0;
+        if (reflect) {
+          pdf = TR_DistributionPDF(wo, wm, material.ax, material.ay) / (4.0 * AbsDot(wo, wm)) * pr / (pr + pt);
+        } else {
+          let denom = Sqr(dot(wi, wm) + dot(wo, wm) / etap);
+          let dwm_dwi = AbsDot(wi, wm) / denom;
+          pdf = TR_DistributionPDF(wo, wm, material.ax, material.ay) * dwm_dwi * pt / (pr + pt);
+        }
+
+        return pdf;
+      }
 
       // this function samples the new wi direction, and returns the brdf and pdf
       fn D_Sample_f(
         wo:  vec3f, u: vec2f, 
         material: DIELECTRIC,
         color: vec3f,
-        uc: f32,
+        rands: vec4f,
         wi:  ptr<function, vec3f>,
         pdf: ptr<function, f32>,
         f:   ptr<function, vec3f>,
@@ -113,6 +162,8 @@ export class Dielectric extends Material {
             *pdf = 1.0;
             return;
           }
+
+          let uc = rands.x;
 
           if (uc < pr / (pr + pt)) {
             *wi = vec3f(-wo.x, -wo.y, wo.z);
@@ -135,6 +186,58 @@ export class Dielectric extends Material {
             // }
 
             *pdf = pt / (pr + pt);
+          }
+        } else {
+
+          // sample rough dielectric BSDF
+
+          let uc = rands.x;
+          let u  = rands.yz;
+
+          let wm = TS_Sample_wm(wo, u, material.ax, material.ay);
+          let R = FrDielectric(dot(wo, wm), material.eta);
+          let T = 1.0 - R;
+          let pr = R;
+          let pt = T;
+
+          if (uc < pr / (pr + pt)) {
+            *wi = Reflect(wo, wm);
+            if (!SameHemisphere(wo, *wi)) {
+              *f = vec3f(0.0);
+              *pdf = 1.0;
+              return;
+            }
+              
+            *pdf = TR_DistributionPDF(wo, wm, material.ax, material.ay) / 
+                      (4 * AbsDot(wo, wm)) * pr / (pr + pt);
+
+            *f = vec3f(
+              TR_D(wm, material.ax, material.ay) * 
+              TR_G(wo, *wi, material.ax, material.ay) * R /
+              (4 * CosTheta(*wi) * CosTheta(wo))
+            );
+          } else {
+            var etap = 0.0;
+            let tir = !Refract(wo, wm, material.eta, &etap, wi);
+            if (SameHemisphere(wo, *wi) || (*wi).z == 0 || tir) {
+              *f = vec3f(0.0);
+              *pdf = 1.0;
+              return;
+            }
+
+            let denom = Sqr(dot(*wi, wm) + dot(wo, wm) / etap);
+            let dwm_dwi = AbsDot(*wi, wm) / denom;
+            *pdf = TR_DistributionPDF(wo, wm, material.ax, material.ay) * dwm_dwi * pt / (pr + pt);
+
+            *f = vec3f(T * TR_D(wm, material.ax, material.ay) *
+              TR_G(wo, *wi, material.ax, material.ay) *
+              abs(dot(*wi, wm) * dot(wo, wm) /
+              (CosTheta(*wi) * CosTheta(wo) * denom))
+            );
+
+            // if (mode == TransportMode::Radiance) {
+              *f /= Sqr(etap);
+            //}
           }
         }
 
@@ -160,13 +263,58 @@ export class Dielectric extends Material {
           return vec3f(1.0);
         } else {
 
-          let f = vec3f(0.0);
-
-          if (isFloatNaN(f.x) || isFloatNaN(f.y) || isFloatNaN(f.z)) {
-            return vec3f(0);
+          let cosTheta_o = CosTheta(wo);
+          let cosTheta_i = CosTheta(wi);
+          let reflect: bool = cosTheta_i * cosTheta_o > 0;
+          var etap = 1.0;
+          if (!reflect) {
+            if (cosTheta_o > 0) {
+              etap = material.eta;
+            } else {
+              etap = (1.0 / material.eta);
+            }
           }
-          
-          return f;
+          var wm = wi * etap + wo;
+          if (cosTheta_i == 0 || cosTheta_o == 0 || LengthSquared(wm) == 0) {
+            return vec3f(0.0);
+          }
+          wm = FaceForward(normalize(wm), vec3f(0, 0, 1));
+
+          if (dot(wm, wi) * cosTheta_i < 0 || dot(wm, wo) * cosTheta_o < 0) {
+            return vec3f(0.0);
+          }
+
+          let F = FrDielectric(dot(wo, wm), material.eta);
+          if (reflect) {
+            let fr = vec3f(
+              TR_D(wm, material.ax, material.ay) * 
+              TR_G(wo, wi, material.ax, material.ay) * F /
+              abs(4.0 * cosTheta_i * cosTheta_o)
+            );
+
+            if (isFloatNaN(fr.x) || isFloatNaN(fr.y) || isFloatNaN(fr.z)) {
+              return vec3f(0);
+            }
+
+            return fr;
+          } else {
+            let denom = Sqr(dot(wi, wm) + dot(wo, wm) / etap) * cosTheta_i * cosTheta_o;
+            var ft = vec3f(
+              TR_D(wm, material.ax, material.ay) * (1.0 - F) * 
+              TR_G(wo, wi, material.ax, material.ay) *
+              abs(dot(wi, wm) * dot(wo, wm) / denom)
+            );
+
+            //  if (mode == TransportMode::Radiance) {
+              ft /= Sqr(etap);
+            // }
+
+            if (isFloatNaN(ft.x) || isFloatNaN(ft.y) || isFloatNaN(ft.z)) {
+              return vec3f(0);
+            }
+            
+            return vec3f(ft);
+          }
         }
       }
 
@@ -210,7 +358,7 @@ export class Dielectric extends Material {
         // color component
         var pdf = 0.0;
         var brdf = vec3f(1.0);
-        D_Sample_f(wo, rands.xy, material, color, rands.x, &wi, &pdf, &brdf, tid, i);
+        D_Sample_f(wo, rands.xy, material, color, rands, &wi, &pdf, &brdf, tid, i);
 
         // to transform vectors from tangent space to world space, we multiply by
         // the TBN     

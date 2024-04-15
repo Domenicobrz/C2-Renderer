@@ -15,7 +15,7 @@
 		"@sveltejs/adapter-auto": "^2.0.0",
 		"@sveltejs/kit": "^1.20.4",
 		"@types/svelte-range-slider-pips": "^2.0.4",
-		"@types/three": "^0.158.0",
+		"@types/three": "^0.158.3",
 		"prettier": "^2.8.0",
 		"prettier-plugin-svelte": "^2.10.1",
 		"svelte": "^4.0.5",
@@ -29,6 +29,6 @@
 	"dependencies": {
 		"@webgpu/types": "^0.1.38",
 		"random": "^4.1.0",
-		"three": "^0.158.0"
+		"three": "^0.163.0"
 	}
 }

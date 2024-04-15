@@ -86,7 +86,10 @@ function createSphere(
   }
 }
 
-export function cornellSphereScene(): { triangles: Triangle[]; materials: Material[] } {
+export async function cornellSphereScene(): Promise<{
+  triangles: Triangle[];
+  materials: Material[];
+}> {
   let triangles: Triangle[] = [];
   let materials: Material[] = [
     new Diffuse(new Color(0.95, 0.95, 0.95)),
@@ -187,8 +190,6 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
   mesh.scale.set(2, 2, 2);
 
   triangles = [...triangles, ...meshToTriangles(mesh, 11)];
-
-  // createSphere(11, triangles, new Vector3(0, 0, -2), 2, 50, 50);
 
   return { triangles, materials };
 }

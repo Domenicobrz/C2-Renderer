@@ -11,3 +11,4 @@ vite.config.ts.timestamp-*
 src/lib/learnings.md
 .VSCodeCounter/
 renders/
+static/scene-assets/

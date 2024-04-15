@@ -37,7 +37,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   const tileSequence = new TileSequence();
   computeSegment = new ComputeSegment(device, tileSequence);
   // computeSegment.setDebugPixelTarget(280, 385);
-  computeSegment.setDebugPixelTarget(400, 320);
+  computeSegment.setDebugPixelTarget(480, 390);
   let { triangles, materials } = createScene();
   computeSegment.updateScene(triangles, materials);
   renderSegment = new RenderSegment(device, context, presentationFormat, tileSequence);

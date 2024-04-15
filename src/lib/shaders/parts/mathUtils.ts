@@ -61,22 +61,35 @@ fn isFloatNaN(value: f32) -> bool {
 fn getTangentFromTriangle(
   triangle: Triangle, tangent: ptr<function, vec3f>, bitangent: ptr<function, vec3f>
 ) {
-  let t = triangle;
-  let edge1 = t.v1 - t.v0;
-  let edge2 = t.v2 - t.v0;
-  let deltaUV1 = t.uv1 - t.uv0;
-  let deltaUV2 = t.uv2 - t.uv0;  
 
-  let f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-  *tangent = normalize(vec3f(
-    f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x),
-    f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y),
-    f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z)
-  ));
-  *bitangent = normalize(vec3f(
-    f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x),
-    f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y),
-    f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z)
-  ));
+  let t = triangle;
+
+  // check if uvs exist, if they do let's use uv-based tangents
+  if (t.uv0.x > -1) {
+    let edge1 = t.v1 - t.v0;
+    let edge2 = t.v2 - t.v0;
+    let deltaUV1 = t.uv1 - t.uv0;
+    let deltaUV2 = t.uv2 - t.uv0;  
+  
+    let f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+    *tangent = normalize(vec3f(
+      f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x),
+      f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y),
+      f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z)
+    ));
+  
+    // for some reason, specifying the bitangent this way causes issues
+    // *bitangent = normalize(vec3f(
+    //   f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x),
+    //   f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y),
+    //   f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z)
+    // ));
+  
+    *bitangent = normalize(cross(*tangent, t.normal));
+  } else {
+    // otherwise default to auto geometry-based tangents
+    *tangent = normalize(t.v1 - t.v0);
+    *bitangent = normalize(cross(*tangent, t.normal));
+  }
 }
 `;

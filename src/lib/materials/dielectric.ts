@@ -331,8 +331,8 @@ export class Dielectric extends Material {
 
         let color = material.color;
 
-        var N = ires.triangle.normal;        
-    
+        var N = ires.triangle.normal;      
+        
         let rands = rand4(
           tid.y * canvasSize.x + tid.x +
           u32(cameraSample.x * 928373289 + cameraSample.y * 877973289) +
@@ -343,6 +343,9 @@ export class Dielectric extends Material {
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
         getTangentFromTriangle(ires.triangle, &tangent, &bitangent);
+        
+        // var tangent = vec3f(1.0, 0.0, 0.0);
+        // var bitangent = vec3f(0.0, 1.0, 0.0);
 
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
         let TBN = mat3x3f(tangent, bitangent, N);

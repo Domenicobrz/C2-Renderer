@@ -1,4 +1,4 @@
-import { Color, Vector2, Vector3 } from 'three';
+import { Color, Mesh, SphereGeometry, Vector2, Vector3 } from 'three';
 import { Diffuse } from './../materials/diffuse';
 import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';
@@ -7,6 +7,7 @@ import { TorranceSparrow } from './../materials/torranceSparrow';
 import random, { RNG } from 'random';
 import { CookTorrance } from '$lib/materials/cookTorrance';
 import { Dielectric } from '$lib/materials/dielectric';
+import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 
 random.use('test-string' as unknown as RNG);
 // random.use(Math.random() as unknown as RNG);
@@ -192,7 +193,18 @@ export function cornellSphereScene(): { triangles: Triangle[]; materials: Materi
     }
   }
 
-  createSphere(11, triangles, new Vector3(0, 0, 0), 1.75);
+  // createSphere(11, triangles, new Vector3(0, 0, 0), 1.75);
+
+  let mesh = new Mesh(new SphereGeometry(1, 100, 100));
+  mesh.scale.set(2, 2, 2);
+  mesh.position.set(-2, 0, 0);
+
+  let mesh1 = new Mesh(new SphereGeometry(0.5, 10, 10));
+  mesh1.position.set(1, 1, 0);
+
+  mesh.add(mesh1);
+
+  triangles = [...triangles, ...meshToTriangles(mesh, 11)];
 
   return { triangles, materials };
 }

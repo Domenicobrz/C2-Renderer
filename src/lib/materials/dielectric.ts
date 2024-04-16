@@ -331,7 +331,17 @@ export class Dielectric extends Material {
 
         let color = material.color;
 
-        var N = ires.triangle.normal;      
+        var N = ires.triangle.normal;     
+        
+        // we'll assume we're exiting the dielectric medium and apply
+        // beer-lambert absorption 
+        if (dot(N, (*ray).direction) > 0) {
+          *reflectance *= vec3f(
+            exp(-color.x * ires.t), 
+            exp(-color.y * ires.t), 
+            exp(-color.z * ires.t), 
+          );
+        }
         
         let rands = rand4(
           tid.y * canvasSize.x + tid.x +

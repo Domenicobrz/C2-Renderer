@@ -23,6 +23,8 @@ export function meshToTriangles(parentMesh: Object3D, materialIndex: number) {
       let normArray = geometry.attributes.normal.array;
       let uvArray = geometry.attributes.uv?.array || [];
 
+      let hasUvs = uvArray.length > 0;
+
       for (let i = 0; i < geometry.attributes.position.count; i += 3) {
         let v0x = posArray[i * 3 + 0];
         let v0y = posArray[i * 3 + 1];
@@ -55,9 +57,9 @@ export function meshToTriangles(parentMesh: Object3D, materialIndex: number) {
             vec3(v2x, v2y, v2z),
             materialIndex,
             vec3(n0x, n0y, n0z),
-            uvArray ? uv0 : undefined,
-            uvArray ? uv1 : undefined,
-            uvArray ? uv2 : undefined
+            hasUvs ? uv0 : undefined,
+            hasUvs ? uv1 : undefined,
+            hasUvs ? uv2 : undefined
           )
         );
       }

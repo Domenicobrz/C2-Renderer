@@ -6,9 +6,9 @@ import { Vector2, Vector3 } from 'three';
 export class Triangle {
   public idxRef: number = -1;
   public normal: Vector3;
-  public uv0: Vector2 = new Vector2(0, 0);
-  public uv1: Vector2 = new Vector2(0, 0);
-  public uv2: Vector2 = new Vector2(0, 0);
+  public uv0: Vector2 = new Vector2(-1, -1);
+  public uv1: Vector2 = new Vector2(-1, -1);
+  public uv2: Vector2 = new Vector2(-1, -1);
 
   constructor(
     public v0: Vector3,
@@ -31,9 +31,6 @@ export class Triangle {
     if (uv0) this.uv0 = uv0;
     if (uv1) this.uv1 = uv1;
     if (uv2) this.uv2 = uv2;
-    if (!uv0) this.uv0 = new Vector2(-1, -1);
-    if (!uv1) this.uv1 = new Vector2(-1, -1);
-    if (!uv2) this.uv2 = new Vector2(-1, -1);
   }
 
   setIdxRef(idx: number) {

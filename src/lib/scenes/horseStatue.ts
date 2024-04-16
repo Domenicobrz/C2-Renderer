@@ -25,9 +25,10 @@ export async function horseStatueScene(): Promise<{
   let materials: Material[] = [
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
-    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.125, 0.025),
+    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.25, 0.25),
     new Emissive(new Color(1, 0.7, 0.5), 20),
-    new Diffuse(new Color(0.05, 1, 0.05))
+    new Diffuse(new Color(0.05, 1, 0.05)),
+    new Dielectric(new Color(0.135, 0.4, 0.99).multiplyScalar(3), 0.2, 0.2, 1.6)
   ];
 
   for (let i = 0; i < 5; i++) {
@@ -105,10 +106,10 @@ export async function horseStatueScene(): Promise<{
   let group = gltf.scene.children[0];
 
   group.scale.set(-2.7, 2.7, 2.7);
-  group.position.set(0.3, -4, 0);
+  group.position.set(0.3, -4, 1);
   group.rotation.z = 0.4;
 
-  triangles = [...triangles, ...meshToTriangles(group, 0)];
+  triangles = [...triangles, ...meshToTriangles(group, 5)];
 
   return { triangles, materials };
 }

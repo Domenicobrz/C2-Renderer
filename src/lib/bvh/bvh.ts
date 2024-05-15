@@ -175,7 +175,7 @@ export class BVH {
       }
     });
 
-    // normalize cdf
+    // normalize cdf and pdf values
     cdfToTriangleIndex.forEach((el) => {
       el[0] /= sum;
       el[1] /= sum;

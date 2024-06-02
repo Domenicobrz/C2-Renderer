@@ -13,21 +13,16 @@ import { AABB } from './bvh/aabb';
 import { pc1dConstruct, samplePC1D } from './samplers/PiecewiseConstant1D';
 
 // const func = [
-//   [1, 1, 1, 1],
-//   [1, 1, 1, 1],
-//   [1, 1, 1, 1],
-//   [1, 1, 1, 1]
+//   [1, 1, 1, 10],
+//   [1, 1, 1, 10],
+//   [1, 1, 1, 10],
+//   [1, 1, 1, 10]
 // ];
-// let struct = pc2dConstruct(func, 4, 4, new AABB(new Vector3(0, 0, 0), new Vector3(4, 4, 0)));
+// let struct = pc2dConstruct(func, 4, 4, new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0)));
 // for (let i = 0; i < 10; i++) {
 //   let res = samplePC2D(struct, new Vector2(Math.random(), Math.random()));
 //   console.log(res.pdf, res.offset, res.floatOffset, func[res.offset.y][res.offset.x]);
 // }
-let struct = pc1dConstruct([1, 1, 1, 1], 0, 4);
-for (let i = 0; i < 50; i++) {
-  let res = samplePC1D(struct, Math.random());
-  console.log(res.offset, res.remappedOffset, res.sampledValue, res.du);
-}
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;

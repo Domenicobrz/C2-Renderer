@@ -11,23 +11,12 @@ export class RenderSegment {
   #pipeline: GPURenderPipeline;
 
   #bindGroup0: GPUBindGroup | null = null;
-  #bindGroup1: GPUBindGroup | null = null;
 
   #canvasSize: Vector2 | null;
   #canvasSizeUniformBuffer: GPUBuffer;
 
-  #tileUniformBuffer: GPUBuffer;
-
-  #tileSequence: TileSequence;
-
-  constructor(
-    device: GPUDevice,
-    context: GPUCanvasContext,
-    presentationFormat: GPUTextureFormat,
-    tileSequence: TileSequence
-  ) {
+  constructor(device: GPUDevice, context: GPUCanvasContext, presentationFormat: GPUTextureFormat) {
     this.#canvasSize = null;
-    this.#tileSequence = tileSequence;
 
     this.#context = context;
     this.#device = device;
@@ -44,8 +33,7 @@ export class RenderSegment {
           { visibility: GPUShaderStage.FRAGMENT, type: 'read-only-storage' },
           { visibility: GPUShaderStage.FRAGMENT, type: 'read-only-storage' },
           { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }
-        ]),
-        getBindGroupLayout(device, [{ visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }])
+        ])
       ]
     });
 
@@ -67,16 +55,6 @@ export class RenderSegment {
     this.#canvasSizeUniformBuffer = device.createBuffer({
       size: 2 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-
-    this.#tileUniformBuffer = device.createBuffer({
-      size: 4 * 4,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-
-    this.#bindGroup1 = this.#device.createBindGroup({
-      layout: this.#pipeline.getBindGroupLayout(1),
-      entries: [{ binding: 0, resource: { buffer: this.#tileUniformBuffer } }]
     });
   }
 
@@ -101,23 +79,13 @@ export class RenderSegment {
     });
   }
 
-  updateTile(tile: Tile) {
-    this.#device.queue.writeBuffer(
-      this.#tileUniformBuffer,
-      0,
-      new Uint32Array([tile.x, tile.y, tile.w, tile.h])
-    );
-  }
-
   render() {
-    if (!this.#bindGroup0 || !this.#bindGroup1 || !this.#canvasSize) {
+    if (!this.#bindGroup0 || !this.#canvasSize) {
       throw new Error('undefined render bind group');
     }
 
     if (this.#canvasSize.x === 0 || this.#canvasSize.y === 0)
       throw new Error('canvas size dimensions is 0');
-
-    this.updateTile(this.#tileSequence.getCurrentTile());
 
     // Get the current texture from the canvas context and
     // set it as the texture to render to.
@@ -137,7 +105,6 @@ export class RenderSegment {
     const pass = encoder.beginRenderPass(passDescriptor);
     pass.setPipeline(this.#pipeline);
     pass.setBindGroup(0, this.#bindGroup0);
-    pass.setBindGroup(1, this.#bindGroup1);
     pass.draw(6); // call our vertex shader 6 times
     pass.end();
 

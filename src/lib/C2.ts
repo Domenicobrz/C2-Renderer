@@ -1,4 +1,4 @@
-import { Color, Matrix4, Vector2, Vector3 } from 'three';
+import { Vector3 } from 'three';
 import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
@@ -55,7 +55,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   computeSegment.setDebugPixelTarget(480, 390);
   let { triangles, materials } = await createScene();
   computeSegment.updateScene(triangles, materials);
-  renderSegment = new RenderSegment(device, context, presentationFormat, tileSequence);
+  renderSegment = new RenderSegment(device, context, presentationFormat);
 
   const resizeObserver = new ResizeObserver((entries) => {
     onCanvasResize(canvas, device, computeSegment, renderSegment);

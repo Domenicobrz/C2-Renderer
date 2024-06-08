@@ -1,18 +1,12 @@
-import { TileSequence } from '$lib/tile';
-
 export const renderShader = /* wgsl */ `
 struct VSOutput {
   @builtin(position) position: vec4f,
   @location(0) texcoord: vec2f,
 };
 
-${TileSequence.shaderPart()}
-
 @group(0) @binding(0) var<storage> radianceInput: array<vec3f>;
 @group(0) @binding(1) var<storage> samplesCount: array<u32>;
 @group(0) @binding(2) var<uniform> canvasSize: vec2u;
-
-@group(1) @binding(1) var<uniform> tile: Tile;
 
 const toneMappingExposure = 1.0;
 

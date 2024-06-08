@@ -1,4 +1,4 @@
-import { Vector3 } from 'three';
+import { Vector2, Vector3 } from 'three';
 import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
@@ -11,6 +11,7 @@ import { TileSequence } from './tile';
 import { pc2dConstruct, samplePC2D } from './samplers/PiecewiseConstant2D';
 import { AABB } from './bvh/aabb';
 import { pc1dConstruct, samplePC1D } from './samplers/PiecewiseConstant1D';
+import { RenderTextureSegment } from './segment/renderTextureSegment';
 
 // const func = [
 //   [1, 1, 1, 10],
@@ -26,6 +27,7 @@ import { pc1dConstruct, samplePC1D } from './samplers/PiecewiseConstant1D';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
+let renderTextureSegment: RenderTextureSegment;
 
 export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   // WebGPU typescript types are loaded from an external library:
@@ -34,7 +36,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   const adapter = await navigator.gpu?.requestAdapter();
   const canTimestamp = adapter?.features.has('timestamp-query');
   const device = await (adapter as any)?.requestDevice({
-    requiredFeatures: [...(canTimestamp ? ['timestamp-query'] : [])]
+    requiredFeatures: [...(canTimestamp ? ['timestamp-query'] : []), 'float32-filterable']
   });
   const context = canvas.getContext('webgpu');
 
@@ -56,6 +58,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   let { triangles, materials } = await createScene();
   computeSegment.updateScene(triangles, materials);
   renderSegment = new RenderSegment(device, context, presentationFormat);
+  renderTextureSegment = new RenderTextureSegment(device, context, presentationFormat);
 
   const resizeObserver = new ResizeObserver((entries) => {
     onCanvasResize(canvas, device, computeSegment, renderSegment);
@@ -137,5 +140,3 @@ async function renderLoop() {
 
   requestAnimationFrame(renderLoop);
 }
-
-export function loadModel(path: string): void {}

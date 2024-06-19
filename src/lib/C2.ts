@@ -12,7 +12,7 @@ import { pc2dConstruct, samplePC2D } from './samplers/PiecewiseConstant2D';
 import { AABB } from './bvh/aabb';
 import { pc1dConstruct, samplePC1D } from './samplers/PiecewiseConstant1D';
 import { RenderTextureSegment } from './segment/renderTextureSegment';
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
+import { Envmap } from './envmap/envmap';
 
 // const func = [
 //   [1, 1, 1, 10],
@@ -153,24 +153,11 @@ async function renderLoop() {
 // REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
 // REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
 export async function onClick() {
-  let hdrTexture = await new RGBELoader()
-    .setDataType(FloatType)
-    .loadAsync('scene-assets/envmaps/envmap.hdr');
-  console.log(hdrTexture);
+  let envmap = new Envmap();
+  await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
+  let envmapData = envmap.getData();
 
   // texture data has 4 float elements for each pixel (rgba)
-
-  renderTextureSegment.setTextureData(
-    // new Float32Array([
-    //   0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1,
-
-    //   0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1,
-
-    //   0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1
-    // ]),
-    // new Vector2(3, 3)
-    hdrTexture.source.data.data,
-    new Vector2(hdrTexture.source.data.width, hdrTexture.source.data.height)
-  );
+  renderTextureSegment.setTextureData(envmapData.data, envmapData.size);
   renderTextureSegment.render();
 }

@@ -7,3 +7,7 @@ export function vec2(x: number, y: number) {
 export function vec3(x: number, y: number, z: number) {
   return new Vector3(x, y, z);
 }
+
+export function copySign(mag: number, sign: number) {
+  return mag * (sign < 0 ? -1 : 1);
+}

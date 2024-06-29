@@ -157,7 +157,6 @@ export async function onClick() {
   await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
   let envmapData = envmap.getData();
 
-  // texture data has 4 float elements for each pixel (rgba)
   renderTextureSegment.setTextureData(envmapData.data, envmapData.size);
   renderTextureSegment.render();
 }

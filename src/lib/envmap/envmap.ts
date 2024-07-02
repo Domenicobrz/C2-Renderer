@@ -18,7 +18,8 @@ export class Envmap {
 
     let equirectData = hdrTexture.source.data.data;
     let equirectSize = new Vector2(hdrTexture.source.data.width, hdrTexture.source.data.height);
-    let data = [];
+    let radianceData = [];
+    let luminanceData = [];
 
     // I primi pixel sono in alto! gli ultimi sono in basso
     // ora facciamo un'altra cosa, cercheremo di creare la texture
@@ -32,33 +33,40 @@ export class Envmap {
         let u = j / envmapSize + hstep;
         let v = i / envmapSize + hstep;
 
-        // usando EqualAreaSquareToSphere
-        // trasformiamo uv in direction xyz e prendiamo il pixel di hdrTexture
-        // corrispondente a quella direzione.
         // in teoria, dovremmo fare anche tutta quella cosa sull'interpolazione etc.
         let dir = this.equalAreaSquareToSphere(new Vector2(u, v));
         dir.normalize();
 
-        // this is the version in the book, however I think they consider z to be going up, so
-        // I replaced the z with y, and also had to negate the z to get the same result, not sure why
+        // this is the original algorithm to convert from cartesian to polar,
         // let euv = new Vector2(Math.atan2(dir.z, dir.x), Math.asin(dir.y));
-        let euv = new Vector2(Math.atan2(dir.y, dir.x), Math.asin(-dir.z));
+        // however I think pbrt considers z to be going up, so
+        // I replaced the z with y
+        let euv = new Vector2(Math.atan2(dir.y, dir.x), Math.asin(dir.z));
         euv.multiply(new Vector2(1 / (Math.PI * 2), 1 / Math.PI));
         euv.addScalar(0.5);
+
+        // I think this is necessary because the equirect image is stored in memory
+        // in such an order that requires a final negation of the y value
+        euv.y = 1 - euv.y;
 
         let startIndex =
           Math.floor(euv.x * equirectSize.x) + Math.floor(euv.y * equirectSize.y) * equirectSize.x;
 
-        data.push(
-          equirectData[startIndex * 4 + 0],
-          equirectData[startIndex * 4 + 1],
-          equirectData[startIndex * 4 + 2],
-          1
-        );
+        let r = equirectData[startIndex * 4 + 0];
+        let g = equirectData[startIndex * 4 + 1];
+        let b = equirectData[startIndex * 4 + 2];
+
+        radianceData.push(r, g, b, 1);
+
+        // https://stackoverflow.com/a/56678483/7379920
+        // step 3 from the question, we care about real luminance and not perceived luminance
+        // the rgb values provided are already linearized
+        let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        luminanceData.push(luminance);
       }
     }
 
-    this.#data = new Float32Array(data);
+    this.#data = new Float32Array(radianceData);
     this.#size = new Vector2(envmapSize, envmapSize);
   }
 

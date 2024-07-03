@@ -1,3 +1,5 @@
+import { AABB } from '$lib/bvh/aabb';
+import { pc2dConstruct, samplePC2D } from '$lib/samplers/PiecewiseConstant2D';
 import { copySign } from '$lib/utils/math';
 import { FloatType, Vector2, Vector3 } from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
@@ -19,14 +21,16 @@ export class Envmap {
     let equirectData = hdrTexture.source.data.data;
     let equirectSize = new Vector2(hdrTexture.source.data.width, hdrTexture.source.data.height);
     let radianceData = [];
-    let luminanceData = [];
+    let luminanceData: number[][] = [];
+    let thresholdedLuminanceData: number[][] = [];
+    let luminanceAverage = 0;
 
     // I primi pixel sono in alto! gli ultimi sono in basso
     // ora facciamo un'altra cosa, cercheremo di creare la texture
     // con quel tipo di envmap. Per prima cosa, dobbiamo iterare su
     // size x x size y della envmap texture, e per ognuno di quei pixel,
     // cercheremo la 3d direction corrispondente, e prenderemo il pixel della hdr texture sopra
-    let envmapSize = 600;
+    let envmapSize = 100;
     for (let i = 0; i < envmapSize; i++) {
       for (let j = 0; j < envmapSize; j++) {
         let hstep = 1 / (envmapSize * 2);
@@ -62,8 +66,44 @@ export class Envmap {
         // step 3 from the question, we care about real luminance and not perceived luminance
         // the rgb values provided are already linearized
         let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-        luminanceData.push(luminance);
+        luminanceAverage += luminance;
+
+        if (j === 0) luminanceData.push([]);
+        luminanceData[i].push(luminance);
       }
+    }
+    luminanceAverage /= envmapSize * envmapSize;
+
+    // TODO: ALSO CREATE THRESHOLDED LUMINANCE DATA
+    for (let i = 0; i < envmapSize; i++) {
+      for (let j = 0; j < envmapSize; j++) {
+        if (j === 0) thresholdedLuminanceData.push([]);
+        thresholdedLuminanceData[i].push(Math.max(luminanceData[i][j] - luminanceAverage, 0));
+      }
+    }
+
+    // create pc2d and sample it a few times just to test it
+    let distribution = pc2dConstruct(
+      luminanceData,
+      envmapSize,
+      envmapSize,
+      new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0))
+    );
+    let compensatedDistribution = pc2dConstruct(
+      thresholdedLuminanceData,
+      envmapSize,
+      envmapSize,
+      new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0))
+    );
+    for (let i = 0; i < 30; i++) {
+      let res = samplePC2D(distribution, new Vector2(Math.random(), Math.random()));
+      // console.log(res.pdf, res.offset, res.floatOffset, luminanceData[res.offset.y][res.offset.x]);
+
+      // mark as red sampled pixels
+      let startIndex = res.offset.x + res.offset.y * envmapSize;
+      radianceData[startIndex * 4 + 0] = 1;
+      radianceData[startIndex * 4 + 1] = 0;
+      radianceData[startIndex * 4 + 2] = 0;
     }
 
     this.#data = new Float32Array(radianceData);

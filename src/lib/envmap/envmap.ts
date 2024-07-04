@@ -1,5 +1,5 @@
 import { AABB } from '$lib/bvh/aabb';
-import { pc2dConstruct, samplePC2D } from '$lib/samplers/PiecewiseConstant2D';
+import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import { copySign } from '$lib/utils/math';
 import { FloatType, Vector2, Vector3 } from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
@@ -83,20 +83,20 @@ export class Envmap {
     }
 
     // create pc2d and sample it a few times just to test it
-    let distribution = pc2dConstruct(
+    let distribution = new PC2D(
       luminanceData,
       envmapSize,
       envmapSize,
       new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0))
     );
-    let compensatedDistribution = pc2dConstruct(
+    let compensatedDistribution = new PC2D(
       thresholdedLuminanceData,
       envmapSize,
       envmapSize,
       new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0))
     );
-    for (let i = 0; i < 30; i++) {
-      let res = samplePC2D(distribution, new Vector2(Math.random(), Math.random()));
+    for (let i = 0; i < 300; i++) {
+      let res = distribution.samplePC2D(new Vector2(Math.random(), Math.random()));
       // console.log(res.pdf, res.offset, res.floatOffset, luminanceData[res.offset.y][res.offset.x]);
 
       // mark as red sampled pixels

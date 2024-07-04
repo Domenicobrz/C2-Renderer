@@ -1,4 +1,4 @@
-import { FloatType, Vector2, Vector3 } from 'three';
+import { Vector3 } from 'three';
 import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
@@ -8,23 +8,8 @@ import { samplesInfo } from '../routes/stores/main';
 import { createScene } from './createScene';
 import { Config } from './config';
 import { TileSequence } from './tile';
-import { pc2dConstruct, samplePC2D } from './samplers/PiecewiseConstant2D';
-import { AABB } from './bvh/aabb';
-import { pc1dConstruct, samplePC1D } from './samplers/PiecewiseConstant1D';
 import { RenderTextureSegment } from './segment/renderTextureSegment';
 import { Envmap } from './envmap/envmap';
-
-// const func = [
-//   [1, 1, 1, 10],
-//   [1, 1, 1, 10],
-//   [1, 1, 1, 10],
-//   [1, 1, 1, 10]
-// ];
-// let struct = pc2dConstruct(func, 4, 4, new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0)));
-// for (let i = 0; i < 10; i++) {
-//   let res = samplePC2D(struct, new Vector2(Math.random(), Math.random()));
-//   console.log(res.pdf, res.offset, res.floatOffset, func[res.offset.y][res.offset.x]);
-// }
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;

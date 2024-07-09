@@ -1,6 +1,6 @@
 import { AABB } from '$lib/bvh/aabb';
 import { BVH } from '$lib/bvh/bvh';
-import { Config } from '$lib/config';
+import { configManager } from '$lib/config';
 import { Diffuse } from '$lib/materials/diffuse';
 import { Emissive } from '$lib/materials/emissive';
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
@@ -13,16 +13,18 @@ import { pbrtMathUtilsPart } from './parts/pbrtMathUtils';
 import { randomPart } from './parts/random';
 import { CookTorrance } from '$lib/materials/cookTorrance';
 import { Dielectric } from '$lib/materials/dielectric';
+import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 
-// https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html
-
-export const computeShader = /* wgsl */ `
+export function getComputeShader() {
+  return /* wgsl */ `
+// keep in mind that configManager.shaderPart() might return different shader code if the
+// internal shader configs have changed
+${configManager.shaderPart()}
 // at the moment these have to be imported with this specific order
 ${randomPart}
 ${mathUtilsPart}
 ${pbrtMathUtilsPart}
 ${TileSequence.shaderPart()}
-${Config.shaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
 ${Emissive.shaderShadeEmissive()}
@@ -46,6 +48,8 @@ ${AABB.shaderStruct()}
 ${AABB.shaderIntersect()}
 ${BVH.shaderStruct()}
 ${BVH.shaderIntersect()}
+${PC2D.shaderStruct()}
+${PC2D.shaderMethods()}
 
 @group(0) @binding(0) var<storage, read_write> radianceOutput: array<vec3f>;
 @group(0) @binding(1) var<storage, read_write> samplesCount: array<u32>;
@@ -66,6 +70,7 @@ ${BVH.shaderIntersect()}
 @group(3) @binding(1) var<storage> materialsData: array<f32>;
 @group(3) @binding(2) var<storage> bvhData: array<BVHNode>;
 @group(3) @binding(3) var<storage> lightsCDFData: array<LightCDFEntry>;
+@group(3) @binding(4) var<storage> envmapPC2D: PC2D;
 
 @compute @workgroup_size(8, 8) fn computeSomething(
   @builtin(global_invocation_id) gid: vec3<u32>,
@@ -116,3 +121,4 @@ ${BVH.shaderIntersect()}
   }
 }
 `;
+}

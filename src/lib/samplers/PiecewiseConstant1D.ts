@@ -1,12 +1,5 @@
 import { lerp } from '$lib/utils/math';
 
-export type PC1DSample = {
-  offset: number;
-  pdf: number;
-  remappedOffset: number;
-  sampledValue: number;
-};
-
 export class PC1D {
   public func: number[];
   public absFunc: number[];
@@ -114,7 +107,7 @@ export class PC1D {
     return fidx;
   }
 
-  samplePC1D(u: number): PC1DSample {
+  samplePC1D(u: number) {
     let { cdf, absFunc, funcInt, func, min, max } = this;
     let o = this.findCDFIndex(cdf, u);
 

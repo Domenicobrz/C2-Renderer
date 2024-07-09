@@ -6,7 +6,6 @@ import { Orbit } from './controls/Orbit';
 import { onKey } from './utils/keys';
 import { samplesInfo } from '../routes/stores/main';
 import { createScene } from './createScene';
-import { Config } from './config';
 import { TileSequence } from './tile';
 import { RenderTextureSegment } from './segment/renderTextureSegment';
 import { Envmap } from './envmap/envmap';
@@ -39,10 +38,11 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   // *************** compute & render segments ****************
   const tileSequence = new TileSequence();
   computeSegment = new ComputeSegment(device, tileSequence);
-  // computeSegment.setDebugPixelTarget(280, 385);
-  computeSegment.setDebugPixelTarget(480, 390);
   let { triangles, materials } = await createScene();
   computeSegment.updateScene(triangles, materials);
+  // computeSegment.setDebugPixelTarget(280, 385);
+  computeSegment.setDebugPixelTarget(480, 390);
+
   renderSegment = new RenderSegment(device, context, presentationFormat);
   renderTextureSegment = new RenderTextureSegment(device, context, presentationFormat);
 
@@ -60,12 +60,6 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   });
   // will fire the 'change' event
   orbit.set(new Vector3(0, 1, -10), new Vector3(0, 0, 0));
-
-  const config = new Config();
-  config.e.addEventListener('config-update', () => {
-    computeSegment.updateConfig(config);
-  });
-  computeSegment.updateConfig(config);
 
   onKey('l', () => computeSegment.logDebugResult());
   renderLoop();

@@ -1,23 +1,25 @@
 import { BVH } from '$lib/bvh/bvh';
 import type { Material } from '$lib/materials/material';
 import type { Triangle } from '$lib/primitives/triangle';
-import { computeShader } from '$lib/shaders/computeShader';
-import { vec2 } from '$lib/utils/math';
+import { getComputeShader } from '$lib/shaders/computeShader';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import type { Matrix4, Vector2, Vector3 } from 'three';
 import { samplesInfo } from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
 import { HaltonSampler } from '$lib/samplers/Halton';
-import { Config } from '$lib/config';
 import type { TileSequence, Tile } from '$lib/tile';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
+import { configManager } from '$lib/config';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
 
   // private fields
   #device: GPUDevice;
-  #pipeline: GPUComputePipeline;
+  #pipeline: GPUComputePipeline | null = null;
+  #bindGroupLayouts: GPUBindGroupLayout[];
+  #layout: GPUPipelineLayout;
+  #configManager = configManager;
 
   #bindGroup0: GPUBindGroup | null = null;
   #bindGroup1: GPUBindGroup | null = null;
@@ -48,6 +50,8 @@ export class ComputeSegment {
 
   #tileSequence: TileSequence;
 
+  #requestShaderCompilation = false;
+
   constructor(device: GPUDevice, tileSequence: TileSequence) {
     this.#device = device;
     this.#tileSequence = tileSequence;
@@ -56,44 +60,31 @@ export class ComputeSegment {
 
     this.passPerformance = new ComputePassPerformance(device);
 
-    const computeModule = device.createShaderModule({
-      label: 'compute module',
-      code: computeShader
-    });
-
-    const pipelineLayout = device.createPipelineLayout({
-      bindGroupLayouts: [
-        getBindGroupLayout(device, [
-          { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
-          { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
-          { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
-        ]),
-        getBindGroupLayout(device, [
-          { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
-          { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
-          { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
-          { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
-        ]),
-        getBindGroupLayout(device, [
-          { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
-          { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
-        ]),
-        getBindGroupLayout(device, [
-          { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
-          { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
-          { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
-          { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' }
-        ])
-      ]
-    });
-
-    this.#pipeline = device.createComputePipeline({
-      label: 'compute pipeline',
-      layout: pipelineLayout,
-      compute: {
-        module: computeModule,
-        entryPoint: 'computeSomething'
-      }
+    this.#bindGroupLayouts = [
+      getBindGroupLayout(device, [
+        { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
+        { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
+        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
+      ]),
+      getBindGroupLayout(device, [
+        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
+        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
+        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
+        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
+      ]),
+      getBindGroupLayout(device, [
+        { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
+        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
+      ]),
+      getBindGroupLayout(device, [
+        { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
+        { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
+        { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
+        { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' }
+      ])
+    ];
+    this.#layout = device.createPipelineLayout({
+      bindGroupLayouts: this.#bindGroupLayouts
     });
 
     // create a typedarray to hold the values for the uniforms in JavaScript
@@ -113,7 +104,7 @@ export class ComputeSegment {
     });
 
     this.#configUniformBuffer = device.createBuffer({
-      size: Config.bufferSize,
+      size: configManager.bufferSize,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
@@ -127,6 +118,13 @@ export class ComputeSegment {
     this.#debugPixelTargetBuffer = device.createBuffer({ size: 0, usage: 1 });
     this.#debugReadBuffer = device.createBuffer({ size: 0, usage: 1 });
     this.setDebugPixelTarget(0, 0);
+
+    configManager.e.addEventListener('config-update', () => {
+      this.updateConfig();
+    });
+    this.updateConfig();
+
+    this.#requestShaderCompilation = true;
   }
 
   setDebugPixelTarget(x: number, y: number) {
@@ -155,7 +153,7 @@ export class ComputeSegment {
 
     this.#bindGroup2 = this.#device.createBindGroup({
       label: 'compute bindgroup - debug buffer',
-      layout: this.#pipeline.getBindGroupLayout(2),
+      layout: this.#bindGroupLayouts[2],
       entries: [
         { binding: 0, resource: { buffer: this.#debugBuffer } },
         { binding: 1, resource: { buffer: this.#debugPixelTargetBuffer } }
@@ -214,7 +212,7 @@ export class ComputeSegment {
     // is a new buffer
     this.#bindGroup1 = this.#device.createBindGroup({
       label: 'compute bindgroup - camera struct',
-      layout: this.#pipeline.getBindGroupLayout(1),
+      layout: this.#bindGroupLayouts[1],
       entries: [
         { binding: 0, resource: { buffer: this.#cameraUniformBuffer } },
         { binding: 1, resource: { buffer: this.#cameraSampleUniformBuffer } },
@@ -224,10 +222,14 @@ export class ComputeSegment {
     });
   }
 
-  updateConfig(config: Config) {
+  updateConfig() {
     this.resetSamplesAndTile();
 
-    this.#device.queue.writeBuffer(this.#configUniformBuffer, 0, config.getOptionsBuffer());
+    this.#device.queue.writeBuffer(
+      this.#configUniformBuffer,
+      0,
+      this.#configManager.getOptionsBuffer()
+    );
   }
 
   updateTile(tile: Tile) {
@@ -240,6 +242,8 @@ export class ComputeSegment {
 
   updateScene(triangles: Triangle[], materials: Material[]) {
     this.resetSamplesAndTile();
+    // if we have a new envmap, we might have to require a shader re-compilation
+    this.#requestShaderCompilation = true;
 
     const bvh = new BVH(triangles, materials);
     let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
@@ -277,7 +281,7 @@ export class ComputeSegment {
     // we need to re-create the bindgroup
     this.#bindGroup3 = this.#device.createBindGroup({
       label: 'compute bindgroup - scene data',
-      layout: this.#pipeline.getBindGroupLayout(3),
+      layout: this.#bindGroupLayouts[3],
       entries: [
         { binding: 0, resource: { buffer: this.#trianglesBuffer } },
         { binding: 1, resource: { buffer: this.#materialsBuffer } },
@@ -314,7 +318,7 @@ export class ComputeSegment {
     // is a new buffer
     this.#bindGroup0 = this.#device.createBindGroup({
       label: 'compute bindgroup',
-      layout: this.#pipeline.getBindGroupLayout(0),
+      layout: this.#bindGroupLayouts[0],
       entries: [
         { binding: 0, resource: { buffer: workBuffer } },
         { binding: 1, resource: { buffer: samplesCountBuffer } },
@@ -350,15 +354,37 @@ export class ComputeSegment {
     }
   }
 
+  createPipeline() {
+    const computeModule = this.#device.createShaderModule({
+      label: 'compute module',
+      code: getComputeShader()
+    });
+
+    this.#pipeline = this.#device.createComputePipeline({
+      label: 'compute pipeline',
+      layout: this.#layout,
+      compute: {
+        module: computeModule,
+        entryPoint: 'computeSomething'
+      }
+    });
+  }
+
   compute() {
+    if (this.#requestShaderCompilation) {
+      this.createPipeline();
+      this.#requestShaderCompilation = false;
+    }
+
     if (
+      !this.#pipeline ||
       !this.#bindGroup0 ||
       !this.#bindGroup1 ||
       !this.#bindGroup2 ||
       !this.#bindGroup3 ||
       !this.#canvasSize
     ) {
-      throw new Error('undefined bind groups or canvasSize');
+      throw new Error('undefined bind groups / pipeline / canvasSize');
     }
 
     if (this.#canvasSize.x === 0 || this.#canvasSize.y === 0)

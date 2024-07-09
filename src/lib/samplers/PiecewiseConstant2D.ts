@@ -3,31 +3,25 @@ import { PC1D } from './PiecewiseConstant1D';
 import type { AABB } from '$lib/bvh/aabb';
 import { boundsOffset2D, clamp } from '$lib/utils/math';
 
-export type PC2DData = {
-  pConditionalV: PC1D[];
-  pMarginal: PC1D;
-  domain: AABB;
-};
-
 export class PC2D {
   public pConditionalV: PC1D[];
   public pMarginal: PC1D;
   public domain: AABB;
 
-  constructor(func: number[][], nu: number, nv: number, domain: AABB) {
+  constructor(func: number[][], sizeX: number, sizeY: number, domain: AABB) {
     let linearMemoryFunc: number[] = func.flat(1);
 
     let pConditionalV: PC1D[] = [];
     let pMarginal: PC1D;
 
-    for (let v = 0; v < nv; v++) {
+    for (let v = 0; v < sizeY; v++) {
       pConditionalV.push(
-        new PC1D(linearMemoryFunc.slice(v * nu, v * nu + nu), domain.min.x, domain.max.x)
+        new PC1D(linearMemoryFunc.slice(v * sizeX, v * sizeX + sizeX), domain.min.x, domain.max.x)
       );
     }
 
     let marginalFunc: number[] = [];
-    for (let v = 0; v < nv; ++v) {
+    for (let v = 0; v < sizeY; ++v) {
       marginalFunc.push(pConditionalV[v].funcInt);
     }
     pMarginal = new PC1D(marginalFunc, domain.min.y, domain.max.y);
@@ -67,5 +61,21 @@ export class PC2D {
       pMarginal.func.length - 1
     );
     return pConditionalV[iv].func[iu] / pMarginal.funcInt;
+  }
+
+  static shaderStruct(): string {
+    return /* wgsl */ `
+      struct PC2D {
+        domain: AABB,
+        size: vec2i,
+        data: array<f32>,
+      }
+    `;
+  }
+
+  static shaderMethods(): string {
+    return /* wgsl */ `
+      
+    `;
   }
 }

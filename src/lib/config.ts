@@ -13,9 +13,16 @@ export type ConfigOptions = {
   USE_POWER_HEURISTIC: 0 | 1;
 };
 
-export class Config {
+type ShaderConfig = {
+  PLACEHOLDER_VALUE: boolean;
+};
+
+class ConfigManager {
   private options: ConfigOptions;
+  private shaderConfig: ShaderConfig;
+
   public e: EventHandler;
+  public bufferSize = 8;
 
   constructor() {
     this.options = get(configOptions);
@@ -26,14 +33,17 @@ export class Config {
       this.options = value;
       this.e.fireEvent('config-update');
     });
+
+    this.shaderConfig = { PLACEHOLDER_VALUE: false };
   }
 
-  static bufferSize = 8;
   getOptionsBuffer(): ArrayBuffer {
     return new Uint32Array([this.options.MIS_TYPE, this.options.USE_POWER_HEURISTIC]);
   }
 
-  static shaderPart(): string {
+  // might return a different string with each invocation if internal shader configurations
+  // have changed
+  shaderPart(): string {
     return /* wgsl */ `
 
     const BRDF_ONLY: u32 = ${MIS_TYPE.BRDF_ONLY};
@@ -45,6 +55,18 @@ export class Config {
       USE_POWER_HEURISTIC: u32,
     }
 
+    struct ShaderConfig {
+      PLACEHOLDER_VALUE: bool,
+    }
+    // this object, or the shaderConfig object inside the singleton instance of ConfigManager,
+    // can be used to customize / change all the shader-parts returned by the rest of the 
+    // classes of C2
+    const shaderConfig = ShaderConfig(
+      ${this.shaderConfig.PLACEHOLDER_VALUE},
+    );
     `;
   }
 }
+
+// exporting singleton since it's referencing the svelte store value for the config
+export const configManager = new ConfigManager();

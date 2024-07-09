@@ -1,5 +1,5 @@
 import { Color, Vector3 } from 'three';
-import { Diffuse } from './../materials/diffuse';
+import { Diffuse } from '../materials/diffuse';
 import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';
 import { Triangle } from './../primitives/triangle';

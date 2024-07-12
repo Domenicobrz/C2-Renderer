@@ -1,3 +1,5 @@
+import type { C2Scene } from '$lib/createScene';
+import { Envmap } from '$lib/envmap/envmap';
 import { Emissive } from '$lib/materials/emissive';
 import type { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
@@ -12,7 +14,9 @@ export class BVH {
   public root: Node;
   public bvhFlatArray: Node[];
 
-  constructor(public triangles: Triangle[], public materials: Material[]) {
+  constructor(public scene: C2Scene) {
+    let triangles = scene.triangles;
+
     if (triangles.length > 2147483648) {
       throw new Error(
         'Exceeded max primitives count, the webGPU primitives array holds i32 indexes'
@@ -107,6 +111,9 @@ export class BVH {
     const BVHBufferDataByteSize = structSize * this.bvhFlatArray.length;
     const BVHBufferData = new ArrayBuffer(BVHBufferDataByteSize);
 
+    let triangles = this.scene.triangles;
+    let materials = this.scene.materials;
+
     this.bvhFlatArray.forEach((node, ni) => {
       const aabbMax = node.nodeAABB.max;
       const aabbMin = node.nodeAABB.min;
@@ -146,18 +153,18 @@ export class BVH {
     });
 
     const materialOffsetsByIndex: number[] = [];
-    for (let i = 0; i < this.materials.length; i++) {
+    for (let i = 0; i < materials.length; i++) {
       if (i === 0) {
         materialOffsetsByIndex.push(0);
       } else {
         let prevMax = materialOffsetsByIndex[i - 1];
-        let prevMat = this.materials[i - 1];
+        let prevMat = materials[i - 1];
         materialOffsetsByIndex.push(prevMax + prevMat.offsetCount);
       }
     }
 
     return {
-      ...Triangle.getBufferData(this.triangles, materialOffsetsByIndex),
+      ...Triangle.getBufferData(triangles, materialOffsetsByIndex),
       BVHBufferData,
       BVHBufferDataByteSize
     };
@@ -167,8 +174,11 @@ export class BVH {
     let sum = 0;
     let cdfToTriangleIndex: number[][] = [];
 
-    this.triangles.forEach((t) => {
-      let material = this.materials[t.materialIndex];
+    let triangles = this.scene.triangles;
+    let materials = this.scene.materials;
+
+    triangles.forEach((t) => {
+      let material = materials[t.materialIndex];
       if (material instanceof Emissive) {
         cdfToTriangleIndex.push([sum, t.getLuminance(material), t.idxRef]);
         sum += t.getLuminance(material);
@@ -222,6 +232,7 @@ export class BVH {
       struct LightCDFEntry {
         cdf: f32,
         pdf: f32,
+        // -2 indicates an envmap (we'll reserve -1 for null or something similiar)
         triangleIndex: u32,
       }
     `;

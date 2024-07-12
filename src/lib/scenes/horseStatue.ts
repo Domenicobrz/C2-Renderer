@@ -9,6 +9,7 @@ import { CookTorrance } from '$lib/materials/cookTorrance';
 import { Dielectric } from '$lib/materials/dielectric';
 import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import type { C2Scene } from '$lib/createScene';
 
 random.use('test-string' as unknown as RNG);
 // random.use(Math.random() as unknown as RNG);
@@ -17,10 +18,7 @@ let nr = function () {
   return r() * 2 - 1;
 };
 
-export async function horseStatueScene(): Promise<{
-  triangles: Triangle[];
-  materials: Material[];
-}> {
+export async function horseStatueScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
   let materials: Material[] = [
     new Diffuse(new Color(0.95, 0.95, 0.95)),

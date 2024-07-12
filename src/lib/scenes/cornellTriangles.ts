@@ -5,6 +5,7 @@ import type { Material } from './../materials/material';
 import { Triangle } from './../primitives/triangle';
 import { TorranceSparrow } from './../materials/torranceSparrow';
 import random, { RNG } from 'random';
+import type { C2Scene } from '$lib/createScene';
 
 random.use('test-string' as unknown as RNG);
 // random.use(Math.random() as unknown as RNG);
@@ -13,7 +14,7 @@ let nr = function () {
   return r() * 2 - 1;
 };
 
-export function cornellTrianglesScene(): { triangles: Triangle[]; materials: Material[] } {
+export function cornellTrianglesScene(): C2Scene {
   let triangles: Triangle[] = [];
   let materials: Material[] = [
     new Diffuse(new Color(0.95, 0.95, 0.95)),

@@ -8,11 +8,9 @@ import random, { RNG } from 'random';
 import { CookTorrance } from '$lib/materials/cookTorrance';
 import { Dielectric } from '$lib/materials/dielectric';
 import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
+import type { C2Scene } from '$lib/createScene';
 
-export async function cornellSphereScene(): Promise<{
-  triangles: Triangle[];
-  materials: Material[];
-}> {
+export async function cornellSphereScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
   let materials: Material[] = [
     new Diffuse(new Color(0.95, 0.95, 0.95)),

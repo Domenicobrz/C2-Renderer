@@ -12,6 +12,7 @@ import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 import { configManager } from '$lib/config';
 import { AABB } from '$lib/bvh/aabb';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
+import type { C2Scene } from '$lib/createScene';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -244,18 +245,18 @@ export class ComputeSegment {
     );
   }
 
-  updateScene(triangles: Triangle[], materials: Material[]) {
+  updateScene(scene: C2Scene) {
     this.resetSamplesAndTile();
     // if we have a new envmap, we might have to require a shader re-compilation
     this.#requestShaderCompilation = true;
 
-    const bvh = new BVH(triangles, materials);
+    const bvh = new BVH(scene);
     let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
       bvh.getBufferData();
 
     let { LightsCDFBufferData, LightsCDFBufferDataByteSize } = bvh.getLightsCDFBufferData();
 
-    let materialsData = new Float32Array(materials.map((mat) => mat.getFloatsArray()).flat());
+    let materialsData = new Float32Array(scene.materials.map((mat) => mat.getFloatsArray()).flat());
 
     let testDistribution = new PC2D(
       [
@@ -267,7 +268,6 @@ export class ComputeSegment {
       3,
       new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0))
     );
-    console.log(testDistribution.pMarginal);
     let testDistributionData = testDistribution.getBufferData();
 
     this.#trianglesBuffer = this.#device.createBuffer({

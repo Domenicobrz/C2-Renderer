@@ -3,8 +3,9 @@ import { Diffuse } from '../materials/diffuse';
 import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';
 import { Triangle } from './../primitives/triangle';
+import type { C2Scene } from '$lib/createScene';
 
-export function misTestScene(): { triangles: Triangle[]; materials: Material[] } {
+export function misTestScene(): C2Scene {
   /*
   
     as of 6/3/2024 this test returns different results depending on which method is being used

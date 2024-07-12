@@ -3,13 +3,15 @@ import type { Material } from '$lib/materials/material';
 import type { Triangle } from '$lib/primitives/triangle';
 import { getComputeShader } from '$lib/shaders/computeShader';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
-import type { Matrix4, Vector2, Vector3 } from 'three';
+import { Matrix4, Vector2, Vector3 } from 'three';
 import { samplesInfo } from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import type { TileSequence, Tile } from '$lib/tile';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 import { configManager } from '$lib/config';
+import { AABB } from '$lib/bvh/aabb';
+import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -43,6 +45,7 @@ export class ComputeSegment {
   #materialsBuffer: GPUBuffer | null = null;
   #bvhBuffer: GPUBuffer | null = null;
   #lightsCDFBuffer: GPUBuffer | null = null;
+  #envmapPC2DBuffer: GPUBuffer | null = null;
 
   #resetSegment: ResetSegment;
 
@@ -77,6 +80,7 @@ export class ComputeSegment {
         { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
       ]),
       getBindGroupLayout(device, [
+        { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
         { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
         { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
         { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
@@ -253,6 +257,19 @@ export class ComputeSegment {
 
     let materialsData = new Float32Array(materials.map((mat) => mat.getFloatsArray()).flat());
 
+    let testDistribution = new PC2D(
+      [
+        [1, 1, 1],
+        [1, 1, 1],
+        [10, 10, 100]
+      ],
+      3,
+      3,
+      new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0))
+    );
+    console.log(testDistribution.pMarginal);
+    let testDistributionData = testDistribution.getBufferData();
+
     this.#trianglesBuffer = this.#device.createBuffer({
       size: trianglesBufferDataByteSize,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
@@ -273,10 +290,16 @@ export class ComputeSegment {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
+    this.#envmapPC2DBuffer = this.#device.createBuffer({
+      size: testDistributionData.byteSize,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+    });
+
     this.#device.queue.writeBuffer(this.#trianglesBuffer, 0, trianglesBufferData);
     this.#device.queue.writeBuffer(this.#materialsBuffer, 0, materialsData);
     this.#device.queue.writeBuffer(this.#bvhBuffer, 0, BVHBufferData);
     this.#device.queue.writeBuffer(this.#lightsCDFBuffer, 0, LightsCDFBufferData);
+    this.#device.queue.writeBuffer(this.#envmapPC2DBuffer, 0, testDistributionData.data);
 
     // we need to re-create the bindgroup
     this.#bindGroup3 = this.#device.createBindGroup({
@@ -286,7 +309,8 @@ export class ComputeSegment {
         { binding: 0, resource: { buffer: this.#trianglesBuffer } },
         { binding: 1, resource: { buffer: this.#materialsBuffer } },
         { binding: 2, resource: { buffer: this.#bvhBuffer } },
-        { binding: 3, resource: { buffer: this.#lightsCDFBuffer } }
+        { binding: 3, resource: { buffer: this.#lightsCDFBuffer } },
+        { binding: 4, resource: { buffer: this.#envmapPC2DBuffer } }
       ]
     });
   }

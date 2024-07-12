@@ -143,4 +143,87 @@ export class PC1D {
     let delta = c - offset;
     return lerp(delta, cdf[offset], cdf[offset + 1]);
   }
+
+  static shaderStruct(): string {
+    return /* wgsl */ `
+      struct PC1DSample {
+        offset: i32,
+        pdf: f32,
+        remappedOffset: f32,
+        sampledValue: f32,
+      }
+    `;
+  }
+
+  static shaderMethods(): string {
+    return /* wgsl */ `
+      fn PC1D_FindCDFIndex(data: ptr<storage, array<f32>>, offset: i32, size: i32, u: f32) -> i32 {
+        var si = offset;
+        var ei = offset + size;
+    
+        var mid = -2;
+        var fidx = -1;
+    
+        while (fidx != mid) {
+          mid = (si + ei) / 2;
+          fidx = mid;
+    
+          let cdfVal = data[mid];
+    
+          if (u > cdfVal) {
+            si = mid;
+            mid = (si + ei) / 2;
+          }
+
+          if (u < cdfVal) {
+            ei = mid;
+            mid = (si + ei) / 2;
+          }
+        }
+    
+        return fidx;
+      }
+
+      fn samplePC1D(
+        data: ptr<storage, array<f32>>, offset: i32, size: i32, u: f32
+      ) -> PC1DSample {
+        // this function is unfortunately somewhat complicated given that "data"
+        // contains an entire structure with multiple arrays, the CPU version 
+        // that is much easier to read is contained inside PiecewiseConstant1D.ts
+
+        let min = data[offset + 0];
+        let max = data[offset + 1];
+        let funcInt = data[offset + 2];
+
+        let func_data_idx = offset + 3;
+        let absFunc_data_idx = offset + 3 + size;
+        let cdf_data_idx = offset + 3 + size * 2;
+
+        let cdf_o = PC1D_FindCDFIndex(data, cdf_data_idx, size, u);
+        let relative_o = cdf_o - cdf_data_idx;
+
+        // // e.g. u == 0.7 and cdf[o] == 0.68
+        var du = u - data[cdf_o];
+        if (data[cdf_o + 1] - data[cdf_o] > 0) {
+          // after that du will be in range [0...1]
+          du /= data[cdf_o + 1] - data[cdf_o];
+        }
+
+        let funcValueAtO = data[func_data_idx + relative_o];
+        let absFuncValueAtO = data[absFunc_data_idx + relative_o];
+    
+        let offs = relative_o;
+        var pdf: f32 = 0;
+        if (funcInt > 0) {
+          pdf = absFuncValueAtO / funcInt; 
+        } else {
+          pdf = 0;
+        }
+        let remappedOffset = Lerp((f32(relative_o) + du) / f32(size), min, max);
+        let sampledValue = funcValueAtO;
+    
+        return PC1DSample(offs, pdf, remappedOffset, sampledValue);
+      }    
+    `;
+  }
 }

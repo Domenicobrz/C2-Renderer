@@ -14,6 +14,7 @@ import { randomPart } from './parts/random';
 import { CookTorrance } from '$lib/materials/cookTorrance';
 import { Dielectric } from '$lib/materials/dielectric';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
+import { PC1D } from '$lib/samplers/PiecewiseConstant1D';
 
 export function getComputeShader() {
   return /* wgsl */ `
@@ -48,6 +49,8 @@ ${AABB.shaderStruct()}
 ${AABB.shaderIntersect()}
 ${BVH.shaderStruct()}
 ${BVH.shaderIntersect()}
+${PC1D.shaderStruct()}
+${PC1D.shaderMethods()}
 ${PC2D.shaderStruct()}
 ${PC2D.shaderMethods()}
 
@@ -110,6 +113,13 @@ ${PC2D.shaderMethods()}
   }
   radianceOutput[idx] += rad;
   samplesCount[idx] += 1;
+
+  let sample = samplePC2D(
+    &envmapPC2D.data, 
+    envmapPC2D.size, 
+    envmapPC2D.domain, 
+    vec2f(0.10, 0.51)
+  );
 
   if (debugPixelTarget.x == tid.x && debugPixelTarget.y == tid.y) {
     debugBuffer[0] = f32(debugPixelTarget.x);

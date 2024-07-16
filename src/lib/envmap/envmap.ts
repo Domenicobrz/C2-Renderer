@@ -33,7 +33,7 @@ export class Envmap {
     // con quel tipo di envmap. Per prima cosa, dobbiamo iterare su
     // size x x size y della envmap texture, e per ognuno di quei pixel,
     // cercheremo la 3d direction corrispondente, e prenderemo il pixel della hdr texture sopra
-    let envmapSize = 100;
+    let envmapSize = 300;
     for (let i = 0; i < envmapSize; i++) {
       for (let j = 0; j < envmapSize; j++) {
         let hstep = 1 / (envmapSize * 2);
@@ -62,6 +62,11 @@ export class Envmap {
         let r = equirectData[startIndex * 4 + 0];
         let g = equirectData[startIndex * 4 + 1];
         let b = equirectData[startIndex * 4 + 2];
+
+        // let uv2 = this.equalAreaSphereToSquare(dir);
+        // let r = uv2.x;
+        // let g = uv2.y;
+        // let b = 0;
 
         radianceData.push(r, g, b, 1);
 
@@ -95,16 +100,16 @@ export class Envmap {
       envmapSize,
       new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0))
     );
-    for (let i = 0; i < 300; i++) {
-      let res = distribution.samplePC2D(new Vector2(Math.random(), Math.random()));
-      // console.log(res.pdf, res.offset, res.floatOffset, luminanceData[res.offset.y][res.offset.x]);
+    // for (let i = 0; i < 300; i++) {
+    //   let res = distribution.samplePC2D(new Vector2(Math.random(), Math.random()));
+    //   // console.log(res.pdf, res.offset, res.floatOffset, luminanceData[res.offset.y][res.offset.x]);
 
-      // mark as red sampled pixels
-      let startIndex = res.offset.x + res.offset.y * envmapSize;
-      radianceData[startIndex * 4 + 0] = 1;
-      radianceData[startIndex * 4 + 1] = 0;
-      radianceData[startIndex * 4 + 2] = 0;
-    }
+    //   // mark as red sampled pixels
+    //   let startIndex = res.offset.x + res.offset.y * envmapSize;
+    //   radianceData[startIndex * 4 + 0] = 1;
+    //   radianceData[startIndex * 4 + 1] = 0;
+    //   radianceData[startIndex * 4 + 2] = 0;
+    // }
 
     this.#data = new Float32Array(radianceData);
     this.#size = new Vector2(envmapSize, envmapSize);
@@ -124,6 +129,63 @@ export class Envmap {
     let sinPhi = copySign(Math.sin(phi), v);
 
     return new Vector3(cosPhi * r * Math.sqrt(2 - r * r), sinPhi * r * Math.sqrt(2 - r * r), z);
+  }
+
+  equalAreaSphereToSquare(d: Vector3): Vector2 {
+    let x = Math.abs(d.x);
+    let y = Math.abs(d.y);
+    let z = Math.abs(d.z);
+
+    // Compute the radius r
+    let r = Math.sqrt(1.0 - z); // r = sqrt(1-|z|)
+
+    // Compute the argument to atan (detect a=0 to avoid div-by-zero)
+    let a = Math.max(x, y);
+    var b = Math.min(x, y);
+    if (a == 0) {
+      b = 0;
+    } else {
+      b = b / a;
+    }
+
+    // Polynomial approximation of atan(x)*2/pi, x=b
+    // Coefficients for 6th degree minimax approximation of atan(x)*2/pi,
+    // x=[0,1].
+    // const t1 = 0.406758566246788489601959989e-5;
+    // const t2 = 0.636226545274016134946890922156;
+    // const t3 = 0.61572017898280213493197203466e-2;
+    // const t4 = -0.247333733281268944196501420480;
+    // const t5 = 0.881770664775316294736387951347e-1;
+    // const t6 = 0.419038818029165735901852432784e-1;
+    // const t7 = -0.251390972343483509333252996350e-1;
+    // let phi = EvaluatePolynomial(b, t1, t2, t3, t4, t5, t6, t7);
+    var phi = (Math.atan(b) * 2) / Math.PI;
+
+    // Extend phi if the input is in the range 45-90 degrees (u<v)
+    if (x < y) {
+      phi = 1 - phi;
+    }
+
+    // Find (u,v) based on (r,phi)
+    var v = phi * r;
+    var u = r - v;
+
+    if (d.z < 0) {
+      // southern hemisphere -> mirror u,v
+      var temp = v;
+      v = u;
+      u = temp;
+
+      u = 1 - u;
+      v = 1 - v;
+    }
+
+    // Move (u,v) to the correct quadrant based on the signs of (x,y)
+    u = copySign(u, d.x);
+    v = copySign(v, d.y);
+
+    // Transform (u,v) from [-1,1] to [0,1]
+    return new Vector2(0.5 * (u + 1), 0.5 * (v + 1));
   }
 
   // should be deleted at some point
@@ -219,9 +281,12 @@ export class Envmap {
     return /* wgsl */ `
       // dir needs to be normalized 
       fn envEqualAreaSphereToSquare(dir: vec3f) -> vec2f {
-        let x = abs(dir.x);
-        let y = abs(dir.y);
-        let z = abs(dir.z);
+        // swapping z with y since pbrt uses z as y
+        let d = vec3f(dir.x, dir.z, dir.y);
+        
+        let x = abs(d.x);
+        let y = abs(d.y);
+        let z = abs(d.z);
 
         // Compute the radius r
         let r = sqrt(1.0 - z);  // r = sqrt(1-|z|)
@@ -246,7 +311,7 @@ export class Envmap {
         // const t6 = 0.419038818029165735901852432784e-1;
         // const t7 = -0.251390972343483509333252996350e-1;
         // let phi = EvaluatePolynomial(b, t1, t2, t3, t4, t5, t6, t7);
-        var phi = atan(x) * 2 / PI;
+        var phi = atan(b) * 2 / PI;
 
         // Extend phi if the input is in the range 45-90 degrees (u<v)
         if (x < y) {
@@ -257,7 +322,7 @@ export class Envmap {
         var v = phi * r;
         var u = r - v;
 
-        if (dir.z < 0) {
+        if (d.z < 0) {
           // southern hemisphere -> mirror u,v
           var temp = v;
           v = u;
@@ -268,8 +333,8 @@ export class Envmap {
         }
 
         // Move (u,v) to the correct quadrant based on the signs of (x,y)
-        u = copysign(u, dir.x);
-        v = copysign(v, dir.y);
+        u = copysign(u, d.x);
+        v = copysign(v, d.y);
 
         // Transform (u,v) from [-1,1] to [0,1]
         return vec2f(0.5 * (u + 1), 0.5 * (v + 1));

@@ -119,7 +119,7 @@ ${Envmap.shaderMethods()}
       if (i == 0) {
         let uv = envEqualAreaSphereToSquare(rd);
         // let color = textureSample(envmapTexture, tEnvmapSampler, uv);
-        let color = textureLoad(envmapTexture, vec2u(u32(uv.x * 100), u32(uv.y * 100)), 0);
+        let color = textureLoad(envmapTexture, vec2u(u32(uv.x * 300), u32(uv.y * 300)), 0);
         rad = color.xyz;
       }
 

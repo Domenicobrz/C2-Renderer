@@ -185,6 +185,13 @@ export class BVH {
       }
     });
 
+    if (this.scene.envmap) {
+      let envmapRadius = this.root.nodeAABB.max.clone().sub(this.root.nodeAABB.min).length();
+      let envmapLuminance = 4 * Math.PI * envmapRadius * envmapRadius * this.scene.envmap.scale;
+      cdfToTriangleIndex.push([sum, envmapLuminance, -2 /* signals envmap instead of triangle */]);
+      sum += envmapLuminance;
+    }
+
     // normalize cdf and pdf values
     cdfToTriangleIndex.forEach((el) => {
       el[0] /= sum;

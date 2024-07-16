@@ -92,4 +92,15 @@ fn getTangentFromTriangle(
     *bitangent = normalize(cross(*tangent, t.normal));
   }
 }
+
+fn copysign(mag: f32, sign: f32) -> f32 {
+  var s: f32 = 0;
+  if (sign < 0) {
+    s = -1;
+  } else {
+    s = 1;
+  }
+
+  return mag * s;
+}
 `;

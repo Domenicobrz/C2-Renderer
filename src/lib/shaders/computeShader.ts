@@ -15,6 +15,7 @@ import { CookTorrance } from '$lib/materials/cookTorrance';
 import { Dielectric } from '$lib/materials/dielectric';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import { PC1D } from '$lib/samplers/PiecewiseConstant1D';
+import { Envmap } from '$lib/envmap/envmap';
 
 export function getComputeShader() {
   return /* wgsl */ `
@@ -53,6 +54,8 @@ ${PC1D.shaderStruct()}
 ${PC1D.shaderMethods()}
 ${PC2D.shaderStruct()}
 ${PC2D.shaderMethods()}
+${Envmap.shaderStruct()}
+${Envmap.shaderMethods()}
 
 @group(0) @binding(0) var<storage, read_write> radianceOutput: array<vec3f>;
 @group(0) @binding(1) var<storage, read_write> samplesCount: array<u32>;
@@ -74,6 +77,11 @@ ${PC2D.shaderMethods()}
 @group(3) @binding(2) var<storage> bvhData: array<BVHNode>;
 @group(3) @binding(3) var<storage> lightsCDFData: array<LightCDFEntry>;
 @group(3) @binding(4) var<storage> envmapPC2D: PC2D;
+@group(3) @binding(5) var tEnvmapSampler: sampler;
+@group(3) @binding(6) var envmapTexture: texture_2d<f32>;
+
+// things to remember: maximum storage entries on my GPU is 8
+// I might need to re-architect this shader to pack togheter some types of data
 
 @compute @workgroup_size(8, 8) fn computeSomething(
   @builtin(global_invocation_id) gid: vec3<u32>,
@@ -108,6 +116,13 @@ ${PC2D.shaderMethods()}
     if (ires.hit) {
       shade(ires, &ray, &reflectance, &rad, tid, i);
     } else {
+      if (i == 0) {
+        let uv = envEqualAreaSphereToSquare(rd);
+        // let color = textureSample(envmapTexture, tEnvmapSampler, uv);
+        let color = textureLoad(envmapTexture, vec2u(u32(uv.x * 100), u32(uv.y * 100)), 0);
+        rad = color.xyz;
+      }
+
       break;
     }
   }

@@ -1,5 +1,6 @@
 import { AABB } from '$lib/bvh/aabb';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
+import { getLuminance } from '$lib/utils/getLuminance';
 import { copySign } from '$lib/utils/math';
 import { FloatType, Vector2, Vector3 } from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
@@ -7,6 +8,9 @@ import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 export class Envmap {
   #data: Float32Array = new Float32Array();
   #size: Vector2 = new Vector2(0, 0);
+  #luminanceAverage = 0;
+
+  public scale = 1;
 
   constructor() {}
 
@@ -23,7 +27,6 @@ export class Envmap {
     let radianceData = [];
     let luminanceData: number[][] = [];
     let thresholdedLuminanceData: number[][] = [];
-    let luminanceAverage = 0;
 
     // I primi pixel sono in alto! gli ultimi sono in basso
     // ora facciamo un'altra cosa, cercheremo di creare la texture
@@ -62,23 +65,20 @@ export class Envmap {
 
         radianceData.push(r, g, b, 1);
 
-        // https://stackoverflow.com/a/56678483/7379920
-        // step 3 from the question, we care about real luminance and not perceived luminance
-        // the rgb values provided are already linearized
-        let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-        luminanceAverage += luminance;
+        let luminance = getLuminance(new Vector3(r, g, b));
+        this.#luminanceAverage += luminance;
 
         if (j === 0) luminanceData.push([]);
         luminanceData[i].push(luminance);
       }
     }
-    luminanceAverage /= envmapSize * envmapSize;
+    this.#luminanceAverage /= envmapSize * envmapSize;
 
     // TODO: ALSO CREATE THRESHOLDED LUMINANCE DATA
     for (let i = 0; i < envmapSize; i++) {
       for (let j = 0; j < envmapSize; j++) {
         if (j === 0) thresholdedLuminanceData.push([]);
-        thresholdedLuminanceData[i].push(Math.max(luminanceData[i][j] - luminanceAverage, 0));
+        thresholdedLuminanceData[i].push(Math.max(luminanceData[i][j] - this.#luminanceAverage, 0));
       }
     }
 
@@ -126,7 +126,154 @@ export class Envmap {
     return new Vector3(cosPhi * r * Math.sqrt(2 - r * r), sinPhi * r * Math.sqrt(2 - r * r), z);
   }
 
+  // should be deleted at some point
+  // should be deleted at some point
+  // should be deleted at some point
+  getBufferData(): { data: ArrayBuffer; byteSize: number } {
+    if (this.#size.x === 0) {
+      return { data: new ArrayBuffer(0), byteSize: 0 };
+    }
+
+    // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d00000100c700000000000000003d888b0237284d3025f2381bcb28883f05c6e901ed37dc16b0f1f435309be2d90166cce262d8c5e7adeddccdafa144338e0eb1645ccfab141e4e9daeee7674a4f9a4481fbb1c9132325e382296f19e7fb492e794495847c565e1fb67fe4c7d8af2ae57ef47271844a1313018e4fee660f52b197fb5551fc3c01c5c83452fdad9cb499ffff5ffbd00
+    const byteSize = 16 + 16 * this.#size.x * this.#size.y;
+    const EnvmapValues = new ArrayBuffer(byteSize);
+    const EnvmapViews = {
+      size: new Int32Array(EnvmapValues, 0, 2),
+      data: new Float32Array(EnvmapValues, 16, this.#size.x * this.#size.y * 4)
+    };
+
+    EnvmapViews.size.set([this.#size.x, this.#size.y]);
+
+    for (let i = 0; i < this.#data.length; i += 4) {
+      let r = this.#data[i + 0];
+      let g = this.#data[i + 1];
+      let b = this.#data[i + 2];
+      EnvmapViews.data.set([r, g, b], i);
+    }
+
+    return {
+      data: EnvmapValues,
+      byteSize
+    };
+  }
+
+  // should be deleted at some point
+  // should be deleted at some point
+  // should be deleted at some point
   getData(): { data: Float32Array; size: Vector2 } {
     return { data: this.#data, size: this.#size };
+  }
+
+  getTextureData(device: GPUDevice): { sampler: GPUSampler; texture: GPUTexture } {
+    const sampler = device.createSampler({
+      addressModeU: 'repeat',
+      addressModeV: 'repeat',
+      magFilter: 'nearest',
+      minFilter: 'nearest'
+    });
+
+    // if this is an empty envmap return a bogus 1x1 texture
+    if (this.#size.x === 0) {
+      const texture = device.createTexture({
+        size: [1, 1],
+        format: 'rgba32float',
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+      });
+
+      device.queue.writeTexture(
+        { texture },
+        new Float32Array([1, 1, 1, 1]),
+        { bytesPerRow: 1 * 16 },
+        { width: 1, height: 1 }
+      );
+
+      return { sampler, texture };
+    }
+
+    const texture = device.createTexture({
+      size: [this.#size.x, this.#size.y],
+      format: 'rgba32float',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+    });
+
+    device.queue.writeTexture(
+      { texture },
+      this.#data,
+      { bytesPerRow: this.#size.x * 16 },
+      { width: this.#size.x, height: this.#size.y }
+    );
+
+    return { texture, sampler };
+  }
+
+  static shaderStruct(): string {
+    return /* wgsl */ `
+      struct Envmap {
+        size: vec2i,
+        data: array<vec3f>,
+      }
+    `;
+  }
+
+  static shaderMethods(): string {
+    return /* wgsl */ `
+      // dir needs to be normalized 
+      fn envEqualAreaSphereToSquare(dir: vec3f) -> vec2f {
+        let x = abs(dir.x);
+        let y = abs(dir.y);
+        let z = abs(dir.z);
+
+        // Compute the radius r
+        let r = sqrt(1.0 - z);  // r = sqrt(1-|z|)
+
+        // Compute the argument to atan (detect a=0 to avoid div-by-zero)
+        let a = max(x, y);
+        var b = min(x, y);
+        if (a == 0) {
+          b = 0;
+        } else {
+          b = b / a;
+        }
+
+        // Polynomial approximation of atan(x)*2/pi, x=b
+        // Coefficients for 6th degree minimax approximation of atan(x)*2/pi,
+        // x=[0,1].
+        // const t1 = 0.406758566246788489601959989e-5;
+        // const t2 = 0.636226545274016134946890922156;
+        // const t3 = 0.61572017898280213493197203466e-2;
+        // const t4 = -0.247333733281268944196501420480;
+        // const t5 = 0.881770664775316294736387951347e-1;
+        // const t6 = 0.419038818029165735901852432784e-1;
+        // const t7 = -0.251390972343483509333252996350e-1;
+        // let phi = EvaluatePolynomial(b, t1, t2, t3, t4, t5, t6, t7);
+        var phi = atan(x) * 2 / PI;
+
+        // Extend phi if the input is in the range 45-90 degrees (u<v)
+        if (x < y) {
+          phi = 1 - phi;
+        }
+
+        // Find (u,v) based on (r,phi)
+        var v = phi * r;
+        var u = r - v;
+
+        if (dir.z < 0) {
+          // southern hemisphere -> mirror u,v
+          var temp = v;
+          v = u;
+          u = temp;
+          
+          u = 1 - u;
+          v = 1 - v;
+        }
+
+        // Move (u,v) to the correct quadrant based on the signs of (x,y)
+        u = copysign(u, dir.x);
+        v = copysign(v, dir.y);
+
+        // Transform (u,v) from [-1,1] to [0,1]
+        return vec2f(0.5 * (u + 1), 0.5 * (v + 1));
+      }
+    `;
   }
 }

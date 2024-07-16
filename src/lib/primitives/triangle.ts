@@ -1,6 +1,7 @@
 import { AABB } from '$lib/bvh/aabb';
 import { Emissive } from '$lib/materials/emissive';
 import type { Material } from '$lib/materials/material';
+import { getLuminance } from '$lib/utils/getLuminance';
 import { Vector2, Vector3 } from 'three';
 
 export class Triangle {
@@ -60,7 +61,9 @@ export class Triangle {
     if (!(material instanceof Emissive))
       throw new Error("can't get luminance of non-emissive material");
 
-    let t = (material.color.r + material.color.g + material.color.b) * material.intensity;
+    let t =
+      getLuminance(new Vector3(material.color.r, material.color.g, material.color.b)) *
+      material.intensity;
     return t * this.getArea();
   }
 

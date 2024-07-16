@@ -13,6 +13,7 @@ import { configManager } from '$lib/config';
 import { AABB } from '$lib/bvh/aabb';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import type { C2Scene } from '$lib/createScene';
+import { Envmap } from '$lib/envmap/envmap';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -42,11 +43,12 @@ export class ComputeSegment {
   #debugPixelTargetBuffer: GPUBuffer;
   #debugReadBuffer: GPUBuffer;
 
-  #trianglesBuffer: GPUBuffer | null = null;
-  #materialsBuffer: GPUBuffer | null = null;
-  #bvhBuffer: GPUBuffer | null = null;
-  #lightsCDFBuffer: GPUBuffer | null = null;
-  #envmapPC2DBuffer: GPUBuffer | null = null;
+  #trianglesBuffer: GPUBuffer | undefined;
+  #materialsBuffer: GPUBuffer | undefined;
+  #bvhBuffer: GPUBuffer | undefined;
+  #lightsCDFBuffer: GPUBuffer | undefined;
+  #envmapPC2DBuffer: GPUBuffer | undefined;
+  #envmapBuffer: GPUBuffer | undefined;
 
   #resetSegment: ResetSegment;
 
@@ -80,13 +82,45 @@ export class ComputeSegment {
         { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
         { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
       ]),
-      getBindGroupLayout(device, [
-        { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
-        { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
-        { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
-        { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' },
-        { visibility: GPUShaderStage.COMPUTE, type: 'read-only-storage' }
-      ])
+      device.createBindGroupLayout({
+        entries: [
+          {
+            binding: 0,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: 'read-only-storage' }
+          },
+          {
+            binding: 1,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: 'read-only-storage' }
+          },
+          {
+            binding: 2,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: 'read-only-storage' }
+          },
+          {
+            binding: 3,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: 'read-only-storage' }
+          },
+          {
+            binding: 4,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: 'read-only-storage' }
+          },
+          {
+            binding: 5,
+            visibility: GPUShaderStage.COMPUTE,
+            sampler: {}
+          },
+          {
+            binding: 6,
+            visibility: GPUShaderStage.COMPUTE,
+            texture: {}
+          }
+        ]
+      })
     ];
     this.#layout = device.createPipelineLayout({
       bindGroupLayouts: this.#bindGroupLayouts
@@ -270,6 +304,11 @@ export class ComputeSegment {
     );
     let testDistributionData = testDistribution.getBufferData();
 
+    let envmap = scene.envmap || new Envmap();
+    let { texture: envmapTexture, sampler: envmapTextureSampler } = envmap.getTextureData(
+      this.#device
+    );
+
     this.#trianglesBuffer = this.#device.createBuffer({
       size: trianglesBufferDataByteSize,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
@@ -301,17 +340,21 @@ export class ComputeSegment {
     this.#device.queue.writeBuffer(this.#lightsCDFBuffer, 0, LightsCDFBufferData);
     this.#device.queue.writeBuffer(this.#envmapPC2DBuffer, 0, testDistributionData.data);
 
+    let entries: GPUBindGroupEntry[] = [
+      { binding: 0, resource: { buffer: this.#trianglesBuffer! } },
+      { binding: 1, resource: { buffer: this.#materialsBuffer! } },
+      { binding: 2, resource: { buffer: this.#bvhBuffer! } },
+      { binding: 3, resource: { buffer: this.#lightsCDFBuffer! } },
+      { binding: 4, resource: { buffer: this.#envmapPC2DBuffer! } },
+      { binding: 5, resource: envmapTextureSampler },
+      { binding: 6, resource: envmapTexture.createView() }
+    ];
+
     // we need to re-create the bindgroup
     this.#bindGroup3 = this.#device.createBindGroup({
       label: 'compute bindgroup - scene data',
       layout: this.#bindGroupLayouts[3],
-      entries: [
-        { binding: 0, resource: { buffer: this.#trianglesBuffer } },
-        { binding: 1, resource: { buffer: this.#materialsBuffer } },
-        { binding: 2, resource: { buffer: this.#bvhBuffer } },
-        { binding: 3, resource: { buffer: this.#lightsCDFBuffer } },
-        { binding: 4, resource: { buffer: this.#envmapPC2DBuffer } }
-      ]
+      entries: entries
     });
   }
 

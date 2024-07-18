@@ -292,19 +292,8 @@ export class ComputeSegment {
 
     let materialsData = new Float32Array(scene.materials.map((mat) => mat.getFloatsArray()).flat());
 
-    let testDistribution = new PC2D(
-      [
-        [1, 1, 1],
-        [1, 1, 1],
-        [10, 10, 100]
-      ],
-      3,
-      3,
-      new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0))
-    );
-    let testDistributionData = testDistribution.getBufferData();
-
     let envmap = scene.envmap || new Envmap();
+    let envmapDistributionData = envmap.distribution.getBufferData();
     let { texture: envmapTexture, sampler: envmapTextureSampler } = envmap.getTextureData(
       this.#device
     );
@@ -330,7 +319,7 @@ export class ComputeSegment {
     });
 
     this.#envmapPC2DBuffer = this.#device.createBuffer({
-      size: testDistributionData.byteSize,
+      size: envmapDistributionData.byteSize,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
@@ -338,7 +327,7 @@ export class ComputeSegment {
     this.#device.queue.writeBuffer(this.#materialsBuffer, 0, materialsData);
     this.#device.queue.writeBuffer(this.#bvhBuffer, 0, BVHBufferData);
     this.#device.queue.writeBuffer(this.#lightsCDFBuffer, 0, LightsCDFBufferData);
-    this.#device.queue.writeBuffer(this.#envmapPC2DBuffer, 0, testDistributionData.data);
+    this.#device.queue.writeBuffer(this.#envmapPC2DBuffer, 0, envmapDistributionData.data);
 
     let entries: GPUBindGroupEntry[] = [
       { binding: 0, resource: { buffer: this.#trianglesBuffer! } },

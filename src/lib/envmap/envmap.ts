@@ -8,9 +8,11 @@ import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 export class Envmap {
   #data: Float32Array = new Float32Array();
   #size: Vector2 = new Vector2(0, 0);
-  #luminanceAverage = 0;
 
+  public luminanceAverage = 0;
   public scale = 1;
+  public distribution = new PC2D([[0]], 1, 1, new AABB());
+  public compensatedDistribution = new PC2D([[0]], 1, 1, new AABB());
 
   constructor() {}
 
@@ -71,30 +73,30 @@ export class Envmap {
         radianceData.push(r, g, b, 1);
 
         let luminance = getLuminance(new Vector3(r, g, b));
-        this.#luminanceAverage += luminance;
+        this.luminanceAverage += luminance;
 
         if (j === 0) luminanceData.push([]);
         luminanceData[i].push(luminance);
       }
     }
-    this.#luminanceAverage /= envmapSize * envmapSize;
+    this.luminanceAverage /= envmapSize * envmapSize;
 
     // TODO: ALSO CREATE THRESHOLDED LUMINANCE DATA
     for (let i = 0; i < envmapSize; i++) {
       for (let j = 0; j < envmapSize; j++) {
         if (j === 0) thresholdedLuminanceData.push([]);
-        thresholdedLuminanceData[i].push(Math.max(luminanceData[i][j] - this.#luminanceAverage, 0));
+        thresholdedLuminanceData[i].push(Math.max(luminanceData[i][j] - this.luminanceAverage, 0));
       }
     }
 
     // create pc2d and sample it a few times just to test it
-    let distribution = new PC2D(
+    this.distribution = new PC2D(
       luminanceData,
       envmapSize,
       envmapSize,
       new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0))
     );
-    let compensatedDistribution = new PC2D(
+    this.compensatedDistribution = new PC2D(
       thresholdedLuminanceData,
       envmapSize,
       envmapSize,

@@ -187,7 +187,13 @@ export class BVH {
 
     if (this.scene.envmap) {
       let envmapRadius = this.root.nodeAABB.max.clone().sub(this.root.nodeAABB.min).length();
-      let envmapLuminance = 4 * Math.PI * envmapRadius * envmapRadius * this.scene.envmap.scale;
+      let envmapLuminance =
+        4 *
+        Math.PI *
+        envmapRadius *
+        envmapRadius *
+        this.scene.envmap.scale *
+        this.scene.envmap.luminanceAverage;
       cdfToTriangleIndex.push([sum, envmapLuminance, -2 /* signals envmap instead of triangle */]);
       sum += envmapLuminance;
     }

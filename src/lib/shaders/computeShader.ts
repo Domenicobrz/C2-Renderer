@@ -118,9 +118,21 @@ ${Envmap.shaderMethods()}
     } else {
       if (i == 0) {
         let uv = envEqualAreaSphereToSquare(rd);
-        // let color = textureSample(envmapTexture, tEnvmapSampler, uv);
-        let color = textureLoad(envmapTexture, vec2u(u32(uv.x * 300), u32(uv.y * 300)), 0);
+        let color = textureLoad(
+          envmapTexture, 
+          vec2u(u32(uv.x * f32(envmapPC2D.size.x)), u32(uv.y * f32(envmapPC2D.size.y))), 
+          0
+        );
         rad = color.xyz;
+      } else {
+        // we bounced off into the envmap
+        let uv = envEqualAreaSphereToSquare(ray.direction);
+        let color = textureLoad(
+          envmapTexture, 
+          vec2u(u32(uv.x * f32(envmapPC2D.size.x)), u32(uv.y * f32(envmapPC2D.size.y))), 
+          0
+        );
+        rad += reflectance * color.xyz;
       }
 
       break;

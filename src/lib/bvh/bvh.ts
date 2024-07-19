@@ -1,7 +1,7 @@
 import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
 import { Emissive } from '$lib/materials/emissive';
-import type { Material } from '$lib/materials/material';
+import { MATERIAL_TYPE, type Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { bvhInfo } from '../../routes/stores/main';
 import { AABB } from './aabb';
@@ -246,13 +246,110 @@ export class BVH {
         cdf: f32,
         pdf: f32,
         // -2 indicates an envmap (we'll reserve -1 for null or something similiar)
-        triangleIndex: u32,
+        triangleIndex: i32,
+      }
+
+      struct LightSample {
+        isEnvmap: bool,
+        backSideHit: bool,
+        pdf: f32,
+        direction: vec3f,
+        triangleIndex: i32
       }
     `;
   }
 
   static shaderIntersect() {
     return /* wgsl */ `
+      fn getLightSample(
+        ray: ptr<function, Ray>, rands: vec4f,
+        tid: vec3u,
+        i: i32
+      ) -> LightSample {
+        let cdfEntry = getLightCDFEntry(rands.z);
+
+        if (cdfEntry.triangleIndex > -1) {
+          let triangle = triangles[cdfEntry.triangleIndex];
+          let samplePoint = sampleTrianglePoint(triangle, rands.x, rands.y);
+  
+          let lD = normalize(samplePoint - (*ray).origin);
+          let sampleDirection = lD;
+  
+          let r2 = squaredLength(samplePoint - (*ray).origin);
+          var lN = triangle.normal;
+          var lNolD = dot(lN, -lD);
+          var backSideHit = false;
+          if (lNolD < 0) {
+            lN = -lN;
+            lNolD = -lNolD;
+            backSideHit = true;
+          }
+          var lightSamplePdf = r2 / (lNolD * triangle.area);
+          lightSamplePdf *= cdfEntry.pdf;
+
+          return LightSample(false, backSideHit, lightSamplePdf, sampleDirection, cdfEntry.triangleIndex);
+        }
+
+        if (cdfEntry.triangleIndex == -2) {
+          // envmap sampling
+          let sample = samplePC2D(
+            &envmapPC2D.data, 
+            envmapPC2D.size, 
+            envmapPC2D.domain, 
+            rands.yw,
+          );
+
+          let uv = sample.floatOffset;
+          let pc2d_pdf = sample.pdf;
+          let sampleDirection = envEqualAreaSquareToSphere(uv);
+          // change of variable, from square image to sphere pdf
+          var lightSamplePdf = pc2d_pdf / (4 * PI);
+          lightSamplePdf *= cdfEntry.pdf;
+
+          return LightSample(true, false, lightSamplePdf, sampleDirection, -1);
+        }
+
+        return LightSample(false, false, 0, vec3f(0), -1);
+      }
+
+      // when you're using BRDF sampling in conjuction with MIS, given a brdf direction
+      // you might need to know the associated light sample pdf for that direction
+      // this function will provide that value
+      fn getLightPDF(ray: ptr<function, Ray>) -> f32 {
+        let ires = bvhIntersect(*ray);
+
+        if (ires.hit) {
+          // if we don't hit a primitive, bvhIntersect will set ires.triangle to the first triangle
+          // of the scene. Keep in mind that ires.hit will be false
+          let materialType = materialsData[ires.triangle.materialOffset];
+          var lightSamplePdf = 0.0;
+          if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
+            let lD = (*ray).direction;
+            let r2 = squaredLength(ires.hitPoint - (*ray).origin);
+            var lN = ires.triangle.normal;
+            var lNolD = dot(lN, -lD);
+            if (lNolD < 0) {
+              lN = -lN;
+              lNolD = -lNolD;
+            }
+            lightSamplePdf = r2 / (lNolD * ires.triangle.area);
+            return lightSamplePdf;
+          } 
+        } else {
+          // envmap pdf retrieval
+          let uv = envEqualAreaSphereToSquare((*ray).direction);
+          var pdf = getPC2Dpdf( 
+            &envmapPC2D.data, 
+            envmapPC2D.size, 
+            uv, 
+            envmapPC2D.domain,
+          );
+          return pdf / (4 * PI);
+        }
+        
+        return 0;
+      }
+
       fn getLightCDFEntry(r: f32) -> LightCDFEntry {
         var si: i32 = 0;
         var ei: i32 = i32(arrayLength(&lightsCDFData));

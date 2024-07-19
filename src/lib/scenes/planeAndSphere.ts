@@ -60,16 +60,11 @@ export async function planeAndSphere(): Promise<C2Scene> {
   let mesh = new Mesh(new SphereGeometry(1, 100, 100));
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 0);
-
   triangles = [...triangles, ...meshToTriangles(mesh, 3)];
 
   let envmap = new Envmap();
   await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
 
-  // remember that adding an envmap also changes the light CDF sampling probabilities
-  // and since envmaps are assigned to -2 until you fully implement envmap sampling
-  // enabling the envmap will return darker images since you're not sampling the envmap yet
-  // - - - - - - -
   // also remember the scale value based on scene radius when you have to return the color
   // from the envmap
 

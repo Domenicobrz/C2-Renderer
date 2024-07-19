@@ -69,20 +69,7 @@ export class Diffuse extends Material {
         } 
 
         if (config.MIS_TYPE == ONE_SAMPLE_MODEL || config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-          let ires = bvhIntersect(*ray);
-          let materialType = materialsData[ires.triangle.materialOffset];
-          var lightSamplePdf = 0.0;
-          if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-            let lD = (*ray).direction;
-            let r2 = squaredLength(ires.hitPoint - (*ray).origin);
-            var lN = ires.triangle.normal;
-            var lNolD = dot(lN, -lD);
-            if (lNolD < 0) {
-              lN = -lN;
-              lNolD = -lNolD;
-            }
-            lightSamplePdf = r2 / (lNolD * ires.triangle.area);
-          }
+          let lightSamplePdf = getLightPDF(ray);  
 
           if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
             *pdf = brdfSamplePdf;
@@ -112,32 +99,23 @@ export class Diffuse extends Material {
         ray: ptr<function, Ray>, 
         pdf: ptr<function, f32>,
         misWeight: ptr<function, f32>,
-        lightSample: ptr<function, vec3f>,
+        lightSampleRadiance: ptr<function, vec3f>,
+        tid: vec3u,
+        i: i32
       ) {
-        let cdfEntry = getLightCDFEntry(rands.z);
-        let triangle = triangles[cdfEntry.triangleIndex];
-        let samplePoint = sampleTrianglePoint(triangle, rands.x, rands.y);
+        let lightSample = getLightSample(ray, rands, tid, i);
+        let lightSamplePdf = lightSample.pdf;
+        let backSideHit = lightSample.backSideHit;
 
-        let lD = normalize(samplePoint - (*ray).origin);
-        (*ray).direction = lD;
+        (*ray).direction = lightSample.direction;
 
-        let r2 = squaredLength(samplePoint - (*ray).origin);
-        var lN = triangle.normal;
-        var lNolD = dot(lN, -lD);
-        var backSideHit = false;
-        if (lNolD < 0) {
-          lN = -lN;
-          lNolD = -lNolD;
-          backSideHit = true;
-        }
-        var lightSamplePdf = r2 / (lNolD * triangle.area);
         var brdfSamplePdf = 1 / (2 * PI);
 
         if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-          *pdf = (lightSamplePdf * cdfEntry.pdf);
+          *pdf = lightSamplePdf;
           *misWeight = *pdf / ((brdfSamplePdf + *pdf) * 0.5);
           if (config.USE_POWER_HEURISTIC == 1) {
-            let b1 = (lightSamplePdf * cdfEntry.pdf);
+            let b1 = lightSamplePdf;
             let b2 = brdfSamplePdf;
             *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
           }
@@ -148,25 +126,39 @@ export class Diffuse extends Material {
         }
 
         if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-          *pdf = (lightSamplePdf * cdfEntry.pdf);
+          *pdf = lightSamplePdf;
           *misWeight = *pdf / (brdfSamplePdf + *pdf);
           if (config.USE_POWER_HEURISTIC == 1) {
-            let b1 = (lightSamplePdf * cdfEntry.pdf);
+            let b1 = lightSamplePdf;
             let b2 = brdfSamplePdf;
             *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
           }
 
+          // I wonder if we should check wheter it's the same triangle or not
+          // since the light sampling routine might hit a different light source from ours here
+          // I can probably construct cases where this could be a problem
           let ires = bvhIntersect(*ray);
-          let materialType = materialsData[ires.triangle.materialOffset];
-          if (
-            materialType == ${MATERIAL_TYPE.EMISSIVE} && 
-            !backSideHit
-          ) {
-            let material: Emissive = createEmissive(ires.triangle.materialOffset);
-            let emissive = material.color * material.intensity;
-            *lightSample = emissive;
+          if (ires.hit) {
+            let materialType = materialsData[ires.triangle.materialOffset];
+            if (
+              materialType == ${MATERIAL_TYPE.EMISSIVE} && 
+              !backSideHit
+            ) {
+              let material: Emissive = createEmissive(ires.triangle.materialOffset);
+              let emissive = material.color * material.intensity;
+              *lightSampleRadiance = emissive;
+            } else {
+              *misWeight = 0;
+            }
           } else {
-            *misWeight = 0;
+            // envmap hit
+            let uv = envEqualAreaSphereToSquare((*ray).direction);
+            let color = textureLoad(
+              envmapTexture, 
+              vec2u(u32(uv.x * f32(envmapPC2D.size.x)), u32(uv.y * f32(envmapPC2D.size.y))), 
+              0
+            );
+            *lightSampleRadiance = color.xyz;
           }
         }
       }
@@ -210,26 +202,26 @@ export class Diffuse extends Material {
           if (rands.w < 0.5) {
             shadeDiffuseSampleBRDF(rands, N, ray, &pdf, &misWeight);
           } else {
-            shadeDiffuseSampleLight(rands, N, ray, &pdf, &misWeight, &ls);
+            shadeDiffuseSampleLight(rands, N, ray, &pdf, &misWeight, &ls, tid, i);
           }
           *reflectance *= brdf * (misWeight / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
 
         if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
           var brdfSamplePdf: f32; var brdfMisWeight: f32; 
-          var lightSamplePdf: f32; var lightMisWeight: f32; var lightSample: vec3f;
+          var lightSamplePdf: f32; var lightMisWeight: f32; var lightSampleRadiance: vec3f;
           var rayBrdf = Ray((*ray).origin, (*ray).direction);
           var rayLight = Ray((*ray).origin, (*ray).direction);
 
           shadeDiffuseSampleBRDF(rands, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight);
-          shadeDiffuseSampleLight(rands, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSample);
+          shadeDiffuseSampleLight(rands, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance, tid, i);
 
           (*ray).origin = rayBrdf.origin;
           (*ray).direction = rayBrdf.direction;
 
           *reflectance *= brdf * color;
           // light contribution
-          *rad += lightSample * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
+          *rad += lightSampleRadiance * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
           *reflectance *= (brdfMisWeight / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);
         }
       } 

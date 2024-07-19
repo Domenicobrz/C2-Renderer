@@ -46,11 +46,7 @@ export class Envmap {
         let dir = this.equalAreaSquareToSphere(new Vector2(u, v));
         dir.normalize();
 
-        // this is the original algorithm to convert from cartesian to polar,
-        // let euv = new Vector2(Math.atan2(dir.z, dir.x), Math.asin(dir.y));
-        // however I think pbrt considers z to be going up, so
-        // I replaced the z with y
-        let euv = new Vector2(Math.atan2(dir.y, dir.x), Math.asin(dir.z));
+        let euv = new Vector2(Math.atan2(dir.z, dir.x), Math.asin(dir.y));
         euv.multiply(new Vector2(1 / (Math.PI * 2), 1 / Math.PI));
         euv.addScalar(0.5);
 
@@ -65,10 +61,14 @@ export class Envmap {
         let g = equirectData[startIndex * 4 + 1];
         let b = equirectData[startIndex * 4 + 2];
 
-        // let uv2 = this.equalAreaSphereToSquare(dir);
-        // let r = uv2.x;
-        // let g = uv2.y;
-        // let b = 0;
+        // this was used to test that the brdf only approach
+        // was matching MIS - I was setting envmapsize to 40
+        // and then manually creating a "sun"
+        // if (i == 20 && j == 30) {
+        //   r = 400;
+        //   g = 400;
+        //   b = 400;
+        // }
 
         radianceData.push(r, g, b, 1);
 
@@ -130,10 +130,24 @@ export class Envmap {
     let cosPhi = copySign(Math.cos(phi), u);
     let sinPhi = copySign(Math.sin(phi), v);
 
-    return new Vector3(cosPhi * r * Math.sqrt(2 - r * r), sinPhi * r * Math.sqrt(2 - r * r), z);
+    let pbrtDir = new Vector3(
+      cosPhi * r * Math.sqrt(2 - r * r),
+      sinPhi * r * Math.sqrt(2 - r * r),
+      z
+    );
+    let myDir = new Vector3(pbrtDir.x, pbrtDir.z, pbrtDir.y);
+
+    return myDir;
   }
 
   equalAreaSphereToSquare(d: Vector3): Vector2 {
+    // Why am I not swapping y and z here?
+    // Why am I not swapping y and z here?
+    // Why am I not swapping y and z here?
+    // Why am I not swapping y and z here?
+    // I'm doing it in the webgpu shader though and it works there
+    // this function was never really used so I think not swapping is a mistake
+
     let x = Math.abs(d.x);
     let y = Math.abs(d.y);
     let z = Math.abs(d.z);
@@ -281,9 +295,39 @@ export class Envmap {
 
   static shaderMethods(): string {
     return /* wgsl */ `
+      fn envEqualAreaSquareToSphere(p: vec2f) -> vec3f {
+        let u = 2 * p.x - 1;
+        let v = 2 * p.y - 1;
+        let up = abs(u);
+        let vp = abs(v);
+        let signedDistance = 1 - (up + vp);
+        let d = abs(signedDistance);
+        let r = 1 - d;
+
+        // let phi = ((r == 0 ? 1 : (vp - up) / r + 1) * PI) / 4;
+        var phi: f32 = 0;
+        if (r == 0) {
+          phi = 1;
+        } else {
+          phi = (vp - up) / r + 1.0;
+        }
+        phi = (phi * PI) / 4;
+        
+        let z = copysign(1 - r * r, signedDistance);
+        let cosPhi = copysign(cos(phi), u);
+        let sinPhi = copysign(sin(phi), v);
+
+        let pbrtDir = vec3f(cosPhi * r * sqrt(2 - r * r), sinPhi * r * sqrt(2 - r * r), z);
+        let myDir = pbrtDir.xzy; 
+    
+        return myDir;
+      }
+
       // dir needs to be normalized 
       fn envEqualAreaSphereToSquare(dir: vec3f) -> vec2f {
         // swapping z with y since pbrt uses z as y
+        // we're doing the same thing at the end of the
+        // envEqualAreaSquareToSphere function 
         let d = vec3f(dir.x, dir.z, dir.y);
         
         let x = abs(d.x);

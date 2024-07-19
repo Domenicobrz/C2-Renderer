@@ -171,6 +171,31 @@ export class PC2D {
           vec2f(pConditionalVSample.remappedOffset, pMarginalSample.remappedOffset)
         );
       }
+
+      fn getPC2Dpdf(data: ptr<storage, array<f32>>, size: vec2i, floatOffset: vec2f, domain: AABB) -> f32 {
+        let p = boundsOffset2D(domain, floatOffset);
+
+        let iu: i32 = clamp(
+          i32(p.x * f32(size.x)),
+          0,
+          size.x - 1
+        );
+        let iv: i32 = clamp(
+          i32(p.y * f32(size.y)),
+          0,
+          size.y - 1
+        );
+
+        let pMarginalDataOffset = (3 + size.x * 3 + 1) * size.y;
+        let pMarginalFuncInt = data[pMarginalDataOffset + 2];
+
+        let pConditionalVDataOffset = (3 + size.x * 3 + 1) * iv;
+        let pConditionalV_func_iu_value = data[
+          pConditionalVDataOffset + 3 + iu
+        ];
+        
+        return pConditionalV_func_iu_value / pMarginalFuncInt;
+      }
     `;
   }
 }

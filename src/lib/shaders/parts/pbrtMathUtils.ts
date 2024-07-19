@@ -100,4 +100,18 @@ fn Refract(
 
   return true;
 }
+
+fn boundsOffset2D(domain: AABB, p: vec2f) -> vec2f {
+  var o = p - vec2f(domain.min.x, domain.min.y);
+
+  if (domain.max.x > domain.min.x) { 
+    o.x /= domain.max.x - domain.min.x;
+  }
+
+  if (domain.max.y > domain.min.y) { 
+    o.y /= domain.max.y - domain.min.y; 
+  }
+
+  return o;
+}
 `;

@@ -141,13 +141,6 @@ ${Envmap.shaderMethods()}
   radianceOutput[idx] += rad;
   samplesCount[idx] += 1;
 
-  let sample = samplePC2D(
-    &envmapPC2D.data, 
-    envmapPC2D.size, 
-    envmapPC2D.domain, 
-    vec2f(0.10, 0.51)
-  );
-
   if (debugPixelTarget.x == tid.x && debugPixelTarget.y == tid.y) {
     debugBuffer[0] = f32(debugPixelTarget.x);
     debugBuffer[1] = f32(debugPixelTarget.y);

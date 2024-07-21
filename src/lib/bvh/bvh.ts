@@ -262,9 +262,7 @@ export class BVH {
   static shaderIntersect() {
     return /* wgsl */ `
       fn getLightSample(
-        ray: ptr<function, Ray>, rands: vec4f,
-        tid: vec3u,
-        i: i32
+        ray: ptr<function, Ray>, rands: vec4f
       ) -> LightSample {
         let cdfEntry = getLightCDFEntry(rands.z);
 

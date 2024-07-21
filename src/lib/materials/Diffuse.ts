@@ -100,10 +100,8 @@ export class Diffuse extends Material {
         pdf: ptr<function, f32>,
         misWeight: ptr<function, f32>,
         lightSampleRadiance: ptr<function, vec3f>,
-        tid: vec3u,
-        i: i32
       ) {
-        let lightSample = getLightSample(ray, rands, tid, i);
+        let lightSample = getLightSample(ray, rands);
         let lightSamplePdf = lightSample.pdf;
         let backSideHit = lightSample.backSideHit;
 
@@ -202,7 +200,7 @@ export class Diffuse extends Material {
           if (rands.w < 0.5) {
             shadeDiffuseSampleBRDF(rands, N, ray, &pdf, &misWeight);
           } else {
-            shadeDiffuseSampleLight(rands, N, ray, &pdf, &misWeight, &ls, tid, i);
+            shadeDiffuseSampleLight(rands, N, ray, &pdf, &misWeight, &ls);
           }
           *reflectance *= brdf * (misWeight / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
@@ -214,7 +212,7 @@ export class Diffuse extends Material {
           var rayLight = Ray((*ray).origin, (*ray).direction);
 
           shadeDiffuseSampleBRDF(rands, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight);
-          shadeDiffuseSampleLight(rands, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance, tid, i);
+          shadeDiffuseSampleLight(rands, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
 
           (*ray).origin = rayBrdf.origin;
           (*ray).direction = rayBrdf.direction;

@@ -14,7 +14,7 @@ export type ConfigOptions = {
 };
 
 type ShaderConfig = {
-  PLACEHOLDER_VALUE: boolean;
+  HAS_ENVMAP: boolean;
 };
 
 class ConfigManager {
@@ -34,11 +34,15 @@ class ConfigManager {
       this.e.fireEvent('config-update');
     });
 
-    this.shaderConfig = { PLACEHOLDER_VALUE: false };
+    this.shaderConfig = { HAS_ENVMAP: false };
   }
 
   getOptionsBuffer(): ArrayBuffer {
     return new Uint32Array([this.options.MIS_TYPE, this.options.USE_POWER_HEURISTIC]);
+  }
+
+  setSCProperty(props: Partial<ShaderConfig>) {
+    this.shaderConfig = { ...this.shaderConfig, ...props };
   }
 
   // might return a different string with each invocation if internal shader configurations
@@ -56,13 +60,13 @@ class ConfigManager {
     }
 
     struct ShaderConfig {
-      PLACEHOLDER_VALUE: bool,
+      HAS_ENVMAP: bool,
     }
     // this object, or the shaderConfig object inside the singleton instance of ConfigManager,
     // can be used to customize / change all the shader-parts returned by the rest of the 
     // classes of C2
     const shaderConfig = ShaderConfig(
-      ${this.shaderConfig.PLACEHOLDER_VALUE},
+      ${this.shaderConfig.HAS_ENVMAP},
     );
     `;
   }

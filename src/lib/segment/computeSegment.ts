@@ -293,6 +293,7 @@ export class ComputeSegment {
     let materialsData = new Float32Array(scene.materials.map((mat) => mat.getFloatsArray()).flat());
 
     let envmap = scene.envmap || new Envmap();
+    configManager.setSCProperty({ HAS_ENVMAP: scene.envmap ? true : false });
     let envmapDistributionData = envmap.distribution.getBufferData();
     let { texture: envmapTexture, sampler: envmapTextureSampler } = envmap.getTextureData(
       this.#device

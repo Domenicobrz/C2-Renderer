@@ -115,26 +115,10 @@ ${Envmap.shaderMethods()}
 
     if (ires.hit) {
       shade(ires, &ray, &reflectance, &rad, tid, i);
-    } else {
-      if (i == 0) {
-        let uv = envEqualAreaSphereToSquare(rd);
-        let color = textureLoad(
-          envmapTexture, 
-          vec2u(u32(uv.x * f32(envmapPC2D.size.x)), u32(uv.y * f32(envmapPC2D.size.y))), 
-          0
-        );
-        rad = color.xyz;
-      } else {
-        // we bounced off into the envmap
-        let uv = envEqualAreaSphereToSquare(ray.direction);
-        let color = textureLoad(
-          envmapTexture, 
-          vec2u(u32(uv.x * f32(envmapPC2D.size.x)), u32(uv.y * f32(envmapPC2D.size.y))), 
-          0
-        );
-        rad += reflectance * color.xyz;
-      }
-
+    } else if (shaderConfig.HAS_ENVMAP) {
+      // we bounced off into the envmap
+      let envmapRad = getEnvmapRadiance(ray.direction);
+      rad += reflectance * envmapRad;
       break;
     }
   }

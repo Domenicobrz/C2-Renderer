@@ -385,6 +385,17 @@ export class Envmap {
         // Transform (u,v) from [-1,1] to [0,1]
         return vec2f(0.5 * (u + 1), 0.5 * (v + 1));
       }
+
+      fn getEnvmapRadiance(dir: vec3f) -> vec3f {
+        let uv = envEqualAreaSphereToSquare(dir);
+        let radiance = textureLoad(
+          envmapTexture, 
+          vec2u(u32(uv.x * f32(envmapPC2D.size.x)), u32(uv.y * f32(envmapPC2D.size.y))), 
+          0
+        );
+
+        return radiance.xyz;
+      }
     `;
   }
 }

@@ -11,6 +11,7 @@ export enum MIS_TYPE {
 export type ConfigOptions = {
   MIS_TYPE: MIS_TYPE;
   USE_POWER_HEURISTIC: 0 | 1;
+  ENVMAP_SCALE: number;
 };
 
 type ShaderConfig = {
@@ -18,9 +19,9 @@ type ShaderConfig = {
 };
 
 class ConfigManager {
-  private options: ConfigOptions;
   private shaderConfig: ShaderConfig;
 
+  public options: ConfigOptions;
   public e: EventHandler;
   public bufferSize = 8;
 
@@ -35,6 +36,10 @@ class ConfigManager {
     });
 
     this.shaderConfig = { HAS_ENVMAP: false };
+  }
+
+  setStoreProperty(props: Partial<ConfigOptions>) {
+    configOptions.set({ ...get(configOptions), ...props });
   }
 
   getOptionsBuffer(): ArrayBuffer {

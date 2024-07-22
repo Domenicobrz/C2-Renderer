@@ -1,17 +1,13 @@
 import { BVH } from '$lib/bvh/bvh';
-import type { Material } from '$lib/materials/material';
-import type { Triangle } from '$lib/primitives/triangle';
 import { getComputeShader } from '$lib/shaders/computeShader';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { Matrix4, Vector2, Vector3 } from 'three';
-import { samplesInfo } from '../../routes/stores/main';
+import { configOptions, samplesInfo } from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import type { TileSequence, Tile } from '$lib/tile';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 import { configManager } from '$lib/config';
-import { AABB } from '$lib/bvh/aabb';
-import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
 
@@ -48,7 +44,7 @@ export class ComputeSegment {
   #bvhBuffer: GPUBuffer | undefined;
   #lightsCDFBuffer: GPUBuffer | undefined;
   #envmapPC2DBuffer: GPUBuffer | undefined;
-  #envmapBuffer: GPUBuffer | undefined;
+  #envmapInfoBuffer: GPUBuffer | undefined;
 
   #resetSegment: ResetSegment;
 
@@ -57,6 +53,9 @@ export class ComputeSegment {
   #tileSequence: TileSequence;
 
   #requestShaderCompilation = false;
+
+  #scene: C2Scene | undefined;
+  #bvh: BVH | undefined;
 
   constructor(device: GPUDevice, tileSequence: TileSequence) {
     this.#device = device;
@@ -113,6 +112,11 @@ export class ComputeSegment {
             binding: 5,
             visibility: GPUShaderStage.COMPUTE,
             texture: {}
+          },
+          {
+            binding: 6,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: 'uniform' }
           }
         ]
       })
@@ -264,6 +268,18 @@ export class ComputeSegment {
       0,
       this.#configManager.getOptionsBuffer()
     );
+
+    // if envmap scale changed, we'll need to recompute lightsCDFBuffer
+    let envmap = this.#scene?.envmap;
+    if (envmap && configManager.options.ENVMAP_SCALE != envmap.scale) {
+      envmap.scale = configManager.options.ENVMAP_SCALE;
+
+      let { LightsCDFBufferData, LightsCDFBufferDataByteSize } =
+        this.#bvh!.getLightsCDFBufferData();
+      this.#device.queue.writeBuffer(this.#lightsCDFBuffer!, 0, LightsCDFBufferData);
+
+      envmap.updateEnvmapInfoBuffer(this.#device, this.#envmapInfoBuffer!);
+    }
   }
 
   updateTile(tile: Tile) {
@@ -278,8 +294,10 @@ export class ComputeSegment {
     this.resetSamplesAndTile();
     // if we have a new envmap, we might have to require a shader re-compilation
     this.#requestShaderCompilation = true;
+    this.#scene = scene;
 
     const bvh = new BVH(scene);
+    this.#bvh = bvh;
     let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
       bvh.getBufferData();
 
@@ -289,6 +307,7 @@ export class ComputeSegment {
 
     let envmap = scene.envmap || new Envmap();
     configManager.setSCProperty({ HAS_ENVMAP: scene.envmap ? true : false });
+    configManager.setStoreProperty({ ENVMAP_SCALE: envmap.scale });
     let envmapDistributionData = envmap.distribution.getBufferData();
     let { texture: envmapTexture } = envmap.getTextureData(this.#device);
 
@@ -317,6 +336,8 @@ export class ComputeSegment {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
+    this.#envmapInfoBuffer = envmap.createEnvmapInfoBuffer(this.#device);
+
     this.#device.queue.writeBuffer(this.#trianglesBuffer, 0, trianglesBufferData);
     this.#device.queue.writeBuffer(this.#materialsBuffer, 0, materialsData);
     this.#device.queue.writeBuffer(this.#bvhBuffer, 0, BVHBufferData);
@@ -333,7 +354,8 @@ export class ComputeSegment {
         { binding: 2, resource: { buffer: this.#bvhBuffer! } },
         { binding: 3, resource: { buffer: this.#lightsCDFBuffer! } },
         { binding: 4, resource: { buffer: this.#envmapPC2DBuffer! } },
-        { binding: 5, resource: envmapTexture.createView() }
+        { binding: 5, resource: envmapTexture.createView() },
+        { binding: 6, resource: { buffer: this.#envmapInfoBuffer } }
       ]
     });
   }

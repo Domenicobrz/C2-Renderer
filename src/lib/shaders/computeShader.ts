@@ -78,6 +78,7 @@ ${Envmap.shaderMethods()}
 @group(3) @binding(3) var<storage> lightsCDFData: array<LightCDFEntry>;
 @group(3) @binding(4) var<storage> envmapPC2D: PC2D;
 @group(3) @binding(5) var envmapTexture: texture_2d<f32>;
+@group(3) @binding(6) var<uniform> envmapInfo: EnvmapInfo;
 
 // things to remember: maximum storage entries on my GPU is 8
 // I might need to re-architect this shader to pack togheter some types of data

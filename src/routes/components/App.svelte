@@ -1,12 +1,13 @@
 <script lang="ts">
   import { Renderer, onClick } from '$lib/C2';
   import { onMount } from 'svelte';
-  import { bvhInfo, samplesInfo } from '../stores/main';
+  import { bvhInfo, configOptions, samplesInfo } from '../stores/main';
   import Folder from './Folder.svelte';
   import RangeSlider from 'svelte-range-slider-pips';
   import MisOptions from './MisOptions.svelte';
   import Toggle from './Toggle.svelte';
   import Spacer from './Spacer.svelte';
+  import { configManager } from '$lib/config';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidthSlidersValue = [0];
@@ -69,6 +70,13 @@
     if (isNaN(newSampleLimit)) return;
 
     samplesInfo.setLimit(newSampleLimit);
+  }
+
+  function onEnvmapScaleChange(e: Event) {
+    const newScale = parseFloat((e.target as HTMLInputElement).value);
+    if (isNaN(newScale)) return;
+
+    configManager.setStoreProperty({ ENVMAP_SCALE: newScale });
   }
 
   function onOneStepLimitIncrement() {
@@ -136,6 +144,16 @@
           >{$samplesInfo.count == $samplesInfo.limit ? 0 : $samplesInfo.ms.toFixed(0)} ms</span
         >
       </p>
+    </Folder>
+    <Folder name="Envmap">
+      <span
+        >Scale: <input
+          class="envmap-scale-input"
+          type="text"
+          value={$configOptions.ENVMAP_SCALE}
+          on:change={onEnvmapScaleChange}
+        /></span
+      >
     </Folder>
     <Folder name="Sampling" roundBox>
       <span
@@ -253,7 +271,8 @@
     background: #191919;
   }
 
-  .samples-limit-input {
+  .samples-limit-input,
+  .envmap-scale-input {
     width: 50px;
   }
 

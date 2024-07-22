@@ -61,4 +61,8 @@ export const samplesInfo = (function createSamplesInfoStore() {
   };
 })();
 
-export const configOptions = writable<ConfigOptions>({ MIS_TYPE: 2, USE_POWER_HEURISTIC: 1 });
+export const configOptions = writable<ConfigOptions>({
+  MIS_TYPE: 2,
+  USE_POWER_HEURISTIC: 1,
+  ENVMAP_SCALE: 1
+});

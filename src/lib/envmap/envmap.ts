@@ -9,6 +9,8 @@ export class Envmap {
   #data: Float32Array = new Float32Array();
   #size: Vector2 = new Vector2(0, 0);
 
+  private INFO_BUFFER_BYTE_LENGTH = 16;
+
   public luminanceAverage = 0;
   public scale = 1;
   public distribution = new PC2D([[0]], 1, 1, new AABB());
@@ -89,7 +91,10 @@ export class Envmap {
       }
     }
 
-    // create pc2d and sample it a few times just to test it
+    // ---- note: ---- we won't have to re-create the distributions if we change the scale,
+    // since they would change linearly. The BVH will pick the lightsource with the highest
+    // contribution for that given sample, and the contribution uses luminanceAverage * scale,
+    // not these distributions
     this.distribution = new PC2D(
       luminanceData,
       envmapSize,
@@ -102,6 +107,7 @@ export class Envmap {
       envmapSize,
       new AABB(new Vector3(0, 0, 0), new Vector3(1, 1, 0))
     );
+
     // for (let i = 0; i < 300; i++) {
     //   let res = distribution.samplePC2D(new Vector2(Math.random(), Math.random()));
     //   // console.log(res.pdf, res.offset, res.floatOffset, luminanceData[res.offset.y][res.offset.x]);
@@ -242,6 +248,29 @@ export class Envmap {
     return { data: this.#data, size: this.#size };
   }
 
+  createEnvmapInfoBuffer(device: GPUDevice): GPUBuffer {
+    const envmapInfoBuffer = device.createBuffer({
+      size: this.INFO_BUFFER_BYTE_LENGTH /* determined with offset computer */,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    this.updateEnvmapInfoBuffer(device, envmapInfoBuffer);
+
+    return envmapInfoBuffer;
+  }
+
+  updateEnvmapInfoBuffer(device: GPUDevice, buffer: GPUBuffer) {
+    const EnvmapInfoValues = new ArrayBuffer(this.INFO_BUFFER_BYTE_LENGTH);
+    const EnvmapInfoViews = {
+      size: new Int32Array(EnvmapInfoValues, 0, 2),
+      scale: new Float32Array(EnvmapInfoValues, 8, 1)
+    };
+
+    EnvmapInfoViews.size.set([this.#size.x, this.#size.y]);
+    EnvmapInfoViews.scale.set([this.scale]);
+    device.queue.writeBuffer(buffer, 0, EnvmapInfoValues);
+  }
+
   getTextureData(device: GPUDevice): { texture: GPUTexture } {
     // if this is an empty envmap return a bogus 1x1 texture
     if (this.#size.x === 0) {
@@ -279,9 +308,9 @@ export class Envmap {
 
   static shaderStruct(): string {
     return /* wgsl */ `
-      struct Envmap {
+      struct EnvmapInfo {
         size: vec2i,
-        data: array<vec3f>,
+        scale: f32
       }
     `;
   }
@@ -387,7 +416,7 @@ export class Envmap {
           0
         );
 
-        return radiance.xyz;
+        return radiance.xyz * envmapInfo.scale;
       }
     `;
   }

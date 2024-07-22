@@ -149,14 +149,7 @@ export class Diffuse extends Material {
               *misWeight = 0;
             }
           } else {
-            // envmap hit
-            let uv = envEqualAreaSphereToSquare((*ray).direction);
-            let color = textureLoad(
-              envmapTexture, 
-              vec2u(u32(uv.x * f32(envmapPC2D.size.x)), u32(uv.y * f32(envmapPC2D.size.y))), 
-              0
-            );
-            *lightSampleRadiance = color.xyz;
+            *lightSampleRadiance = getEnvmapRadiance((*ray).direction);
           }
         }
       }

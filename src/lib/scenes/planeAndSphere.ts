@@ -36,24 +36,24 @@ export async function planeAndSphere(): Promise<C2Scene> {
     )
   );
 
-  const ls = 0.75;
-  const lt = new Vector3(0, 3.9, 0);
-  triangles.push(
-    new Triangle(
-      new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
-      new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
-      new Vector3(-1, 0, +1).multiplyScalar(ls).add(lt),
-      2
-    )
-  );
-  triangles.push(
-    new Triangle(
-      new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
-      new Vector3(+1, 0, -1).multiplyScalar(ls).add(lt),
-      new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
-      2
-    )
-  );
+  // const ls = 0.75;
+  // const lt = new Vector3(0, 3.9, 0);
+  // triangles.push(
+  //   new Triangle(
+  //     new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
+  //     new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
+  //     new Vector3(-1, 0, +1).multiplyScalar(ls).add(lt),
+  //     2
+  //   )
+  // );
+  // triangles.push(
+  //   new Triangle(
+  //     new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
+  //     new Vector3(+1, 0, -1).multiplyScalar(ls).add(lt),
+  //     new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
+  //     2
+  //   )
+  // );
 
   let mesh = new Mesh(new SphereGeometry(1, 100, 100));
   mesh.scale.set(2, 2, 2);

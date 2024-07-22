@@ -242,14 +242,7 @@ export class Envmap {
     return { data: this.#data, size: this.#size };
   }
 
-  getTextureData(device: GPUDevice): { sampler: GPUSampler; texture: GPUTexture } {
-    const sampler = device.createSampler({
-      addressModeU: 'repeat',
-      addressModeV: 'repeat',
-      magFilter: 'nearest',
-      minFilter: 'nearest'
-    });
-
+  getTextureData(device: GPUDevice): { texture: GPUTexture } {
     // if this is an empty envmap return a bogus 1x1 texture
     if (this.#size.x === 0) {
       const texture = device.createTexture({
@@ -265,7 +258,7 @@ export class Envmap {
         { width: 1, height: 1 }
       );
 
-      return { sampler, texture };
+      return { texture };
     }
 
     const texture = device.createTexture({
@@ -281,7 +274,7 @@ export class Envmap {
       { width: this.#size.x, height: this.#size.y }
     );
 
-    return { texture, sampler };
+    return { texture };
   }
 
   static shaderStruct(): string {

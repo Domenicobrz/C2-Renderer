@@ -112,11 +112,6 @@ export class ComputeSegment {
           {
             binding: 5,
             visibility: GPUShaderStage.COMPUTE,
-            sampler: {}
-          },
-          {
-            binding: 6,
-            visibility: GPUShaderStage.COMPUTE,
             texture: {}
           }
         ]
@@ -295,9 +290,7 @@ export class ComputeSegment {
     let envmap = scene.envmap || new Envmap();
     configManager.setSCProperty({ HAS_ENVMAP: scene.envmap ? true : false });
     let envmapDistributionData = envmap.distribution.getBufferData();
-    let { texture: envmapTexture, sampler: envmapTextureSampler } = envmap.getTextureData(
-      this.#device
-    );
+    let { texture: envmapTexture } = envmap.getTextureData(this.#device);
 
     this.#trianglesBuffer = this.#device.createBuffer({
       size: trianglesBufferDataByteSize,
@@ -330,21 +323,18 @@ export class ComputeSegment {
     this.#device.queue.writeBuffer(this.#lightsCDFBuffer, 0, LightsCDFBufferData);
     this.#device.queue.writeBuffer(this.#envmapPC2DBuffer, 0, envmapDistributionData.data);
 
-    let entries: GPUBindGroupEntry[] = [
-      { binding: 0, resource: { buffer: this.#trianglesBuffer! } },
-      { binding: 1, resource: { buffer: this.#materialsBuffer! } },
-      { binding: 2, resource: { buffer: this.#bvhBuffer! } },
-      { binding: 3, resource: { buffer: this.#lightsCDFBuffer! } },
-      { binding: 4, resource: { buffer: this.#envmapPC2DBuffer! } },
-      { binding: 5, resource: envmapTextureSampler },
-      { binding: 6, resource: envmapTexture.createView() }
-    ];
-
     // we need to re-create the bindgroup
     this.#bindGroup3 = this.#device.createBindGroup({
       label: 'compute bindgroup - scene data',
       layout: this.#bindGroupLayouts[3],
-      entries: entries
+      entries: [
+        { binding: 0, resource: { buffer: this.#trianglesBuffer! } },
+        { binding: 1, resource: { buffer: this.#materialsBuffer! } },
+        { binding: 2, resource: { buffer: this.#bvhBuffer! } },
+        { binding: 3, resource: { buffer: this.#lightsCDFBuffer! } },
+        { binding: 4, resource: { buffer: this.#envmapPC2DBuffer! } },
+        { binding: 5, resource: envmapTexture.createView() }
+      ]
     });
   }
 

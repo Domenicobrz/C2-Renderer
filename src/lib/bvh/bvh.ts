@@ -299,7 +299,8 @@ export class BVH {
 
           let uv = sample.floatOffset;
           let pc2d_pdf = sample.pdf;
-          let sampleDirection = envEqualAreaSquareToSphere(uv);
+          var sampleDirection = envEqualAreaSquareToSphere(uv);
+          sampleDirection = envmapInfo.invTransform * sampleDirection;
           // change of variable, from square image to sphere pdf
           var lightSamplePdf = pc2d_pdf / (4 * PI);
           lightSamplePdf *= cdfEntry.pdf;
@@ -335,7 +336,8 @@ export class BVH {
           } 
         } else {
           // envmap pdf retrieval
-          let uv = envEqualAreaSphereToSquare((*ray).direction);
+          let dir = envmapInfo.transform * (*ray).direction;
+          let uv = envEqualAreaSphereToSquare(dir);
           var pdf = getPC2Dpdf( 
             &envmapPC2D.data, 
             envmapPC2D.size, 

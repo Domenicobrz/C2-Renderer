@@ -79,6 +79,20 @@
     configManager.setStoreProperty({ ENVMAP_SCALE: newScale });
   }
 
+  function onEnvmapRotXChange(e: { detail: { value: number } }) {
+    const newRotX = e.detail.value;
+    if (isNaN(newRotX)) return;
+
+    configManager.setStoreProperty({ ENVMAP_ROTX: newRotX });
+  }
+
+  function onEnvmapRotYChange(e: { detail: { value: number } }) {
+    const newRotY = e.detail.value;
+    if (isNaN(newRotY)) return;
+
+    configManager.setStoreProperty({ ENVMAP_ROTY: newRotY });
+  }
+
   function onOneStepLimitIncrement() {
     samplesInfo.setLimit($samplesInfo.limit + 1);
   }
@@ -154,6 +168,31 @@
           on:change={onEnvmapScaleChange}
         /></span
       >
+      <div class="flex-row">
+        <label class="large no-margin">Rotation X: </label>
+        <RangeSlider
+          min={0}
+          max={Math.PI * 2}
+          on:change={onEnvmapRotXChange}
+          float
+          values={[$configOptions.ENVMAP_ROTX]}
+          step={0.1}
+          springValues={{ stiffness: 1, damping: 1 }}
+        />
+      </div>
+      <Spacer vertical={5} />
+      <div class="flex-row">
+        <label class="large no-margin">Rotation Y: </label>
+        <RangeSlider
+          min={0}
+          max={Math.PI * 2}
+          on:change={onEnvmapRotYChange}
+          float
+          values={[$configOptions.ENVMAP_ROTY]}
+          step={0.1}
+          springValues={{ stiffness: 1, damping: 1 }}
+        />
+      </div>
     </Folder>
     <Folder name="Sampling" roundBox>
       <span
@@ -202,6 +241,15 @@
   .flex-row label {
     margin: 0 0 9px 0;
     width: 100px;
+  }
+
+  .flex-row label.large {
+    margin: 0 0 9px 0;
+    width: 150px;
+  }
+
+  .flex-row label.no-margin {
+    margin: 0;
   }
 
   :global(.flex-row > .rangeSlider) {

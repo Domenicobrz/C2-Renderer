@@ -12,6 +12,8 @@ export type ConfigOptions = {
   MIS_TYPE: MIS_TYPE;
   USE_POWER_HEURISTIC: 0 | 1;
   ENVMAP_SCALE: number;
+  ENVMAP_ROTX: number;
+  ENVMAP_ROTY: number;
 };
 
 type ShaderConfig = {

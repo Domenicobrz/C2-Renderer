@@ -271,13 +271,28 @@ export class ComputeSegment {
 
     // if envmap scale changed, we'll need to recompute lightsCDFBuffer
     let envmap = this.#scene?.envmap;
+    let updateEnvInfoBuffer = false;
+
     if (envmap && configManager.options.ENVMAP_SCALE != envmap.scale) {
       envmap.scale = configManager.options.ENVMAP_SCALE;
 
       let { LightsCDFBufferData, LightsCDFBufferDataByteSize } =
         this.#bvh!.getLightsCDFBufferData();
       this.#device.queue.writeBuffer(this.#lightsCDFBuffer!, 0, LightsCDFBufferData);
+      updateEnvInfoBuffer = true;
+    }
 
+    if (
+      envmap &&
+      (configManager.options.ENVMAP_ROTX != envmap.rotX ||
+        configManager.options.ENVMAP_ROTY != envmap.rotY)
+    ) {
+      envmap.rotX = configManager.options.ENVMAP_ROTX;
+      envmap.rotY = configManager.options.ENVMAP_ROTY;
+      updateEnvInfoBuffer = true;
+    }
+
+    if (envmap && updateEnvInfoBuffer) {
       envmap.updateEnvmapInfoBuffer(this.#device, this.#envmapInfoBuffer!);
     }
   }
@@ -307,7 +322,13 @@ export class ComputeSegment {
 
     let envmap = scene.envmap || new Envmap();
     configManager.setSCProperty({ HAS_ENVMAP: scene.envmap ? true : false });
-    configManager.setStoreProperty({ ENVMAP_SCALE: envmap.scale });
+    // this will, unfortunately, trigger the updateConfig() function in the next javascript tick
+    // we should hopefully be able to fix this completely in svelte 5
+    configManager.setStoreProperty({
+      ENVMAP_SCALE: envmap.scale,
+      ENVMAP_ROTX: envmap.rotX,
+      ENVMAP_ROTY: envmap.rotY
+    });
     let envmapDistributionData = envmap.distribution.getBufferData();
     let { texture: envmapTexture } = envmap.getTextureData(this.#device);
 

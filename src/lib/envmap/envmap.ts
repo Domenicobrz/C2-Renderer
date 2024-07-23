@@ -2,17 +2,19 @@ import { AABB } from '$lib/bvh/aabb';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import { getLuminance } from '$lib/utils/getLuminance';
 import { copySign } from '$lib/utils/math';
-import { FloatType, Vector2, Vector3 } from 'three';
+import { FloatType, Matrix3, Matrix4, Vector2, Vector3 } from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 
 export class Envmap {
   #data: Float32Array = new Float32Array();
   #size: Vector2 = new Vector2(0, 0);
 
-  private INFO_BUFFER_BYTE_LENGTH = 16;
+  private INFO_BUFFER_BYTE_LENGTH = 112;
 
   public luminanceAverage = 0;
   public scale = 1;
+  public rotX = 0;
+  public rotY = 0;
   public distribution = new PC2D([[0]], 1, 1, new AABB());
   public compensatedDistribution = new PC2D([[0]], 1, 1, new AABB());
 
@@ -263,11 +265,20 @@ export class Envmap {
     const EnvmapInfoValues = new ArrayBuffer(this.INFO_BUFFER_BYTE_LENGTH);
     const EnvmapInfoViews = {
       size: new Int32Array(EnvmapInfoValues, 0, 2),
-      scale: new Float32Array(EnvmapInfoValues, 8, 1)
+      scale: new Float32Array(EnvmapInfoValues, 8, 1),
+      transform: new Float32Array(EnvmapInfoValues, 16, 12),
+      invTransform: new Float32Array(EnvmapInfoValues, 64, 12)
     };
+
+    let matrix = new Matrix4().makeRotationAxis(new Vector3(0, 1, 0), this.rotX);
+    matrix.multiply(new Matrix4().makeRotationAxis(new Vector3(1, 0, 0), this.rotY));
+    let invMatrix = matrix.clone().invert();
 
     EnvmapInfoViews.size.set([this.#size.x, this.#size.y]);
     EnvmapInfoViews.scale.set([this.scale]);
+    // matrix.elements is stored in column major order
+    EnvmapInfoViews.transform.set(matrix.elements.slice(0, 12));
+    EnvmapInfoViews.invTransform.set(invMatrix.elements.slice(0, 12));
     device.queue.writeBuffer(buffer, 0, EnvmapInfoValues);
   }
 
@@ -310,7 +321,9 @@ export class Envmap {
     return /* wgsl */ `
       struct EnvmapInfo {
         size: vec2i,
-        scale: f32
+        scale: f32,
+        transform: mat3x3f,
+        invTransform: mat3x3f,
       }
     `;
   }
@@ -409,10 +422,11 @@ export class Envmap {
       }
 
       fn getEnvmapRadiance(dir: vec3f) -> vec3f {
-        let uv = envEqualAreaSphereToSquare(dir);
+        let tdir = envmapInfo.transform * dir; 
+        let uv = envEqualAreaSphereToSquare(tdir);
         let radiance = textureLoad(
           envmapTexture, 
-          vec2u(u32(uv.x * f32(envmapPC2D.size.x)), u32(uv.y * f32(envmapPC2D.size.y))), 
+          vec2u(u32(uv.x * f32(envmapInfo.size.x)), u32(uv.y * f32(envmapInfo.size.y))), 
           0
         );
 

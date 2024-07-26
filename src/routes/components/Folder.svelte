@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
 
   export let name: string;
+  export let disabled = false;
   export let expanded = true;
   export let roundBox = false;
 
@@ -23,12 +24,18 @@
   }
 </script>
 
-<div class="container" class:roundBox bind:this={containerEl} class:childOfAnotherFolder>
+<div
+  class="container"
+  class:roundBox
+  bind:this={containerEl}
+  class:childOfAnotherFolder
+  class:disabled
+>
   <header class:expanded>
     <button on:click={expandToggle}>{expanded ? '-' : '+'}</button>
     <p on:click={expandToggle}>{name}</p>
   </header>
-  <div class="folder-slot-container" class:expanded>
+  <div class="folder-slot-container" class:expanded class:disabled>
     <slot />
   </div>
 </div>
@@ -36,6 +43,9 @@
 <style>
   .container {
     margin: 8px;
+  }
+  .container.disabled {
+    opacity: 0.35;
   }
   .container.roundBox {
     border: 1px dashed #444;
@@ -52,6 +62,9 @@
   .folder-slot-container.expanded {
     padding: 13px;
     height: auto;
+  }
+  .folder-slot-container.disabled {
+    pointer-events: none;
   }
   header {
     display: flex;

@@ -321,13 +321,16 @@ export class ComputeSegment {
     let materialsData = new Float32Array(scene.materials.map((mat) => mat.getFloatsArray()).flat());
 
     let envmap = scene.envmap || new Envmap();
-    configManager.setSCProperty({ HAS_ENVMAP: scene.envmap ? true : false });
     // this will, unfortunately, trigger the updateConfig() function in the next javascript tick
     // we should hopefully be able to fix this completely in svelte 5
     configManager.setStoreProperty({
       ENVMAP_SCALE: envmap.scale,
       ENVMAP_ROTX: envmap.rotX,
-      ENVMAP_ROTY: envmap.rotY
+      ENVMAP_ROTY: envmap.rotY,
+      shaderConfig: {
+        ...configManager.options.shaderConfig,
+        HAS_ENVMAP: scene.envmap ? true : false
+      }
     });
     let envmapDistributionData = envmap.distribution.getBufferData();
     let { texture: envmapTexture } = envmap.getTextureData(this.#device);

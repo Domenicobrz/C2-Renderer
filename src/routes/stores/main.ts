@@ -64,5 +64,10 @@ export const samplesInfo = (function createSamplesInfoStore() {
 export const configOptions = writable<ConfigOptions>({
   MIS_TYPE: 2,
   USE_POWER_HEURISTIC: 1,
-  ENVMAP_SCALE: 1
+  ENVMAP_SCALE: 1,
+  ENVMAP_ROTX: 0,
+  ENVMAP_ROTY: 0,
+  shaderConfig: {
+    HAS_ENVMAP: false
+  }
 });

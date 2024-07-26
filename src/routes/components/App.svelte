@@ -159,7 +159,7 @@
         >
       </p>
     </Folder>
-    <Folder name="Envmap">
+    <Folder name="Envmap" disabled={!$configOptions.shaderConfig.HAS_ENVMAP}>
       <span
         >Scale: <input
           class="envmap-scale-input"

@@ -8,21 +8,20 @@ export enum MIS_TYPE {
   NEXT_EVENT_ESTIMATION = 2
 }
 
+type ShaderConfig = {
+  HAS_ENVMAP: boolean;
+};
+
 export type ConfigOptions = {
   MIS_TYPE: MIS_TYPE;
   USE_POWER_HEURISTIC: 0 | 1;
   ENVMAP_SCALE: number;
   ENVMAP_ROTX: number;
   ENVMAP_ROTY: number;
-};
-
-type ShaderConfig = {
-  HAS_ENVMAP: boolean;
+  shaderConfig: ShaderConfig;
 };
 
 class ConfigManager {
-  private shaderConfig: ShaderConfig;
-
   public options: ConfigOptions;
   public e: EventHandler;
   public bufferSize = 8;
@@ -36,20 +35,14 @@ class ConfigManager {
       this.options = value;
       this.e.fireEvent('config-update');
     });
-
-    this.shaderConfig = { HAS_ENVMAP: false };
   }
 
   setStoreProperty(props: Partial<ConfigOptions>) {
-    configOptions.set({ ...get(configOptions), ...props });
+    configOptions.set({ ...this.options, ...props });
   }
 
   getOptionsBuffer(): ArrayBuffer {
     return new Uint32Array([this.options.MIS_TYPE, this.options.USE_POWER_HEURISTIC]);
-  }
-
-  setSCProperty(props: Partial<ShaderConfig>) {
-    this.shaderConfig = { ...this.shaderConfig, ...props };
   }
 
   // might return a different string with each invocation if internal shader configurations
@@ -73,7 +66,7 @@ class ConfigManager {
     // can be used to customize / change all the shader-parts returned by the rest of the 
     // classes of C2
     const shaderConfig = ShaderConfig(
-      ${this.shaderConfig.HAS_ENVMAP},
+      ${this.options.shaderConfig.HAS_ENVMAP},
     );
     `;
   }

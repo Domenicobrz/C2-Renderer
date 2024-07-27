@@ -295,6 +295,17 @@ export class ComputeSegment {
     if (envmap && updateEnvInfoBuffer) {
       envmap.updateEnvmapInfoBuffer(this.#device, this.#envmapInfoBuffer!);
     }
+
+    if (
+      envmap &&
+      configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION !=
+        configManager.prevOptions.ENVMAP_USE_COMPENSATED_DISTRIBUTION
+    ) {
+      let envmapDistributionData = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
+        ? envmap.compensatedDistribution.getBufferData()
+        : envmap.distribution.getBufferData();
+      this.#device.queue.writeBuffer(this.#envmapPC2DBuffer!, 0, envmapDistributionData.data);
+    }
   }
 
   updateTile(tile: Tile) {
@@ -332,8 +343,9 @@ export class ComputeSegment {
         HAS_ENVMAP: scene.envmap ? true : false
       }
     });
-    let envmapDistributionData = envmap.distribution.getBufferData();
-    // let envmapDistributionData = envmap.compensatedDistribution.getBufferData();
+    let envmapDistributionData = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
+      ? envmap.compensatedDistribution.getBufferData()
+      : envmap.distribution.getBufferData();
     let { texture: envmapTexture } = envmap.getTextureData(this.#device);
 
     this.#trianglesBuffer = this.#device.createBuffer({

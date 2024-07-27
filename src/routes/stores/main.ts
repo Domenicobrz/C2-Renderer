@@ -61,13 +61,39 @@ export const samplesInfo = (function createSamplesInfoStore() {
   };
 })();
 
-export const configOptions = writable<ConfigOptions>({
+export const configOptions = createConfigStore({
   MIS_TYPE: 2,
   USE_POWER_HEURISTIC: 1,
   ENVMAP_SCALE: 1,
   ENVMAP_ROTX: 0,
   ENVMAP_ROTY: 0,
+  ENVMAP_USE_COMPENSATED_DISTRIBUTION: false,
   shaderConfig: {
     HAS_ENVMAP: false
   }
 });
+
+function createConfigStore(initialValue: ConfigOptions) {
+  const { subscribe, set, update } = writable<ConfigOptions>(initialValue);
+
+  // purtroppo sto bordello è necessario perchè a volte svelte modifica direttamente
+  // l'oggetto dello store
+  let oldValues: ConfigOptions[] = [initialValue, initialValue];
+
+  return {
+    subscribe,
+    set: (value: ConfigOptions) => {
+      oldValues[0] = oldValues[1];
+      oldValues[1] = JSON.parse(JSON.stringify(value));
+      set(value);
+    },
+    update: (fn: any) => {
+      update((currentValue) => {
+        oldValues[0] = oldValues[1];
+        oldValues[1] = JSON.parse(JSON.stringify(currentValue));
+        return fn(currentValue);
+      });
+    },
+    getOldValue: () => oldValues[0]
+  };
+}

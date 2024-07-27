@@ -12,27 +12,33 @@ type ShaderConfig = {
   HAS_ENVMAP: boolean;
 };
 
+// this object needs to be serializeable, because of limitations caused by
+// the optionsHistory madness inside createConfigStore(...)
 export type ConfigOptions = {
   MIS_TYPE: MIS_TYPE;
   USE_POWER_HEURISTIC: 0 | 1;
   ENVMAP_SCALE: number;
   ENVMAP_ROTX: number;
   ENVMAP_ROTY: number;
+  ENVMAP_USE_COMPENSATED_DISTRIBUTION: boolean;
   shaderConfig: ShaderConfig;
 };
 
 class ConfigManager {
   public options: ConfigOptions;
+  public prevOptions: ConfigOptions;
   public e: EventHandler;
   public bufferSize = 8;
 
   constructor() {
     this.options = get(configOptions);
+    this.prevOptions = this.options;
     this.e = new EventHandler();
 
     // we're subscribing to the svelte store
     configOptions.subscribe((value) => {
       this.options = value;
+      this.prevOptions = configOptions.getOldValue();
       this.e.fireEvent('config-update');
     });
   }

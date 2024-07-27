@@ -196,8 +196,8 @@
       </div>
       <Spacer vertical={12} />
       <div class="flex-row">
-        <p>Use compensated distribution:</p>
-        <Checkbox checked={false} />
+        <p>Use compensated distribution:&nbsp;</p>
+        <Checkbox bind:checked={$configOptions.ENVMAP_USE_COMPENSATED_DISTRIBUTION} />
       </div>
       <Spacer vertical={8} />
     </Folder>

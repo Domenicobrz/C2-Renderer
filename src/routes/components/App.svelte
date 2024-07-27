@@ -194,8 +194,12 @@
           springValues={{ stiffness: 1, damping: 1 }}
         />
       </div>
-      <Spacer vertical={5} />
-      <Checkbox />
+      <Spacer vertical={12} />
+      <div class="flex-row">
+        <p>Use compensated distribution:</p>
+        <Checkbox checked={false} />
+      </div>
+      <Spacer vertical={8} />
     </Folder>
     <Folder name="Sampling" roundBox>
       <span

@@ -332,7 +332,8 @@ export class ComputeSegment {
         HAS_ENVMAP: scene.envmap ? true : false
       }
     });
-    let envmapDistributionData = envmap.distribution.getBufferData();
+    // let envmapDistributionData = envmap.distribution.getBufferData();
+    let envmapDistributionData = envmap.compensatedDistribution.getBufferData();
     let { texture: envmapTexture } = envmap.getTextureData(this.#device);
 
     this.#trianglesBuffer = this.#device.createBuffer({

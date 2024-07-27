@@ -51,6 +51,14 @@ fn rand4(seedIdx: u32) -> vec4f {
   var u3 = f32(r2) * f32(2.3283064365387e-10);
   var u4 = f32(r3) * f32(2.3283064365387e-10);
 
+  // they have to be clamped, we can't assume that they go up to 1.0
+  // apparently the original algo will have them go up to 1.0
+  // if they do go up to 1.0, some algorithms like PC1D_FindCDFIndex could fail
+  u1 = clamp(u1, 0.0, 0.9999999);
+  u2 = clamp(u2, 0.0, 0.9999999);
+  u3 = clamp(u3, 0.0, 0.9999999);
+  u4 = clamp(u4, 0.0, 0.9999999);
+
   return vec4f(u1, u2, u3, u4);
 }
 `;

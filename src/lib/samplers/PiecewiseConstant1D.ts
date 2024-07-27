@@ -157,31 +157,40 @@ export class PC1D {
 
   static shaderMethods(): string {
     return /* wgsl */ `
-      fn PC1D_FindCDFIndex(data: ptr<storage, array<f32>>, offset: i32, size: i32, u: f32) -> i32 {
-        var si = offset;
-        var ei = offset + size;
-    
-        var mid = -2;
-        var fidx = -1;
-    
-        while (fidx != mid) {
-          mid = (si + ei) / 2;
-          fidx = mid;
-    
-          let cdfVal = data[mid];
-    
-          if (u > cdfVal) {
-            si = mid;
-            mid = (si + ei) / 2;
-          }
 
-          if (u < cdfVal) {
-            ei = mid;
-            mid = (si + ei) / 2;
+      // we have to be careful with the find function, the cdf could be of this type:
+      // [0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.6, 1.0]
+      // in this case with u = 0.1, I can't sample any of the 0.1s in the middle of the array,
+      // since they would all have probability 0 of being taken, thus:
+      //   "the function must return the offset into the array of function values of the 
+      //   largest index where the CDF was less than or equal to u. 
+      //   (In other words, cdf[offset] <= u < cdf[offset+1])"
+      // using the array above as example, if u = 0.09, then the offset is: idx=0, 
+      // if u = 0.1, then idx=6, (notice we skipped all the ones in the middle)
+      // if u = 0.11, then we still have idx=6
+      // ******** another important point ********
+      // I think the algo could fail if u=1.0, I had to clamp my rands to 0.9999999
+      // I'm not entirely sure wheter that's a problem or not, it would be worth testing
+      fn PC1D_FindCDFIndex(data: ptr<storage, array<f32>>, offset: i32, sz: i32, u: f32) -> i32 {
+        var size = sz - 2; 
+        var first = offset + 1;
+
+        while (size > 0) {
+          let half = size >> 1; 
+      	  let middle = first + half;
+          let predResult = data[middle] <= u;
+
+          if (predResult) {
+            first = middle + 1;
+            size = size - (half + 1);
+          } else {
+            first = first;
+            size = half;
           }
         }
-    
-        return fidx;
+
+        // clamp between 0 and size - 2 (note that we need to add offset to both)
+        return clamp(first - 1, offset + 0, offset + sz - 2);
       }
 
       fn samplePC1D(

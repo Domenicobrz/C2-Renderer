@@ -41,7 +41,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   let scene = await createScene();
   computeSegment.updateScene(scene);
   // computeSegment.setDebugPixelTarget(280, 385);
-  computeSegment.setDebugPixelTarget(400, 300);
+  computeSegment.setDebugPixelTarget(400, 200);
 
   renderSegment = new RenderSegment(device, context, presentationFormat);
   renderTextureSegment = new RenderTextureSegment(device, context, presentationFormat);

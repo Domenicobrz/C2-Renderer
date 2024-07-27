@@ -8,6 +8,7 @@
   import Toggle from './Toggle.svelte';
   import Spacer from './Spacer.svelte';
   import { configManager } from '$lib/config';
+  import Checkbox from './Checkbox.svelte';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidthSlidersValue = [0];
@@ -193,6 +194,8 @@
           springValues={{ stiffness: 1, damping: 1 }}
         />
       </div>
+      <Spacer vertical={5} />
+      <Checkbox />
     </Folder>
     <Folder name="Sampling" roundBox>
       <span

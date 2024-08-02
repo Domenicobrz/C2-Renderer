@@ -1,14 +1,25 @@
 import { lerp } from '$lib/utils/math';
 
 export class PC1D {
-  public func: number[];
-  public absFunc: number[];
-  public cdf: number[];
-  public min: number;
-  public max: number;
-  public funcInt: number;
+  public func: number[] = [];
+  public absFunc: number[] = [];
+  public cdf: number[] = [];
+  public min: number = -1;
+  public max: number = -1;
+  public funcInt: number = -1;
 
-  constructor(func: number[], min: number, max: number) {
+  constructor(func: number[], min?: number, max?: number);
+  constructor(func: ArrayBuffer);
+  constructor(func: number[] | ArrayBuffer, min?: number, max?: number) {
+    if (func instanceof ArrayBuffer) {
+      this.fromBufferData(func);
+      return;
+    }
+
+    if (min === undefined || max === undefined) {
+      throw new Error('PC1D constructor must provide min and max values');
+    }
+
     let absFunc = [];
     let cdf = [];
     let funcInt = 0;
@@ -77,6 +88,47 @@ export class PC1D {
     this.absFunc = absFunc;
     this.cdf = cdf;
     this.funcInt = funcInt;
+  }
+
+  fromBufferData(data: ArrayBuffer) {
+    // order is: min, max, funcint, func, absfunc, cdf
+    let byteLength = data.byteLength;
+    let elementsCount = byteLength / 4;
+    let funcArrayElementsCount = Math.floor((elementsCount - 3) / 3);
+    let fa = new Float32Array(data, 0, elementsCount);
+
+    this.min = fa[0];
+    this.max = fa[1];
+    this.funcInt = fa[2];
+    this.func = Array.from(fa.slice(3, 3 + funcArrayElementsCount));
+    this.absFunc = Array.from(fa.slice(3 + funcArrayElementsCount, 3 + funcArrayElementsCount * 2));
+    this.cdf = Array.from(
+      fa.slice(3 + funcArrayElementsCount * 2, 3 + funcArrayElementsCount * 3 + 1)
+    );
+  }
+
+  getBufferData(): ArrayBuffer {
+    const byteLength = 3 * 4 + (this.func.length * 3 + 1) * 4;
+    const data = new ArrayBuffer(byteLength);
+    let elementsCount = byteLength / 4;
+    let funcSize = this.func.length;
+
+    let bufferView = new Float32Array(data, 0, elementsCount);
+    bufferView[0] = this.min;
+    bufferView[1] = this.max;
+    bufferView[2] = this.funcInt;
+
+    for (let i = 0; i < this.func.length; i++) {
+      bufferView[3 + i] = this.func[i];
+    }
+    for (let i = 0; i < this.absFunc.length; i++) {
+      bufferView[3 + funcSize + i] = this.absFunc[i];
+    }
+    for (let i = 0; i < this.cdf.length; i++) {
+      bufferView[3 + funcSize * 2 + i] = this.cdf[i];
+    }
+
+    return data;
   }
 
   // will return the largest index whose cdf value is smaller or equal to U

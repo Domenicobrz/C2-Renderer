@@ -1,17 +1,28 @@
-import { Vector2 } from 'three';
+import { Vector2, Vector3 } from 'three';
 import { PC1D } from './PiecewiseConstant1D';
-import type { AABB } from '$lib/bvh/aabb';
+import { AABB } from '$lib/bvh/aabb';
 import { boundsOffset2D, clamp } from '$lib/utils/math';
 
 export class PC2D {
-  public pConditionalV: PC1D[];
-  public pMarginal: PC1D;
-  public domain: AABB;
+  public pConditionalV: PC1D[] = [];
+  public pMarginal: PC1D = new PC1D([1], 0, 1);
+  public domain: AABB = new AABB();
 
-  private sizeX: number;
-  private sizeY: number;
+  private sizeX: number = 0;
+  private sizeY: number = 0;
 
-  constructor(func: number[][], sizeX: number, sizeY: number, domain: AABB) {
+  constructor(func: number[][], sizeX?: number, sizeY?: number, domain?: AABB);
+  constructor(func: ArrayBuffer);
+  constructor(func: number[][] | ArrayBuffer, sizeX?: number, sizeY?: number, domain?: AABB) {
+    if (func instanceof ArrayBuffer) {
+      this.fromArrayBuffer(func);
+      return;
+    }
+
+    if (sizeX === undefined || sizeY === undefined || domain === undefined) {
+      throw new Error('PC2D constructor requires size and domain');
+    }
+
     let linearMemoryFunc: number[] = func.flat(1);
 
     this.sizeX = sizeX;
@@ -69,15 +80,50 @@ export class PC2D {
     return pConditionalV[iv].func[iu] / pMarginal.funcInt;
   }
 
-  getBufferData(): { data: ArrayBuffer; byteSize: number } {
+  fromArrayBuffer(buffer: ArrayBuffer) {
+    const PC2DValues = buffer;
+    const BufferAsFloats = new Float32Array(PC2DValues);
+    const BufferAsInts = new Int32Array(PC2DValues);
+    this.domain = new AABB(
+      new Vector3(BufferAsFloats[0], BufferAsFloats[1], BufferAsFloats[2]),
+      new Vector3(BufferAsFloats[4], BufferAsFloats[5], BufferAsFloats[6])
+    );
+    this.sizeX = BufferAsInts[8];
+    this.sizeY = BufferAsInts[9];
+
+    // now that we know the size, we can compute the pc1ds buffer offsets
+    let singlePc1dElementsCount = 3 + this.sizeX * 3 + 1;
+    let singlePc1dElementsByteCount = singlePc1dElementsCount * 4;
+
+    for (let i = 0; i < this.sizeY; i++) {
+      this.pConditionalV.push(
+        new PC1D(
+          buffer.slice(
+            40 + i * singlePc1dElementsByteCount,
+            40 + (i + 1) * singlePc1dElementsByteCount
+          )
+        )
+      );
+    }
+    this.pMarginal = new PC1D(
+      buffer.slice(
+        40 + singlePc1dElementsByteCount * this.sizeY,
+        40 + singlePc1dElementsByteCount * (this.sizeY + 1)
+      )
+    );
+  }
+
+  getBufferData(): ArrayBuffer {
     // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001003101000000000000003d888b0237284d3025f2381bcb2887abe1236818644f249d16ed6665cfb955d23da18f40361a9e1d6ae3abfa5c43c12bc70f6bedab5ce52ffedd28fbcbaca3cbbfd5fae5aac907fa22e4a51bb43c003a15c31f3d39f5b8d5995a5022db6de4969eefbf1f24b4ddeba4c5fc4cb41d477965ff14ec9bc8b80909b9967623dcf52cc800d8525d2a2c331bad2d7aef1aedb977e9815de36c57021ff9c2d12d
     // (3 + this.sizeX * 3 + 1) === min,max,funcint + func[] + absFunc[] + cdf[] --- the +1 at the end
     // is the cdf being one element larger than the other arrays
     // (this.sizeY + 1)     === pConditionalV: PC1D[] + pMarginal: PC1D
-    let pc1dElementsCount = (3 + this.sizeX * 3 + 1) * (this.sizeY + 1);
+    let singlePc1dElementsCount = 3 + this.sizeX * 3 + 1;
+    let pc1dElementsCount = singlePc1dElementsCount * (this.sizeY + 1);
     let pc1dElementsBytesCount = pc1dElementsCount * 4;
 
-    let totalByteSize = 40 + pc1dElementsBytesCount + 2 * 4; // 2 * 4 is the padding
+    // 2 * 4 is the padding
+    let totalByteSize = 40 + pc1dElementsBytesCount + 2 * 4;
 
     const PC2DValues = new ArrayBuffer(totalByteSize);
     const PC2DViews = {
@@ -86,8 +132,6 @@ export class PC2D {
         max: new Float32Array(PC2DValues, 16, 3)
       },
       size: new Int32Array(PC2DValues, 32, 2),
-      // the +2 at the end is the padding computed by offset computer,
-      // strangely, it's always two, no matter what's the elements count
       data: new Float32Array(PC2DValues, 40, pc1dElementsCount + 2)
     };
 
@@ -95,32 +139,19 @@ export class PC2D {
     PC2DViews.domain.max.set([this.domain.max.x, this.domain.max.y, 0]);
     PC2DViews.size.set([this.sizeX, this.sizeY]);
 
-    let pc1dElements = [];
-    this.pConditionalV.forEach((pc1d) => {
-      pc1dElements.push(
-        pc1d.min,
-        pc1d.max,
-        pc1d.funcInt,
-        ...pc1d.func,
-        ...pc1d.absFunc,
-        ...pc1d.cdf
-      );
+    this.pConditionalV.forEach((pc1d, i) => {
+      let buffer = pc1d.getBufferData();
+      PC2DViews.data.set(new Float32Array(buffer), singlePc1dElementsCount * i);
     });
-    pc1dElements.push(
-      this.pMarginal.min,
-      this.pMarginal.max,
-      this.pMarginal.funcInt,
-      ...this.pMarginal.func,
-      ...this.pMarginal.absFunc,
-      ...this.pMarginal.cdf
+    let marginalBuffer = this.pMarginal.getBufferData();
+    PC2DViews.data.set(
+      new Float32Array(marginalBuffer),
+      singlePc1dElementsCount * this.pConditionalV.length
     );
-    pc1dElements.push(0, 0); // +2 padding, read above
-    PC2DViews.data.set(pc1dElements);
+    // padding
+    PC2DViews.data.set([0, 0], pc1dElementsCount);
 
-    return {
-      data: PC2DValues,
-      byteSize: totalByteSize
-    };
+    return PC2DValues;
   }
 
   static shaderStruct(): string {

@@ -301,10 +301,10 @@ export class ComputeSegment {
       configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION !=
         configManager.prevOptions.ENVMAP_USE_COMPENSATED_DISTRIBUTION
     ) {
-      let envmapDistributionData = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
+      let envmapDistributionBuffer = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
         ? envmap.compensatedDistribution.getBufferData()
         : envmap.distribution.getBufferData();
-      this.#device.queue.writeBuffer(this.#envmapPC2DBuffer!, 0, envmapDistributionData.data);
+      this.#device.queue.writeBuffer(this.#envmapPC2DBuffer!, 0, envmapDistributionBuffer);
     }
   }
 
@@ -343,7 +343,7 @@ export class ComputeSegment {
         HAS_ENVMAP: scene.envmap ? true : false
       }
     });
-    let envmapDistributionData = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
+    let envmapDistributionBuffer = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
       ? envmap.compensatedDistribution.getBufferData()
       : envmap.distribution.getBufferData();
     let { texture: envmapTexture } = envmap.getTextureData(this.#device);
@@ -369,7 +369,7 @@ export class ComputeSegment {
     });
 
     this.#envmapPC2DBuffer = this.#device.createBuffer({
-      size: envmapDistributionData.byteSize,
+      size: envmapDistributionBuffer.byteLength,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
@@ -379,7 +379,7 @@ export class ComputeSegment {
     this.#device.queue.writeBuffer(this.#materialsBuffer, 0, materialsData);
     this.#device.queue.writeBuffer(this.#bvhBuffer, 0, BVHBufferData);
     this.#device.queue.writeBuffer(this.#lightsCDFBuffer, 0, LightsCDFBufferData);
-    this.#device.queue.writeBuffer(this.#envmapPC2DBuffer, 0, envmapDistributionData.data);
+    this.#device.queue.writeBuffer(this.#envmapPC2DBuffer, 0, envmapDistributionBuffer);
 
     // we need to re-create the bindgroup
     this.#bindGroup3 = this.#device.createBindGroup({

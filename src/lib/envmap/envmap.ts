@@ -212,40 +212,6 @@ export class Envmap {
     return new Vector2(0.5 * (u + 1), 0.5 * (v + 1));
   }
 
-  // should be deleted at some point
-  // should be deleted at some point
-  // should be deleted at some point
-  getBufferData(): { data: ArrayBuffer; byteSize: number } {
-    if (this.#size.x === 0) {
-      return { data: new ArrayBuffer(0), byteSize: 0 };
-    }
-
-    // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d00000100c700000000000000003d888b0237284d3025f2381bcb28883f05c6e901ed37dc16b0f1f435309be2d90166cce262d8c5e7adeddccdafa144338e0eb1645ccfab141e4e9daeee7674a4f9a4481fbb1c9132325e382296f19e7fb492e794495847c565e1fb67fe4c7d8af2ae57ef47271844a1313018e4fee660f52b197fb5551fc3c01c5c83452fdad9cb499ffff5ffbd00
-    const byteSize = 16 + 16 * this.#size.x * this.#size.y;
-    const EnvmapValues = new ArrayBuffer(byteSize);
-    const EnvmapViews = {
-      size: new Int32Array(EnvmapValues, 0, 2),
-      data: new Float32Array(EnvmapValues, 16, this.#size.x * this.#size.y * 4)
-    };
-
-    EnvmapViews.size.set([this.#size.x, this.#size.y]);
-
-    for (let i = 0; i < this.#data.length; i += 4) {
-      let r = this.#data[i + 0];
-      let g = this.#data[i + 1];
-      let b = this.#data[i + 2];
-      EnvmapViews.data.set([r, g, b], i);
-    }
-
-    return {
-      data: EnvmapValues,
-      byteSize
-    };
-  }
-
-  // should be deleted at some point
-  // should be deleted at some point
-  // should be deleted at some point
   getData(): { data: Float32Array; size: Vector2 } {
     return { data: this.#data, size: this.#size };
   }

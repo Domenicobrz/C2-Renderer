@@ -2,19 +2,19 @@ import { AABB } from '$lib/bvh/aabb';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import { getLuminance } from '$lib/utils/getLuminance';
 import { copySign } from '$lib/utils/math';
-import { FloatType, Matrix3, Matrix4, Vector2, Vector3 } from 'three';
+import { FloatType, Matrix4, Vector2, Vector3 } from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 
 export class Envmap {
-  #data: Float32Array = new Float32Array();
-  #size: Vector2 = new Vector2(0, 0);
-
   private INFO_BUFFER_BYTE_LENGTH = 112;
 
+  private SERIALIZATION_VERSION = 1;
+  private size: Vector2 = new Vector2(0, 0);
   public luminanceAverage = 0;
   public scale = 1;
   public rotX = 0;
   public rotY = 0;
+  private data: Float32Array = new Float32Array();
   public distribution = new PC2D([[0]], 1, 1, new AABB());
   public compensatedDistribution = new PC2D([[0]], 1, 1, new AABB());
 
@@ -25,8 +25,8 @@ export class Envmap {
     // the fourth element of each pixel returned by this loader is always 1
     let hdrTexture = await new RGBELoader().setDataType(FloatType).loadAsync(path);
 
-    // this.#data = hdrTexture.source.data.data;
-    // this.#size = new Vector2(hdrTexture.source.data.width, hdrTexture.source.data.height);
+    // this.data = hdrTexture.source.data.data;
+    // this.size = new Vector2(hdrTexture.source.data.width, hdrTexture.source.data.height);
 
     let equirectData = hdrTexture.source.data.data;
     let equirectSize = new Vector2(hdrTexture.source.data.width, hdrTexture.source.data.height);
@@ -39,7 +39,7 @@ export class Envmap {
     // con quel tipo di envmap. Per prima cosa, dobbiamo iterare su
     // size x x size y della envmap texture, e per ognuno di quei pixel,
     // cercheremo la 3d direction corrispondente, e prenderemo il pixel della hdr texture sopra
-    let envmapSize = 300;
+    let envmapSize = 400;
     for (let i = 0; i < envmapSize; i++) {
       for (let j = 0; j < envmapSize; j++) {
         let hstep = 1 / (envmapSize * 2);
@@ -121,8 +121,99 @@ export class Envmap {
     //   radianceData[startIndex * 4 + 2] = 0;
     // }
 
-    this.#data = new Float32Array(radianceData);
-    this.#size = new Vector2(envmapSize, envmapSize);
+    this.data = new Float32Array(radianceData);
+    this.size = new Vector2(envmapSize, envmapSize);
+
+    return this;
+  }
+
+  fromArrayBuffer(buffer: ArrayBuffer) {
+    let version = new Uint32Array(buffer, 0, 1)[0];
+    if (version != this.SERIALIZATION_VERSION) {
+      throw new Error('envmap buffer is from an older version, re-run the envmap transform');
+    }
+
+    this.size.x = new Uint32Array(buffer, 1 * 4, 2)[0];
+    this.size.y = new Uint32Array(buffer, 1 * 4, 2)[1];
+
+    let fa1 = new Float32Array(buffer, 3 * 4, 4);
+    this.luminanceAverage = fa1[0];
+    this.scale = fa1[1];
+    this.rotX = fa1[2];
+    this.rotY = fa1[3];
+
+    const radianceDataByteSize = this.size.x * this.size.y * 4 * 4;
+
+    this.data = new Float32Array(buffer, 7 * 4, radianceDataByteSize / 4);
+
+    let distributionByteSize = (buffer.byteLength - (7 * 4 + radianceDataByteSize)) / 2;
+
+    this.distribution = new PC2D(
+      buffer.slice(
+        7 * 4 + radianceDataByteSize,
+        7 * 4 + radianceDataByteSize + distributionByteSize
+      )
+    );
+    this.compensatedDistribution = new PC2D(
+      buffer.slice(
+        7 * 4 + radianceDataByteSize + distributionByteSize,
+        7 * 4 + radianceDataByteSize + distributionByteSize + distributionByteSize
+      )
+    );
+
+    return this;
+  }
+
+  getArrayBuffer(): ArrayBuffer {
+    let distributionBuffer = this.distribution.getBufferData();
+    let compensatedDistributionBuffer = this.compensatedDistribution.getBufferData();
+
+    let versionByteLength = 1 * 4;
+    let sizeByteLength = 2 * 4;
+    let luminanceAverageByteLength = 1 * 4;
+    let scaleAndRotByteLength = 3 * 4;
+
+    let totalByteLength =
+      versionByteLength +
+      sizeByteLength +
+      luminanceAverageByteLength +
+      scaleAndRotByteLength +
+      this.data.byteLength +
+      distributionBuffer.byteLength +
+      compensatedDistributionBuffer.byteLength;
+
+    let buffer = new ArrayBuffer(totalByteLength);
+    let bufferViews = {
+      version: new Uint32Array(buffer, 0, 1),
+      size: new Uint32Array(buffer, 1 * 4, 2),
+      luminanceAverage: new Float32Array(buffer, 3 * 4, 1),
+      scale: new Float32Array(buffer, 4 * 4, 1),
+      rotX: new Float32Array(buffer, 5 * 4, 1),
+      rotY: new Float32Array(buffer, 6 * 4, 1),
+      data: new Float32Array(buffer, 7 * 4, this.data.length),
+      distributionBuffer: new Uint8Array(
+        buffer,
+        7 * 4 + this.data.byteLength,
+        distributionBuffer.byteLength
+      ),
+      compensatedDistributionBuffer: new Uint8Array(
+        buffer,
+        7 * 4 + this.data.byteLength + distributionBuffer.byteLength,
+        compensatedDistributionBuffer.byteLength
+      )
+    };
+
+    bufferViews.version.set([this.SERIALIZATION_VERSION]);
+    bufferViews.size.set([this.size.x, this.size.y]);
+    bufferViews.luminanceAverage.set([this.luminanceAverage]);
+    bufferViews.scale.set([this.scale]);
+    bufferViews.rotX.set([this.rotX]);
+    bufferViews.rotY.set([this.rotY]);
+    bufferViews.data.set(this.data);
+    bufferViews.distributionBuffer.set(new Uint8Array(distributionBuffer));
+    bufferViews.compensatedDistributionBuffer.set(new Uint8Array(compensatedDistributionBuffer));
+
+    return buffer;
   }
 
   equalAreaSquareToSphere(p: Vector2): Vector3 {
@@ -213,7 +304,7 @@ export class Envmap {
   }
 
   getData(): { data: Float32Array; size: Vector2 } {
-    return { data: this.#data, size: this.#size };
+    return { data: this.data, size: this.size };
   }
 
   createEnvmapInfoBuffer(device: GPUDevice): GPUBuffer {
@@ -240,7 +331,7 @@ export class Envmap {
     matrix.multiply(new Matrix4().makeRotationAxis(new Vector3(1, 0, 0), this.rotY));
     let invMatrix = matrix.clone().invert();
 
-    EnvmapInfoViews.size.set([this.#size.x, this.#size.y]);
+    EnvmapInfoViews.size.set([this.size.x, this.size.y]);
     EnvmapInfoViews.scale.set([this.scale]);
     // matrix.elements is stored in column major order
     EnvmapInfoViews.transform.set(matrix.elements.slice(0, 12));
@@ -250,7 +341,7 @@ export class Envmap {
 
   getTextureData(device: GPUDevice): { texture: GPUTexture } {
     // if this is an empty envmap return a bogus 1x1 texture
-    if (this.#size.x === 0) {
+    if (this.size.x === 0) {
       const texture = device.createTexture({
         size: [1, 1],
         format: 'rgba32float',
@@ -268,16 +359,16 @@ export class Envmap {
     }
 
     const texture = device.createTexture({
-      size: [this.#size.x, this.#size.y],
+      size: [this.size.x, this.size.y],
       format: 'rgba32float',
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
     });
 
     device.queue.writeTexture(
       { texture },
-      this.#data,
-      { bytesPerRow: this.#size.x * 16 },
-      { width: this.#size.x, height: this.#size.y }
+      this.data,
+      { bytesPerRow: this.size.x * 16 },
+      { width: this.size.x, height: this.size.y }
     );
 
     return { texture };

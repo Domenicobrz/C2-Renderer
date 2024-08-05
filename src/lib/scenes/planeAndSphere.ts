@@ -7,6 +7,8 @@ import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
+import { loadArrayBuffer } from '$lib/utils/loadArrayBuffer';
+import { saveArrayBufferLocally } from '$lib/utils/saveArrayBufferLocally';
 
 export async function planeAndSphere(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -60,12 +62,13 @@ export async function planeAndSphere(): Promise<C2Scene> {
   mesh.position.set(0, 0, 0);
   triangles = [...triangles, ...meshToTriangles(mesh, 3)];
 
-  let envmap = new Envmap();
-  await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
-  envmap.scale = 0.9;
+  let eBuffer = await loadArrayBuffer('scene-assets/test/envmap.env');
+  let envmap = new Envmap().fromArrayBuffer(eBuffer!);
 
-  // also remember the scale value based on scene radius when you have to return the color
-  // from the envmap
+  // let envmap = new Envmap();
+  // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
+  // // saveArrayBufferLocally(envmap.getArrayBuffer(), 'envmap.env');
+  // envmap.scale = 0.9;
 
   return { triangles, materials, envmap };
   // return { triangles, materials };

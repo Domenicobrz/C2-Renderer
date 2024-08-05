@@ -8,7 +8,6 @@ import { samplesInfo } from '../routes/stores/main';
 import { createScene } from './createScene';
 import { TileSequence } from './tile';
 import { RenderTextureSegment } from './segment/renderTextureSegment';
-import { Envmap } from './envmap/envmap';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
@@ -119,23 +118,4 @@ async function renderLoop() {
   renderSegment.render();
 
   requestAnimationFrame(renderLoop);
-}
-
-// REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
-// REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
-// REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
-// REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
-// REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
-// REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
-// REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
-// REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
-// REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
-// REMOVE THE ONCLICK CALL INSIDE APP.SVELTE WHEN YOU DELETE THIS FUNCTION
-export async function onClick() {
-  let envmap = new Envmap();
-  await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
-  let envmapData = envmap.getData();
-
-  renderTextureSegment.setTextureData(envmapData.data, envmapData.size);
-  renderTextureSegment.render();
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Renderer, onClick } from '$lib/C2';
+  import { Renderer } from '$lib/C2';
   import { onMount } from 'svelte';
   import { bvhInfo, configOptions, samplesInfo } from '../stores/main';
   import Folder from './Folder.svelte';
@@ -38,12 +38,6 @@
     } catch (error) {
       console.error(error);
     }
-
-    window.addEventListener('keypress', (e) => {
-      if (e.key == 'k') {
-        onClick();
-      }
-    });
   });
 
   function setMaxCanvasSize() {

@@ -346,7 +346,7 @@ export class ComputeSegment {
     let envmapDistributionBuffer = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
       ? envmap.compensatedDistribution.getBufferData()
       : envmap.distribution.getBufferData();
-    let { texture: envmapTexture } = envmap.getTextureData(this.#device);
+    let { texture: envmapTexture } = envmap.getTexture(this.#device);
 
     this.#trianglesBuffer = this.#device.createBuffer({
       size: trianglesBufferDataByteSize,

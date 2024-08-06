@@ -35,6 +35,8 @@ export class RenderTextureSegment {
     });
   }
 
+  // we should also create another function that simply uses an existing texture
+  // instead of having to pass the textureData and create the texture here
   setTextureData(textureData: Float32Array, textureSize: Vector2) {
     const texture = this.#device.createTexture({
       size: [textureSize.x, textureSize.y],

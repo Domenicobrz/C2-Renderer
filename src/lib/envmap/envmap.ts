@@ -303,10 +303,6 @@ export class Envmap {
     return new Vector2(0.5 * (u + 1), 0.5 * (v + 1));
   }
 
-  getData(): { data: Float32Array; size: Vector2 } {
-    return { data: this.data, size: this.size };
-  }
-
   createEnvmapInfoBuffer(device: GPUDevice): GPUBuffer {
     const envmapInfoBuffer = device.createBuffer({
       size: this.INFO_BUFFER_BYTE_LENGTH /* determined with offset computer */,
@@ -339,7 +335,7 @@ export class Envmap {
     device.queue.writeBuffer(buffer, 0, EnvmapInfoValues);
   }
 
-  getTextureData(device: GPUDevice): { texture: GPUTexture } {
+  getTexture(device: GPUDevice): { texture: GPUTexture } {
     // if this is an empty envmap return a bogus 1x1 texture
     if (this.size.x === 0) {
       const texture = device.createTexture({

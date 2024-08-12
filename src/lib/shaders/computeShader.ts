@@ -90,6 +90,8 @@ ${Envmap.shaderMethods()}
   let tid = vec3u(tile.x + gid.x, tile.y + gid.y, 0);
   if (tid.x >= canvasSize.x || tid.y >= canvasSize.y) { return; }
 
+  let idx = tid.y * canvasSize.x + tid.x;
+
   // from [0...1] to [-1...+1]
   let nuv = vec2f(
     (f32(tid.x) + cameraSample.x) / f32(canvasSize.x) * 2 - 1,
@@ -98,15 +100,25 @@ ${Envmap.shaderMethods()}
 
   let aspectRatio = f32(canvasSize.x) / f32(canvasSize.y);
   let fovTangent = tan(camera.fov * 0.5);
-  let rd = camera.rotationMatrix * normalize(vec3f(
+  var rd = normalize(vec3f(
     fovTangent * nuv.x * aspectRatio, 
     fovTangent * nuv.y, 
     1.0
   ));
-  let ro = camera.position;
-  var ray = Ray(ro, rd);
 
-  let idx = tid.y * canvasSize.x + tid.x;
+  // aperture calculations
+  let aperture = 0.9;
+  let focalDistance = 10.1;
+  let focalPoint = rd * focalDistance;
+  let cameraRands = rand4(tid.y * canvasSize.x + tid.x * 3 + 21841287 + samplesCount[idx] * 98237);
+  let offsetRadius = aperture * sqrt(cameraRands.x);
+  let offsetTheta = cameraRands.y * 2.0 * PI;
+  var originOffset = vec3f(offsetRadius * cos(offsetTheta), offsetRadius * sin(offsetTheta), 0.0);
+  rd = camera.rotationMatrix * normalize(focalPoint - originOffset);
+
+  originOffset = camera.rotationMatrix * originOffset;
+  let ro = camera.position + originOffset;
+  var ray = Ray(ro, rd);
 
   var reflectance = vec3f(1.0);
   var rad = vec3f(0.0);

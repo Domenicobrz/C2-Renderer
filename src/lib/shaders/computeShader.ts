@@ -123,8 +123,8 @@ var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0);
   ));
 
   // aperture calculations
-  let aperture = 0.9;
-  let focalDistance = 10.1;
+  let aperture = 0.25;
+  let focalDistance = 9.65;
   let focalPoint = rd * focalDistance;
   let cameraRands = rand4(tid.y * canvasSize.x + tid.x * 3 + 21841287 + samplesCount[idx] * 98237);
   let offsetRadius = aperture * sqrt(cameraRands.x);

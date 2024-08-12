@@ -375,7 +375,9 @@ export class Dielectric extends Material {
 
         // to transform vectors from tangent space to world space, we multiply by
         // the TBN     
-        (*ray).direction = TBN * wi;
+        // --- without normalization we might go slightly above 1 in length,
+        // and that messes up envmap bilinear filtering
+        (*ray).direction = normalize(TBN * wi);
         (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
 
         

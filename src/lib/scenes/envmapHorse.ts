@@ -29,7 +29,7 @@ export async function envmapHorseScene(): Promise<C2Scene> {
     new Diffuse(new Color(0.05, 1, 0.05)),
     // new Dielectric(new Color(0.135, 0.4, 0.99).multiplyScalar(3), 0.2, 0.2, 1.6),
     // new Dielectric(new Color(0.78, 0.7, 0.678).multiplyScalar(1.5), 0.2, 0.2, 1.6),
-    new Dielectric(new Color(0.35, 0.68, 0.99).multiplyScalar(1.85), 0.2, 0.2, 1.6),
+    new Dielectric(new Color(0.35, 0.68, 0.99).multiplyScalar(1.85), 0.01, 0.01, 1.6),
     new TorranceSparrow(new Color(0.5, 0.5, 0.5), 0.45, 0.45)
   ];
 

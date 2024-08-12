@@ -20,7 +20,7 @@ export class Envmap {
 
   constructor() {}
 
-  async fromEquirect(path: string) {
+  async fromEquirect(path: string, resolution: number = 400) {
     // texture data has 4 float elements for each pixel (rgba)
     // the fourth element of each pixel returned by this loader is always 1
     let hdrTexture = await new RGBELoader().setDataType(FloatType).loadAsync(path);
@@ -39,7 +39,7 @@ export class Envmap {
     // con quel tipo di envmap. Per prima cosa, dobbiamo iterare su
     // size x x size y della envmap texture, e per ognuno di quei pixel,
     // cercheremo la 3d direction corrispondente, e prenderemo il pixel della hdr texture sopra
-    let envmapSize = 400;
+    let envmapSize = resolution;
     for (let i = 0; i < envmapSize; i++) {
       for (let j = 0; j < envmapSize; j++) {
         let hstep = 1 / (envmapSize * 2);
@@ -474,14 +474,74 @@ export class Envmap {
         return vec2f(0.5 * (u + 1), 0.5 * (v + 1));
       }
 
+      // there's another version of this function that takes 
+      // uvs in the range [0...1]
+      // https://github.com/mmp/pbrt-v4/blob/39e01e61f8de07b99859df04b271a02a53d9aeb2/src/pbrt/util/math.cpp#L363
+      fn wrapEqualAreaSquare_discreteInputs(pp: vec2i, resolution: vec2i) -> vec2i {
+        var p = pp;
+
+        if (p.x < 0) {
+          p.x = -p.x;                     // mirror across u = 0
+          p.y = resolution.y - 1 - p.y;   // mirror across v = 0.5
+        } else if (p.x >= resolution.x) {
+          p.x = 2 * resolution.x - 1 - p.x;  // mirror across u = 1
+          p.y = resolution.y - 1 - p.y;      // mirror across v = 0.5
+        }
+
+        if (p.y < 0) {
+          p.x = resolution.x - 1 - p.x;   // mirror across u = 0.5
+          p.y = -p.y;                     // mirror across v = 0;
+        } else if (p.y >= resolution.y) {
+          p.x = resolution.x - 1 - p.x;      // mirror across u = 0.5
+          p.y = 2 * resolution.y - 1 - p.y;  // mirror across v = 1
+        }
+
+        // Bleh: things don't go as expected for 1x1 images.
+        if (resolution.x == 1) {
+          p.x = 0;
+        }
+        if (resolution.y == 1) {
+          p.y = 0;
+        }
+
+        return p;
+      }
+
+      fn bilerpEnvmapTexels(p: vec2f, resolution: vec2i) -> vec4f {
+        let x = p.x * f32(resolution.x) - 0.5; 
+        let y = p.y * f32(resolution.y) - 0.5;
+
+        let xi = i32(floor(x)); 
+        let yi = i32(floor(y));
+
+        let dx = x - f32(xi);
+        let dy = y - f32(yi);
+
+        let v0_discrete_uv = wrapEqualAreaSquare_discreteInputs(vec2i(xi, yi), resolution);
+        let v1_discrete_uv = wrapEqualAreaSquare_discreteInputs(vec2i(xi+1, yi), resolution);
+        let v2_discrete_uv = wrapEqualAreaSquare_discreteInputs(vec2i(xi, yi+1), resolution);
+        let v3_discrete_uv = wrapEqualAreaSquare_discreteInputs(vec2i(xi+1, yi+1), resolution);
+
+        let v0 = textureLoad(envmapTexture, v0_discrete_uv, 0);
+        let v1 = textureLoad(envmapTexture, v1_discrete_uv, 0);
+        let v2 = textureLoad(envmapTexture, v2_discrete_uv, 0);
+        let v3 = textureLoad(envmapTexture, v3_discrete_uv, 0);
+
+        return ((1 - dx) * (1 - dy) * v0 + dx * (1 - dy) * v1 +
+                (1 - dx) *      dy  * v2 + dx *      dy  * v3);
+      }
+
       fn getEnvmapRadiance(dir: vec3f) -> vec3f {
         let tdir = envmapInfo.transform * dir; 
         let uv = envEqualAreaSphereToSquare(tdir);
-        let radiance = textureLoad(
-          envmapTexture, 
-          vec2u(u32(uv.x * f32(envmapInfo.size.x)), u32(uv.y * f32(envmapInfo.size.y))), 
-          0
-        );
+
+        let radiance = bilerpEnvmapTexels(uv, envmapInfo.size);
+
+        // let radiance = textureLoad(
+        //   envmapTexture, 
+        //   vec2u(u32(uv.x * f32(envmapInfo.size.x)), u32(uv.y * f32(envmapInfo.size.y))), 
+        //   0
+        // );
 
         return radiance.xyz * envmapInfo.scale;
       }

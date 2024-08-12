@@ -186,26 +186,34 @@ export class Diffuse extends Material {
     
         (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
     
-        let rands = rand4(
+        // rands1.w is used for ONE_SAMPLE_MODEL
+        // rands1.xy is used for brdf samples
+        // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
+        let rands1 = rand4(
           tid.y * canvasSize.x + tid.x +
           u32(cameraSample.x * 928373289 + cameraSample.y * 877973289) +
           u32(i * 17325799),
+        );
+        let rands2 = rand4(
+          tid.y * canvasSize.x + tid.x + 148789 +
+          u32(cameraSample.x * 597834279 + cameraSample.y * 34219873) +
+          u32(i * 86210973),
         );
 
         var brdf = 1 / PI;
 
         if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32;
-          shadeDiffuseSampleBRDF(rands, N, ray, &pdf, &w);
+          shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &w);
           *reflectance *= brdf * (1 / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
 
         if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
           var pdf: f32; var misWeight: f32; var ls: vec3f;
-          if (rands.w < 0.5) {
-            shadeDiffuseSampleBRDF(rands, N, ray, &pdf, &misWeight);
+          if (rands1.w < 0.5) {
+            shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &misWeight);
           } else {
-            shadeDiffuseSampleLight(rands, N, ray, &pdf, &misWeight, &ls);
+            shadeDiffuseSampleLight(rands2, N, ray, &pdf, &misWeight, &ls);
           }
           *reflectance *= brdf * (misWeight / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
@@ -216,8 +224,8 @@ export class Diffuse extends Material {
           var rayBrdf = Ray((*ray).origin, (*ray).direction);
           var rayLight = Ray((*ray).origin, (*ray).direction);
 
-          shadeDiffuseSampleBRDF(rands, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight);
-          shadeDiffuseSampleLight(rands, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
+          shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight);
+          shadeDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
 
           (*ray).origin = rayBrdf.origin;
           (*ray).direction = rayBrdf.direction;

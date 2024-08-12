@@ -294,7 +294,7 @@ export class BVH {
             &envmapPC2D.data, 
             envmapPC2D.size, 
             envmapPC2D.domain, 
-            rands.yw,
+            rands.xy,
           );
 
           let uv = sample.floatOffset;

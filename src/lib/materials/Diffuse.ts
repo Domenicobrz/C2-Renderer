@@ -63,7 +63,7 @@ export class Diffuse extends Material {
         getCoordinateSystem(N, &Nt, &Nb);
     
         (*ray).direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
-
+        
         if (config.MIS_TYPE == BRDF_ONLY) {
           *pdf = brdfSamplePdf;
         } 
@@ -235,7 +235,7 @@ export class Diffuse extends Material {
           *rad += lightSampleRadiance * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
           *reflectance *= (brdfMisWeight / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);
         }
-      } 
+      }
     `;
   }
 }

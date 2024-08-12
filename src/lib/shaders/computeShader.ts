@@ -80,6 +80,15 @@ ${Envmap.shaderMethods()}
 @group(3) @binding(5) var envmapTexture: texture_2d<f32>;
 @group(3) @binding(6) var<uniform> envmapInfo: EnvmapInfo;
 
+struct DebugInfo {
+  tid: vec3u,
+  isSelectedPixel: bool,
+  bounce: i32,
+  sample: u32,
+} 
+// https://www.w3.org/TR/WGSL/#address-spaces-private
+var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0);
+
 // things to remember: maximum storage entries on my GPU is 8
 // I might need to re-architect this shader to pack togheter some types of data
 
@@ -91,6 +100,13 @@ ${Envmap.shaderMethods()}
   if (tid.x >= canvasSize.x || tid.y >= canvasSize.y) { return; }
 
   let idx = tid.y * canvasSize.x + tid.x;
+
+  debugInfo.tid = tid;
+  debugInfo.isSelectedPixel = false;
+  if (debugPixelTarget.x == tid.x && debugPixelTarget.y == tid.y) {
+    debugInfo.isSelectedPixel = true;
+  }
+  debugInfo.sample = samplesCount[idx];
 
   // from [0...1] to [-1...+1]
   let nuv = vec2f(
@@ -123,6 +139,8 @@ ${Envmap.shaderMethods()}
   var reflectance = vec3f(1.0);
   var rad = vec3f(0.0);
   for (var i = 0; i < 10; i++) {
+    debugInfo.bounce = i;
+
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
@@ -137,13 +155,13 @@ ${Envmap.shaderMethods()}
   radianceOutput[idx] += rad;
   samplesCount[idx] += 1;
 
-  if (debugPixelTarget.x == tid.x && debugPixelTarget.y == tid.y) {
+  if (debugInfo.isSelectedPixel) {
     debugBuffer[0] = f32(debugPixelTarget.x);
     debugBuffer[1] = f32(debugPixelTarget.y);
     debugBuffer[2] = 999;
     debugBuffer[3] = 999;
     debugBuffer[4] = 999;
-    radianceOutput[idx] += vec3f(0, 1, 0);
+    radianceOutput[idx] += vec3f(1, 0, 1);
   }
 }
 `;

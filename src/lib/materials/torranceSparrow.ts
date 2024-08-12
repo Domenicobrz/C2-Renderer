@@ -242,7 +242,8 @@ export class TorranceSparrow extends Material {
 
         // to transform vectors from tangent space to world space, we multiply by
         // the TBN     
-        (*ray).direction = TBN * wi;
+        // --- without normalizing, it could go slightly beyond 1 in length
+        (*ray).direction = normalize(TBN * wi);
 
         *reflectance *= brdf / pdf * max(dot((*ray).direction, N), 0.0);
       } 

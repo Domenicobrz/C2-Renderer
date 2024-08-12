@@ -66,7 +66,7 @@ export async function planeAndSphere(): Promise<C2Scene> {
   // let envmap = new Envmap().fromArrayBuffer(eBuffer!);
 
   let envmap = new Envmap();
-  await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr', 100);
+  await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr', 400);
   // saveArrayBufferLocally(envmap.getArrayBuffer(), 'envmap.env');
   envmap.scale = 0.9;
 

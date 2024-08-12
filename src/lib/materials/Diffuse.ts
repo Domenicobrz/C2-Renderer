@@ -108,6 +108,16 @@ export class Diffuse extends Material {
         (*ray).direction = lightSample.direction;
 
         var brdfSamplePdf = 1 / (2 * PI);
+        // if the sampled ray sits below the hemisphere, brdfSamplePdf is zero,
+        // since diffuse materials never sample a direction under the hemisphere.
+        // However at this point, it doesn't even make sense to evaluate the 
+        // rest of this function since we would be wasting a sample, thus we'll return
+        // misWeight = 0 instead.
+        if (dot((*ray).direction, N) < 0.0) {
+          brdfSamplePdf = 0;
+          *misWeight = 0; *pdf = 1; 
+          return;
+        }
 
         if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
           *pdf = lightSamplePdf;
@@ -136,7 +146,7 @@ export class Diffuse extends Material {
           // since the light sampling routine might hit a different light source from ours here
           // I can probably construct cases where this could be a problem
           let ires = bvhIntersect(*ray);
-          if (ires.hit) {
+          if (ires.hit && !lightSample.isEnvmap) {
             let materialType = materialsData[ires.triangle.materialOffset];
             if (
               materialType == ${MATERIAL_TYPE.EMISSIVE} && 
@@ -148,8 +158,10 @@ export class Diffuse extends Material {
             } else {
               *misWeight = 0;
             }
-          } else {
+          } else if (!ires.hit && lightSample.isEnvmap) {
             *lightSampleRadiance = getEnvmapRadiance((*ray).direction);
+          } else {
+            *misWeight = 0;
           }
         }
       }

@@ -28,7 +28,9 @@
 	"type": "module",
 	"dependencies": {
 		"@webgpu/types": "^0.1.38",
+		"alea": "^1.0.1",
 		"random": "^4.1.0",
+		"simplex-noise": "^4.0.3",
 		"three": "^0.163.0"
 	}
 }

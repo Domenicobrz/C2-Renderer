@@ -7,7 +7,6 @@ import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 import { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { TileSequence } from '$lib/tile';
-import { cameraPart } from './parts/camera';
 import { mathUtilsPart } from './parts/mathUtils';
 import { pbrtMathUtilsPart } from './parts/pbrtMathUtils';
 import { randomPart } from './parts/random';
@@ -16,6 +15,7 @@ import { Dielectric } from '$lib/materials/dielectric';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import { PC1D } from '$lib/samplers/PiecewiseConstant1D';
 import { Envmap } from '$lib/envmap/envmap';
+import { Camera } from '$lib/controls/Camera';
 
 export function getComputeShader() {
   return /* wgsl */ `
@@ -43,7 +43,8 @@ ${Dielectric.shaderStruct()}
 ${Dielectric.shaderCreateStruct()}
 ${Dielectric.shaderShadeDielectric()}
 ${Material.shaderShade()}
-${cameraPart}
+${Camera.shaderStruct()}
+${Camera.shaderMethods()}
 ${Triangle.shaderStruct()}
 ${Triangle.shaderIntersectionFn()}
 ${AABB.shaderStruct()}
@@ -108,33 +109,7 @@ var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0);
   }
   debugInfo.sample = samplesCount[idx];
 
-  // from [0...1] to [-1...+1]
-  let nuv = vec2f(
-    (f32(tid.x) + cameraSample.x) / f32(canvasSize.x) * 2 - 1,
-    (f32(tid.y) + cameraSample.y) / f32(canvasSize.y) * 2 - 1,
-  );
-
-  let aspectRatio = f32(canvasSize.x) / f32(canvasSize.y);
-  let fovTangent = tan(camera.fov * 0.5);
-  var rd = normalize(vec3f(
-    fovTangent * nuv.x * aspectRatio, 
-    fovTangent * nuv.y, 
-    1.0
-  ));
-
-  // aperture calculations
-  let aperture = 0.2;
-  let focalDistance = 9.5 * (1.0 / rd.z);
-  let focalPoint = rd * focalDistance;
-  let cameraRands = rand4(tid.y * canvasSize.x + tid.x * 3 + 21841287 + samplesCount[idx] * 98237);
-  let offsetRadius = aperture * sqrt(cameraRands.x);
-  let offsetTheta = cameraRands.y * 2.0 * PI;
-  var originOffset = vec3f(offsetRadius * cos(offsetTheta), offsetRadius * sin(offsetTheta), 0.0);
-  rd = camera.rotationMatrix * normalize(focalPoint - originOffset);
-
-  originOffset = camera.rotationMatrix * originOffset;
-  let ro = camera.position + originOffset;
-  var ray = Ray(ro, rd);
+  var ray = getCameraRay(tid, idx);
 
   var reflectance = vec3f(1.0);
   var rad = vec3f(0.0);

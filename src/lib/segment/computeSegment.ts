@@ -10,6 +10,7 @@ import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 import { configManager } from '$lib/config';
 import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
+import { Camera } from '$lib/controls/Camera';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -28,9 +29,6 @@ export class ComputeSegment {
 
   #canvasSize: Vector2 | null = null;
   #canvasSizeUniformBuffer: GPUBuffer;
-  #cameraUniformBuffer: GPUBuffer;
-
-  #cameraSampleUniformBuffer: GPUBuffer;
 
   #configUniformBuffer: GPUBuffer;
   #tileUniformBuffer: GPUBuffer;
@@ -48,13 +46,12 @@ export class ComputeSegment {
 
   #resetSegment: ResetSegment;
 
-  #haltonSampler: HaltonSampler = new HaltonSampler();
-
   #tileSequence: TileSequence;
 
   #requestShaderCompilation = false;
 
   #scene: C2Scene | undefined;
+  private camera!: Camera;
   #bvh: BVH | undefined;
 
   constructor(device: GPUDevice, tileSequence: TileSequence) {
@@ -127,16 +124,6 @@ export class ComputeSegment {
 
     // create a typedarray to hold the values for the uniforms in JavaScript
     this.#canvasSizeUniformBuffer = device.createBuffer({
-      size: 2 * 4,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-
-    this.#cameraUniformBuffer = device.createBuffer({
-      size: 4 * 16 /* determined with offset computer */,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-
-    this.#cameraSampleUniformBuffer = device.createBuffer({
       size: 2 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
@@ -220,31 +207,11 @@ export class ComputeSegment {
     this.#debugReadBuffer.unmap();
   }
 
-  updateCamera(position: Vector3, fov: number, rotationMatrix: Matrix4) {
+  updateCamera() {
+    if (!this.camera) return;
     this.resetSamplesAndTile();
 
-    this.#device.queue.writeBuffer(
-      this.#cameraUniformBuffer,
-      0,
-      new Float32Array([
-        position.x,
-        position.y,
-        position.z,
-        fov,
-        rotationMatrix.elements[0],
-        rotationMatrix.elements[1],
-        rotationMatrix.elements[2],
-        0,
-        rotationMatrix.elements[4],
-        rotationMatrix.elements[5],
-        rotationMatrix.elements[6],
-        0,
-        rotationMatrix.elements[8],
-        rotationMatrix.elements[9],
-        rotationMatrix.elements[10],
-        0
-      ])
-    );
+    this.camera.updateCameraBuffer();
 
     // we need to re-create the bindgroup since cameraUniformBuffer
     // is a new buffer
@@ -252,8 +219,8 @@ export class ComputeSegment {
       label: 'compute bindgroup - camera struct',
       layout: this.#bindGroupLayouts[1],
       entries: [
-        { binding: 0, resource: { buffer: this.#cameraUniformBuffer } },
-        { binding: 1, resource: { buffer: this.#cameraSampleUniformBuffer } },
+        { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
+        { binding: 1, resource: { buffer: this.camera.cameraSampleUniformBuffer } },
         { binding: 2, resource: { buffer: this.#configUniformBuffer } },
         { binding: 3, resource: { buffer: this.#tileUniformBuffer } }
       ]
@@ -321,6 +288,14 @@ export class ComputeSegment {
     // if we have a new envmap, we might have to require a shader re-compilation
     this.#requestShaderCompilation = true;
     this.#scene = scene;
+
+    if (this.camera) {
+      this.camera.dispose();
+    }
+    this.camera = scene.camera;
+    this.camera.setDevice(this.#device);
+    this.camera.e.addEventListener('change', this.updateCamera.bind(this));
+    this.updateCamera();
 
     const bvh = new BVH(scene);
     this.#bvh = bvh;
@@ -397,15 +372,6 @@ export class ComputeSegment {
     });
   }
 
-  updateCameraSample() {
-    let sample = this.#haltonSampler.get2DSample();
-    this.#device.queue.writeBuffer(
-      this.#cameraSampleUniformBuffer,
-      0,
-      new Float32Array([sample.x, sample.y])
-    );
-  }
-
   resize(canvasSize: Vector2, workBuffer: GPUBuffer, samplesCountBuffer: GPUBuffer) {
     this.#resetSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
     this.#tileSequence.setCanvasSize(canvasSize);
@@ -445,7 +411,7 @@ export class ComputeSegment {
       // thus we'll re-draw a portion of the pixels that were part of the previous tile,
       // those pixels will need a new camera sample to properly accumulate new radiance values
       // otherwise they would count twice the results of the same camera sample
-      this.updateCameraSample();
+      this.camera.updateCameraSample();
     }
   }
 
@@ -456,7 +422,7 @@ export class ComputeSegment {
       // thus we'll re-draw a portion of the pixels that were part of the previous tile,
       // those pixels will need a new camera sample to properly accumulate new radiance values
       // otherwise they would count twice the results of the same camera sample
-      this.updateCameraSample();
+      this.camera.updateCameraSample();
     }
   }
 
@@ -499,12 +465,12 @@ export class ComputeSegment {
     if (samplesInfo.count === 0) {
       this.#tileSequence.resetTile();
       this.#resetSegment.reset();
-      this.#haltonSampler.reset();
+      this.camera.resetSampler();
     }
 
     let tile = this.#tileSequence.getNextTile(
       /* on new sample / tile start */ () => {
-        this.updateCameraSample();
+        this.camera.updateCameraSample();
         samplesInfo.increment();
       }
     );

@@ -37,9 +37,9 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   // *************** compute & render segments ****************
   const tileSequence = new TileSequence();
   computeSegment = new ComputeSegment(device, tileSequence);
+
   let scene = await createScene();
   computeSegment.updateScene(scene);
-  // computeSegment.setDebugPixelTarget(280, 385);
   computeSegment.setDebugPixelTarget(400, 200);
 
   renderSegment = new RenderSegment(device, context, presentationFormat);
@@ -51,14 +51,6 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   resizeObserver.observe(canvas);
   // initialize work buffers immediately
   onCanvasResize(canvas, device, computeSegment, renderSegment);
-
-  // create & set camera
-  const orbit = new Orbit();
-  orbit.e.addEventListener('change', () => {
-    computeSegment.updateCamera(orbit.position, orbit.fov, orbit.rotationMatrix);
-  });
-  // will fire the 'change' event
-  orbit.set(new Vector3(0, 1, -10), new Vector3(0, 0, 0));
 
   onKey('l', () => computeSegment.logDebugResult());
   renderLoop();

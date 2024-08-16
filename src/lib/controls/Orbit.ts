@@ -1,13 +1,9 @@
 import { EventHandler } from '$lib/eventHandler';
 import { Vector3, Matrix4 } from 'three';
+import { Camera } from './Camera';
 
-export class Orbit {
-  public e: EventHandler;
-
-  public fov: number;
-  public position: Vector3;
+export class Orbit extends Camera {
   public target: Vector3;
-  public rotationMatrix: Matrix4;
 
   #keys: { a: boolean; s: boolean; d: boolean; w: boolean };
   #disposed: boolean;
@@ -16,11 +12,9 @@ export class Orbit {
   #phi: number;
 
   constructor() {
-    this.e = new EventHandler();
-    this.position = new Vector3(0, 0, -10);
+    super();
+
     this.target = new Vector3(0, 0, 0);
-    this.rotationMatrix = new Matrix4().identity();
-    this.fov = Math.PI * 0.25;
 
     this.#theta = Math.PI * 0.5;
     this.#phi = 0.0;
@@ -40,6 +34,7 @@ export class Orbit {
   }
 
   dispose() {
+    super.dispose();
     window.removeEventListener('keydown', this.#handleKeyDown.bind(this));
     window.removeEventListener('keyup', this.#handleKeyUp.bind(this));
     this.#disposed = true;

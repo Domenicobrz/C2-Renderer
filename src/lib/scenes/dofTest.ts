@@ -14,6 +14,7 @@ import { Envmap } from '$lib/envmap/envmap';
 import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
 import { createNoise2D } from 'simplex-noise';
 import alea from 'alea';
+import { Orbit } from '$lib/controls/Orbit';
 
 const prng = alea('seed');
 const noise2D = createNoise2D(prng);
@@ -78,12 +79,12 @@ export async function dofTestScene(): Promise<C2Scene> {
     }
   }
 
-  let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue.glb');
-  let group = gltf.scene.children[0];
-  group.scale.set(-2.7, 2.7, 2.7);
-  group.position.set(0.3, -2.5, 1.5);
-  group.rotation.z = 0.4;
-  triangles = [...triangles, ...meshToTriangles(group, 5)];
+  // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue.glb');
+  // let group = gltf.scene.children[0];
+  // group.scale.set(-2.7, 2.7, 2.7);
+  // group.position.set(0.3, -2.5, 1.5);
+  // group.rotation.z = 0.4;
+  // triangles = [...triangles, ...meshToTriangles(group, 5)];
 
   let envmap = new Envmap();
   // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
@@ -92,5 +93,13 @@ export async function dofTestScene(): Promise<C2Scene> {
   envmap.scale = 0.9;
   envmap.rotX = 0.3;
 
-  return { triangles, materials, envmap };
+  // create & set camera
+  const orbit = new Orbit();
+  // orbit.e.addEventListener('change', () => {
+  //   computeSegment.updateCamera(orbit.position, orbit.fov, orbit.rotationMatrix);
+  // });
+  // will fire the 'change' event
+  orbit.set(new Vector3(0, 1, -10), new Vector3(0, 0, 0));
+
+  return { triangles, materials, envmap, camera: orbit };
 }

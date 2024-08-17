@@ -95,10 +95,6 @@ export async function dofTestScene(): Promise<C2Scene> {
 
   // create & set camera
   const orbit = new Orbit();
-  // orbit.e.addEventListener('change', () => {
-  //   computeSegment.updateCamera(orbit.position, orbit.fov, orbit.rotationMatrix);
-  // });
-  // will fire the 'change' event
   orbit.set(new Vector3(0, 1, -10), new Vector3(0, 0, 0));
 
   return { triangles, materials, envmap, camera: orbit };

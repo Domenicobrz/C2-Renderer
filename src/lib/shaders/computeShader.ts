@@ -66,7 +66,7 @@ ${Envmap.shaderMethods()}
 @group(1) @binding(0) var<uniform> camera: Camera;
 // seems like maximum bindgroup count is 4 so I need to add the camera sample here 
 // unfortunately and I can't create a separate bindgroup for it
-@group(1) @binding(1) var<uniform> cameraSample: vec2f;
+@group(1) @binding(1) var<uniform> cameraSample: vec4f;
 @group(1) @binding(2) var<uniform> config: Config;
 @group(1) @binding(3) var<uniform> tile: Tile;
 

@@ -4,9 +4,13 @@ import { Matrix4, Vector3 } from 'three';
 
 export class Camera {
   public e: EventHandler;
+
   public position: Vector3;
   public rotationMatrix: Matrix4;
   public fov: number;
+  public aperture: number;
+  public focusDistance: number;
+
   public cameraSampleUniformBuffer!: GPUBuffer;
   public cameraUniformBuffer!: GPUBuffer;
 
@@ -18,6 +22,8 @@ export class Camera {
     this.position = new Vector3(0, 0, -10);
     this.rotationMatrix = new Matrix4().identity();
     this.fov = Math.PI * 0.25;
+    this.aperture = 0;
+    this.focusDistance = 10;
   }
 
   dispose() {
@@ -30,11 +36,11 @@ export class Camera {
   setDevice(device: GPUDevice) {
     this.device = device;
     this.cameraSampleUniformBuffer = device.createBuffer({
-      size: 2 * 4,
+      size: 4 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     this.cameraUniformBuffer = device.createBuffer({
-      size: 4 * 16 /* determined with offset computer */,
+      size: 80 /* determined with offset computer */,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
   }
@@ -63,17 +69,21 @@ export class Camera {
         this.rotationMatrix.elements[8],
         this.rotationMatrix.elements[9],
         this.rotationMatrix.elements[10],
-        0
+        0,
+        this.aperture,
+        this.focusDistance,
+        0,
+        0 // padding
       ])
     );
   }
 
   updateCameraSample() {
-    let sample = this.haltonSampler.get2DSample();
+    let sample = this.haltonSampler.get4DSample();
     this.device.queue.writeBuffer(
       this.cameraSampleUniformBuffer,
       0,
-      new Float32Array([sample.x, sample.y])
+      new Float32Array([sample.x, sample.y, sample.z, sample.w])
     );
   }
 
@@ -95,12 +105,16 @@ export class Camera {
         ));
       
         // aperture calculations
-        let aperture = 0.2;
-        let focalDistance = 12.5 * (1.0 / rd.z);
+        let aperture = camera.aperture;
+        let focalDistance = camera.focusDistance * (1.0 / rd.z);
         let focalPoint = rd * focalDistance;
-        let cameraRands = rand4(tid.y * canvasSize.x + tid.x * 3 + 21841287 + samplesCount[idx] * 98237);
-        let offsetRadius = aperture * sqrt(cameraRands.x);
-        let offsetTheta = cameraRands.y * 2.0 * PI;
+        let r1 = rand4(tid.x * 31472 + tid.y * 71893);
+        let dofRands = vec2f(
+          fract(r1.x + cameraSample.z),
+          fract(r1.y + cameraSample.w),
+        );
+        let offsetRadius = aperture * sqrt(dofRands.x);
+        let offsetTheta = dofRands.y * 2.0 * PI;
         var originOffset = vec3f(offsetRadius * cos(offsetTheta), offsetRadius * sin(offsetTheta), 0.0);
         rd = camera.rotationMatrix * normalize(focalPoint - originOffset);
       
@@ -118,6 +132,8 @@ export class Camera {
         position: vec3f,
         fov: f32,
         rotationMatrix: mat3x3f,
+        aperture: f32,
+        focusDistance: f32,
       }
       struct Ray {
         origin: vec3f,

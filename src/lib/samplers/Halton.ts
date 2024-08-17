@@ -1,4 +1,4 @@
-import { Vector2 } from 'three';
+import { Vector2, Vector3, Vector4 } from 'three';
 
 export class HaltonSampler {
   #s: number = 0;
@@ -16,6 +16,27 @@ export class HaltonSampler {
     this.#s++;
 
     return new Vector2(x, y);
+  }
+
+  get3DSample(): Vector3 {
+    let x = this.#getSample(this.#s, 2);
+    let y = this.#getSample(this.#s, 3);
+    let z = this.#getSample(this.#s, 5);
+
+    this.#s++;
+
+    return new Vector3(x, y, z);
+  }
+
+  get4DSample(): Vector4 {
+    let x = this.#getSample(this.#s, 2);
+    let y = this.#getSample(this.#s, 3);
+    let z = this.#getSample(this.#s, 5);
+    let w = this.#getSample(this.#s, 7);
+
+    this.#s++;
+
+    return new Vector4(x, y, z, w);
   }
 
   #getSample(index: number, base: number) {

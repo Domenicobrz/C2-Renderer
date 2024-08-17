@@ -4,7 +4,6 @@ import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { Matrix4, Vector2, Vector3 } from 'three';
 import { configOptions, samplesInfo } from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
-import { HaltonSampler } from '$lib/samplers/Halton';
 import type { TileSequence, Tile } from '$lib/tile';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 import { configManager } from '$lib/config';

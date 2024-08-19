@@ -1,6 +1,7 @@
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import type { Vector2 } from 'three';
 import { renderTextureShader } from '$lib/shaders/renderTextureShader';
+import { globals } from '$lib/C2';
 
 export class RenderTextureSegment {
   // private fields
@@ -10,8 +11,9 @@ export class RenderTextureSegment {
 
   #bindGroup0: GPUBindGroup | null = null;
 
-  constructor(device: GPUDevice, context: GPUCanvasContext, presentationFormat: GPUTextureFormat) {
+  constructor(context: GPUCanvasContext, presentationFormat: GPUTextureFormat) {
     this.#context = context;
+    let device = globals.device;
     this.#device = device;
 
     // *************** render pipeline ****************

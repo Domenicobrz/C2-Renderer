@@ -13,6 +13,13 @@ let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
 let renderTextureSegment: RenderTextureSegment;
 
+export const globals: {
+  device: GPUDevice;
+} = {
+  // not sure how to tell typescript that this value will exist when I'll try to access it
+  device: null as any
+};
+
 export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   // WebGPU typescript types are loaded from an external library:
   // https://github.com/gpuweb/types
@@ -23,6 +30,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
     requiredFeatures: [...(canTimestamp ? ['timestamp-query'] : []), 'float32-filterable']
   });
   const context = canvas.getContext('webgpu');
+  globals.device = device;
 
   if (!device || !context) {
     throw new Error('need a browser that supports WebGPU');
@@ -36,14 +44,18 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
 
   // *************** compute & render segments ****************
   const tileSequence = new TileSequence();
-  computeSegment = new ComputeSegment(device, tileSequence);
+  computeSegment = new ComputeSegment(tileSequence);
 
+  // passed down to both compute and render segment
   let scene = await createScene();
+
   computeSegment.updateScene(scene);
   computeSegment.setDebugPixelTarget(400, 200);
 
-  renderSegment = new RenderSegment(device, context, presentationFormat);
-  renderTextureSegment = new RenderTextureSegment(device, context, presentationFormat);
+  renderSegment = new RenderSegment(context, presentationFormat);
+  renderSegment.updateScene(scene);
+
+  renderTextureSegment = new RenderTextureSegment(context, presentationFormat);
 
   const resizeObserver = new ResizeObserver((entries) => {
     onCanvasResize(canvas, device, computeSegment, renderSegment);

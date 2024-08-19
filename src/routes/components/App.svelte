@@ -156,6 +156,14 @@
     </Folder>
     <Folder name="Camera">
       <span
+        >Exposure: <input
+          class="envmap-scale-input"
+          type="text"
+          bind:value={$cameraInfoStore.exposure}
+        /></span
+      >
+      <Spacer vertical={5} />
+      <span
         >Fov: <input
           class="envmap-scale-input"
           type="text"

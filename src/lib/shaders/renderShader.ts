@@ -7,8 +7,7 @@ struct VSOutput {
 @group(0) @binding(0) var<storage> radianceInput: array<vec3f>;
 @group(0) @binding(1) var<storage> samplesCount: array<u32>;
 @group(0) @binding(2) var<uniform> canvasSize: vec2u;
-
-const toneMappingExposure = 1.0;
+@group(0) @binding(3) var<uniform> toneMappingExposure: f32;
 
 @vertex fn vs(
   @builtin(vertex_index) vertexIndex : u32

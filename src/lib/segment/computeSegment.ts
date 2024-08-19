@@ -10,6 +10,7 @@ import { configManager } from '$lib/config';
 import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
+import { globals } from '$lib/C2';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -53,7 +54,8 @@ export class ComputeSegment {
   private camera!: Camera;
   #bvh: BVH | undefined;
 
-  constructor(device: GPUDevice, tileSequence: TileSequence) {
+  constructor(tileSequence: TileSequence) {
+    let device = globals.device;
     this.#device = device;
     this.#tileSequence = tileSequence;
 
@@ -206,24 +208,9 @@ export class ComputeSegment {
     this.#debugReadBuffer.unmap();
   }
 
-  updateCamera() {
+  onUpdateCamera() {
     if (!this.camera) return;
     this.resetSamplesAndTile();
-
-    this.camera.updateCameraBuffer();
-
-    // we need to re-create the bindgroup since cameraUniformBuffer
-    // is a new buffer
-    this.#bindGroup1 = this.#device.createBindGroup({
-      label: 'compute bindgroup - camera struct',
-      layout: this.#bindGroupLayouts[1],
-      entries: [
-        { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
-        { binding: 1, resource: { buffer: this.camera.cameraSampleUniformBuffer } },
-        { binding: 2, resource: { buffer: this.#configUniformBuffer } },
-        { binding: 3, resource: { buffer: this.#tileUniformBuffer } }
-      ]
-    });
   }
 
   updateConfig() {
@@ -292,9 +279,19 @@ export class ComputeSegment {
       this.camera.dispose();
     }
     this.camera = scene.camera;
-    this.camera.setDevice(this.#device);
-    this.camera.e.addEventListener('change', this.updateCamera.bind(this));
-    this.updateCamera();
+    this.camera.e.addEventListener('change', this.onUpdateCamera.bind(this));
+    this.onUpdateCamera();
+
+    this.#bindGroup1 = this.#device.createBindGroup({
+      label: 'compute bindgroup - camera struct',
+      layout: this.#bindGroupLayouts[1],
+      entries: [
+        { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
+        { binding: 1, resource: { buffer: this.camera.cameraSampleUniformBuffer } },
+        { binding: 2, resource: { buffer: this.#configUniformBuffer } },
+        { binding: 3, resource: { buffer: this.#tileUniformBuffer } }
+      ]
+    });
 
     const bvh = new BVH(scene);
     this.#bvh = bvh;

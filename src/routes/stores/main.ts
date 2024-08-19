@@ -62,11 +62,13 @@ export const samplesInfo = (function createSamplesInfoStore() {
 })();
 
 type CameraInfo = {
+  exposure: number;
   aperture: number;
   focusDistance: number;
   fov: number;
 };
 export const cameraInfoStore = writable<CameraInfo>({
+  exposure: 0,
   aperture: 0,
   focusDistance: 0,
   fov: 0

@@ -3,6 +3,7 @@ import { HaltonSampler } from '$lib/samplers/Halton';
 import { Matrix4, Vector3 } from 'three';
 import { cameraInfoStore } from '../../routes/stores/main';
 import { get } from 'svelte/store';
+import { globals } from '$lib/C2';
 
 export class Camera {
   public e: EventHandler;
@@ -10,23 +11,53 @@ export class Camera {
   public position: Vector3;
   public rotationMatrix: Matrix4;
 
-  public cameraSampleUniformBuffer!: GPUBuffer;
-  public cameraUniformBuffer!: GPUBuffer;
+  public cameraSampleUniformBuffer: GPUBuffer;
+  public cameraUniformBuffer: GPUBuffer;
+  public exposureUniformBuffer: GPUBuffer;
 
   private haltonSampler: HaltonSampler = new HaltonSampler();
-  private device!: GPUDevice;
+  private device: GPUDevice;
 
   constructor() {
     this.e = new EventHandler();
     this.position = new Vector3(0, 0, -10);
     this.rotationMatrix = new Matrix4().identity();
 
+    this.device = globals.device;
+    this.cameraSampleUniformBuffer = this.device.createBuffer({
+      size: 4 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+    this.cameraUniformBuffer = this.device.createBuffer({
+      size: 80 /* determined with offset computer */,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+    this.exposureUniformBuffer = this.device.createBuffer({
+      size: 1 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
     this.fov = Math.PI * 0.25;
     this.aperture = 0.1;
     this.focusDistance = 10;
+    this.exposure = 1;
 
     cameraInfoStore.subscribe((_) => {
+      this.updateCameraBuffer();
+      this.updateExposureUniformBuffer();
       this.e.fireEvent('change');
+    });
+  }
+
+  get exposure() {
+    console.log('returning exposure: ', get(cameraInfoStore).exposure);
+    return get(cameraInfoStore).exposure;
+  }
+  set exposure(value) {
+    console.log('setting exposure: ', value);
+    cameraInfoStore.update((v) => {
+      v.exposure = value;
+      return v;
     });
   }
 
@@ -67,20 +98,12 @@ export class Camera {
     this.e = new EventHandler();
   }
 
-  setDevice(device: GPUDevice) {
-    this.device = device;
-    this.cameraSampleUniformBuffer = device.createBuffer({
-      size: 4 * 4,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-    this.cameraUniformBuffer = device.createBuffer({
-      size: 80 /* determined with offset computer */,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-  }
-
   resetSampler() {
     this.haltonSampler.reset();
+  }
+
+  updateExposureUniformBuffer() {
+    this.device.queue.writeBuffer(this.exposureUniformBuffer, 0, new Float32Array([this.exposure]));
   }
 
   updateCameraBuffer() {

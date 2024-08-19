@@ -1,3 +1,6 @@
+import { globals } from '$lib/C2';
+import { Camera } from '$lib/controls/Camera';
+import type { C2Scene } from '$lib/createScene';
 import { renderShader } from '$lib/shaders/renderShader';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import type { Vector2 } from 'three';
@@ -13,10 +16,15 @@ export class RenderSegment {
   #canvasSize: Vector2 | null;
   #canvasSizeUniformBuffer: GPUBuffer;
 
-  constructor(device: GPUDevice, context: GPUCanvasContext, presentationFormat: GPUTextureFormat) {
+  private scene!: C2Scene;
+  private camera!: Camera;
+
+  constructor(context: GPUCanvasContext, presentationFormat: GPUTextureFormat) {
     this.#canvasSize = null;
 
     this.#context = context;
+
+    let device = globals.device;
     this.#device = device;
 
     // *************** render pipeline ****************
@@ -30,6 +38,7 @@ export class RenderSegment {
         getBindGroupLayout(device, [
           { visibility: GPUShaderStage.FRAGMENT, type: 'read-only-storage' },
           { visibility: GPUShaderStage.FRAGMENT, type: 'read-only-storage' },
+          { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' },
           { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }
         ])
       ]
@@ -56,6 +65,11 @@ export class RenderSegment {
     });
   }
 
+  updateScene(scene: C2Scene) {
+    this.scene = scene;
+    this.camera = scene.camera;
+  }
+
   resize(canvasSize: Vector2, workBuffer: GPUBuffer, samplesCountBuffer: GPUBuffer) {
     this.#canvasSize = canvasSize;
 
@@ -72,7 +86,8 @@ export class RenderSegment {
       entries: [
         { binding: 0, resource: { buffer: workBuffer, size: workBuffer.size } },
         { binding: 1, resource: { buffer: samplesCountBuffer, size: samplesCountBuffer.size } },
-        { binding: 2, resource: { buffer: this.#canvasSizeUniformBuffer } }
+        { binding: 2, resource: { buffer: this.#canvasSizeUniformBuffer } },
+        { binding: 3, resource: { buffer: this.camera.exposureUniformBuffer! } }
       ]
     });
   }

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Renderer } from '$lib/C2';
   import { onMount } from 'svelte';
-  import { bvhInfo, configOptions, samplesInfo } from '../stores/main';
+  import { bvhInfo, cameraInfoStore, configOptions, samplesInfo } from '../stores/main';
   import Folder from './Folder.svelte';
   import RangeSlider from 'svelte-range-slider-pips';
   import MisOptions from './MisOptions.svelte';
@@ -153,6 +153,31 @@
           >{$samplesInfo.count == $samplesInfo.limit ? 0 : $samplesInfo.ms.toFixed(0)} ms</span
         >
       </p>
+    </Folder>
+    <Folder name="Camera">
+      <span
+        >Fov: <input
+          class="envmap-scale-input"
+          type="text"
+          bind:value={$cameraInfoStore.fov}
+        /></span
+      >
+      <Spacer vertical={5} />
+      <span
+        >Aperture: <input
+          class="envmap-scale-input"
+          type="text"
+          bind:value={$cameraInfoStore.aperture}
+        /></span
+      >
+      <Spacer vertical={5} />
+      <span
+        >Focus distance: <input
+          class="envmap-scale-input"
+          type="text"
+          bind:value={$cameraInfoStore.focusDistance}
+        /></span
+      >
     </Folder>
     <Folder name="Envmap" disabled={!$configOptions.shaderConfig.HAS_ENVMAP}>
       <span
@@ -318,6 +343,7 @@
     border: 1px solid #333;
     color: #ddd;
     background: #191919;
+    overflow: auto;
   }
 
   .samples-limit-input,
@@ -349,5 +375,25 @@
     padding: 3px 7px;
     border: 1px solid #636363;
     font-size: 12px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2f2f2f;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  ::-webkit-scrollbar-track {
+    background-color: #191919;
+    border: 5px solid #191919;
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
+    background-color: #301934;
+    background-repeat: no-repeat;
+    background-size: 100%;
+    background-position: center;
   }
 </style>

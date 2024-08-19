@@ -1,15 +1,14 @@
 import { EventHandler } from '$lib/eventHandler';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import { Matrix4, Vector3 } from 'three';
+import { cameraInfoStore } from '../../routes/stores/main';
+import { get } from 'svelte/store';
 
 export class Camera {
   public e: EventHandler;
 
   public position: Vector3;
   public rotationMatrix: Matrix4;
-  public fov: number;
-  public aperture: number;
-  public focusDistance: number;
 
   public cameraSampleUniformBuffer!: GPUBuffer;
   public cameraUniformBuffer!: GPUBuffer;
@@ -21,9 +20,44 @@ export class Camera {
     this.e = new EventHandler();
     this.position = new Vector3(0, 0, -10);
     this.rotationMatrix = new Matrix4().identity();
+
     this.fov = Math.PI * 0.25;
-    this.aperture = 0;
+    this.aperture = 0.1;
     this.focusDistance = 10;
+
+    cameraInfoStore.subscribe((_) => {
+      this.e.fireEvent('change');
+    });
+  }
+
+  get fov() {
+    return get(cameraInfoStore).fov;
+  }
+  set fov(value) {
+    cameraInfoStore.update((v) => {
+      v.fov = value;
+      return v;
+    });
+  }
+
+  get aperture() {
+    return get(cameraInfoStore).aperture;
+  }
+  set aperture(value) {
+    cameraInfoStore.update((v) => {
+      v.aperture = value;
+      return v;
+    });
+  }
+
+  get focusDistance() {
+    return get(cameraInfoStore).focusDistance;
+  }
+  set focusDistance(value) {
+    cameraInfoStore.update((v) => {
+      v.focusDistance = value;
+      return v;
+    });
   }
 
   dispose() {

@@ -61,6 +61,17 @@ export const samplesInfo = (function createSamplesInfoStore() {
   };
 })();
 
+type CameraInfo = {
+  aperture: number;
+  focusDistance: number;
+  fov: number;
+};
+export const cameraInfoStore = writable<CameraInfo>({
+  aperture: 0,
+  focusDistance: 0,
+  fov: 0
+});
+
 export const configOptions = createConfigStore({
   MIS_TYPE: 2,
   USE_POWER_HEURISTIC: 1,

@@ -94,8 +94,9 @@ export async function dofTestScene(): Promise<C2Scene> {
   envmap.rotX = 0.3;
 
   // create & set camera
-  const orbit = new Orbit();
-  orbit.set(new Vector3(0, 1, -10), new Vector3(0, 0, 0));
+  const camera = new Orbit();
+  camera.set(new Vector3(0, 1, -10), new Vector3(0, 0, 0));
+  camera.aperture = 0.1;
 
-  return { triangles, materials, envmap, camera: orbit };
+  return { triangles, materials, envmap, camera };
 }

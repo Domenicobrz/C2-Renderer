@@ -26,6 +26,39 @@ export class AABB {
     }
   }
 
+  intersectRay(ro: Vector3, rd: Vector3): { t: number; hit: boolean } {
+    let dirfrac = new Vector3(1, 1, 1).divide(rd);
+
+    // this.min is the corner of AABB with minimal coordinates - left bottom, this.max is maximal corner
+    // r.org is origin of ray
+    let t1 = (this.min.x - ro.x) * dirfrac.x;
+    let t2 = (this.max.x - ro.x) * dirfrac.x;
+    let t3 = (this.min.y - ro.y) * dirfrac.y;
+    let t4 = (this.max.y - ro.y) * dirfrac.y;
+    let t5 = (this.min.z - ro.z) * dirfrac.z;
+    let t6 = (this.max.z - ro.z) * dirfrac.z;
+
+    var tmin = Math.max(Math.max(Math.min(t1, t2), Math.min(t3, t4)), Math.min(t5, t6));
+    let tmax = Math.min(Math.min(Math.max(t1, t2), Math.max(t3, t4)), Math.max(t5, t6));
+
+    // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+    if (tmax < 0) {
+      return { t: tmax, hit: false };
+    }
+
+    // if tmin > tmax, ray doesn't intersect AABB
+    if (tmin > tmax) {
+      return { t: tmax, hit: false };
+    }
+
+    // necessary to avoid issue 1. on docs/images
+    if (tmin < 0) {
+      tmin = 0;
+    }
+
+    return { t: tmin, hit: true };
+  }
+
   static shaderStruct() {
     return /* wgsl */ `
       struct AABB {

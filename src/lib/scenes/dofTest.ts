@@ -1,4 +1,13 @@
-import { Color, CylinderGeometry, Mesh, SphereGeometry, Vector2, Vector3 } from 'three';
+import {
+  BoxGeometry,
+  Color,
+  CylinderGeometry,
+  Mesh,
+  PlaneGeometry,
+  SphereGeometry,
+  Vector2,
+  Vector3
+} from 'three';
 import { Diffuse } from '../materials/diffuse';
 import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';

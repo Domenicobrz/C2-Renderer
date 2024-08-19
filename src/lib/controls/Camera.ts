@@ -1,6 +1,6 @@
 import { EventHandler } from '$lib/eventHandler';
 import { HaltonSampler } from '$lib/samplers/Halton';
-import { Matrix4, Vector3 } from 'three';
+import { Matrix4, Vector2, Vector3 } from 'three';
 import { cameraInfoStore } from '../../routes/stores/main';
 import { get } from 'svelte/store';
 import { globals } from '$lib/C2';
@@ -42,19 +42,24 @@ export class Camera {
     this.focusDistance = 10;
     this.exposure = 1;
 
-    cameraInfoStore.subscribe((_) => {
+    const updateBuffers = () => {
       this.updateCameraBuffer();
       this.updateExposureUniformBuffer();
+    };
+
+    cameraInfoStore.subscribe((_) => {
+      updateBuffers();
       this.e.fireEvent('change');
+    });
+    this.e.addEventListener('change', () => {
+      updateBuffers();
     });
   }
 
   get exposure() {
-    console.log('returning exposure: ', get(cameraInfoStore).exposure);
     return get(cameraInfoStore).exposure;
   }
   set exposure(value) {
-    console.log('setting exposure: ', value);
     cameraInfoStore.update((v) => {
       v.exposure = value;
       return v;
@@ -144,10 +149,35 @@ export class Camera {
     );
   }
 
+  getFocusDistanceFromIntersectionPoint(point: Vector3) {
+    let dir = point.clone().sub(this.position);
+    var w = new Vector3(0, 0, 1).normalize();
+    w = w.applyMatrix4(this.rotationMatrix);
+    return dir.dot(w);
+  }
+
+  screenPointToRay(point: Vector2, canvasSize: Vector2) {
+    let nuv = new Vector2((point.x / canvasSize.x) * 2 - 1, (point.y / canvasSize.y) * 2 - 1);
+
+    let aspectRatio = canvasSize.x / canvasSize.y;
+    let fovTangent = Math.tan(this.fov * 0.5);
+    var rd = new Vector3(fovTangent * nuv.x * aspectRatio, fovTangent * nuv.y, 1.0).normalize();
+    rd = rd.applyMatrix4(this.rotationMatrix);
+
+    return {
+      ro: this.position.clone(),
+      rd
+    };
+  }
+
   static shaderMethods() {
     return /* wgsl */ `
       fn getCameraRay(tid: vec3u, idx: u32) -> Ray {
-          // from [0...1] to [-1...+1]
+
+        // if you change the inner workings of ray direction creation,
+        // also remember to update screenPointToRay(...)
+
+        // from [0...1] to [-1...+1]
         let nuv = vec2f(
           (f32(tid.x) + cameraSample.x) / f32(canvasSize.x) * 2 - 1,
           (f32(tid.y) + cameraSample.y) / f32(canvasSize.y) * 2 - 1,
@@ -173,7 +203,7 @@ export class Camera {
         let offsetRadius = aperture * sqrt(dofRands.x);
         let offsetTheta = dofRands.y * 2.0 * PI;
         var originOffset = vec3f(offsetRadius * cos(offsetTheta), offsetRadius * sin(offsetTheta), 0.0);
-        rd = camera.rotationMatrix * normalize(focalPoint - originOffset);
+        rd = normalize(camera.rotationMatrix * normalize(focalPoint - originOffset));
       
         originOffset = camera.rotationMatrix * originOffset;
         let ro = camera.position + originOffset;

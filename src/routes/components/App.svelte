@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Renderer } from '$lib/C2';
+  import type { RendererInterface } from '$lib/C2';
   import { onMount } from 'svelte';
   import { bvhInfo, cameraInfoStore, configOptions, samplesInfo } from '../stores/main';
   import Folder from './Folder.svelte';
@@ -9,6 +10,8 @@
   import Spacer from './Spacer.svelte';
   import { configManager } from '$lib/config';
   import Checkbox from './Checkbox.svelte';
+  import { Vector2 } from 'three';
+  import IronSightIcon from './icons/IronSightIcon.svelte';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidthSlidersValue = [0];
@@ -16,6 +19,9 @@
   let canvasContainerEl: HTMLDivElement;
   let fullScreenCanvas = false;
   let maxCanvasSize = 0;
+  let renderer: RendererInterface;
+
+  let clickSetFocusDistance = false;
 
   onMount(async () => {
     setMaxCanvasSize();
@@ -34,7 +40,7 @@
     resizeObserver.observe(canvasContainerEl);
 
     try {
-      const renderer = await Renderer(canvasRef);
+      renderer = await Renderer(canvasRef);
     } catch (error) {
       console.error(error);
     }
@@ -92,6 +98,10 @@
     samplesInfo.setLimit($samplesInfo.limit + 1);
   }
 
+  function onFDBtnClick() {
+    clickSetFocusDistance = true;
+  }
+
   function stop() {
     samplesInfo.setLimit($samplesInfo.count);
   }
@@ -104,6 +114,18 @@
     samplesInfo.setLimit(1);
     samplesInfo.reset();
   }
+
+  function onCanvasClick(e: MouseEvent & { currentTarget: EventTarget & HTMLCanvasElement }) {
+    if (clickSetFocusDistance) {
+      let x = e.offsetX;
+      let y = canvasHeightSlidersValue[0] - e.offsetY;
+      let t = renderer.getFocusDistanceFromScreenPoint(new Vector2(x, y));
+      if (t > -1) {
+        $cameraInfoStore.focusDistance = t;
+      }
+      clickSetFocusDistance = false;
+    }
+  }
 </script>
 
 <main>
@@ -112,6 +134,7 @@
       width={canvasWidthSlidersValue[0]}
       height={canvasHeightSlidersValue[0]}
       bind:this={canvasRef}
+      on:click={onCanvasClick}
     />
   </div>
 
@@ -179,13 +202,15 @@
         /></span
       >
       <Spacer vertical={5} />
-      <span
-        >Focus distance: <input
-          class="envmap-scale-input"
-          type="text"
-          bind:value={$cameraInfoStore.focusDistance}
-        /></span
-      >
+      <div class="fd-flex-row">
+        <span>Focus distance:</span>
+        <Spacer horizontal={5} />
+        <input class="envmap-scale-input" type="text" bind:value={$cameraInfoStore.focusDistance} />
+        <Spacer horizontal={5} />
+        <button class="click-set-fd" class:active={clickSetFocusDistance} on:click={onFDBtnClick}
+          ><IronSightIcon /></button
+        >
+      </div>
     </Folder>
     <Folder name="Envmap" disabled={!$configOptions.shaderConfig.HAS_ENVMAP}>
       <span
@@ -270,6 +295,13 @@
     flex-flow: row nowrap;
     align-items: center;
     margin: 0 0 -15px 0;
+  }
+
+  .fd-flex-row {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    margin: 0 0 -5px 0;
   }
 
   .flex-row label {
@@ -374,6 +406,21 @@
   button.sample-limit-btn {
     padding: 4px 8px;
     margin: 0 -3px 0 0;
+  }
+
+  button.click-set-fd {
+    width: 25px;
+    height: 25px;
+    padding: 0;
+  }
+  button:active {
+    background: #333;
+  }
+  :global(button.click-set-fd > svg) {
+    fill: #666;
+  }
+  :global(button.active.click-set-fd > svg) {
+    fill: #bbb;
   }
 
   input[type='text'] {

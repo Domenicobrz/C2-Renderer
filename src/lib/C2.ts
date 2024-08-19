@@ -1,4 +1,4 @@
-import { Vector3 } from 'three';
+import { Vector2, Vector3 } from 'three';
 import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
@@ -8,6 +8,7 @@ import { samplesInfo } from '../routes/stores/main';
 import { createScene } from './createScene';
 import { TileSequence } from './tile';
 import { RenderTextureSegment } from './segment/renderTextureSegment';
+import type { BVHIntersectionResult } from './bvh/bvh';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
@@ -20,7 +21,11 @@ export const globals: {
   device: null as any
 };
 
-export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
+export type RendererInterface = {
+  getFocusDistanceFromScreenPoint: (point: Vector2) => number;
+};
+
+export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInterface> {
   // WebGPU typescript types are loaded from an external library:
   // https://github.com/gpuweb/types
   // apparently the standard installation didn't include WebGPU types
@@ -50,7 +55,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
   let scene = await createScene();
 
   computeSegment.updateScene(scene);
-  computeSegment.setDebugPixelTarget(400, 200);
+  computeSegment.setDebugPixelTarget(465, 28);
 
   renderSegment = new RenderSegment(context, presentationFormat);
   renderSegment.updateScene(scene);
@@ -66,6 +71,11 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<void> {
 
   onKey('l', () => computeSegment.logDebugResult());
   renderLoop();
+
+  return {
+    getFocusDistanceFromScreenPoint:
+      computeSegment.getFocusDistanceFromScreenPoint.bind(computeSegment)
+  };
 }
 
 function onCanvasResize(

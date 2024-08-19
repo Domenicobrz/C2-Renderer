@@ -1,4 +1,5 @@
 import { BVH } from '$lib/bvh/bvh';
+import type { BVHIntersectionResult } from '$lib/bvh/bvh';
 import { getComputeShader } from '$lib/shaders/computeShader';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { Matrix4, Vector2, Vector3 } from 'three';
@@ -267,6 +268,21 @@ export class ComputeSegment {
       0,
       new Uint32Array([tile.x, tile.y, tile.w, tile.h])
     );
+  }
+
+  getFocusDistanceFromScreenPoint(point: Vector2): number {
+    if (!this.#canvasSize || !this.#bvh) {
+      return -1;
+    }
+
+    let ray = this.camera.screenPointToRay(point, this.#canvasSize);
+    let ires = this.#bvh.intersectRay(ray.ro, ray.rd);
+
+    if (ires.hit) {
+      return this.camera.getFocusDistanceFromIntersectionPoint(ires.hitPoint);
+    }
+
+    return -1;
   }
 
   updateScene(scene: C2Scene) {

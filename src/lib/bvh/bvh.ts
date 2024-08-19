@@ -3,12 +3,20 @@ import { Envmap } from '$lib/envmap/envmap';
 import { Emissive } from '$lib/materials/emissive';
 import { MATERIAL_TYPE, type Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
+import { Vector2, Vector3 } from 'three';
 import { bvhInfo } from '../../routes/stores/main';
 import { AABB } from './aabb';
 
 // at the moment I can't change this value because I'm not considering how padding
 // will change the offsets created by offset-computer.
 const MAX_TRIANGLES_PER_NODE = 2;
+
+export type BVHIntersectionResult = {
+  hit: boolean;
+  t: number;
+  hitPoint: Vector3;
+  triangle: Triangle | null;
+};
 
 export class BVH {
   public root: Node;
@@ -104,6 +112,83 @@ export class BVH {
         also, maximum stack-intersection-depth is set to 32 when intersecting the bvh
       `);
     }
+  }
+
+  intersectRay(ro: Vector3, rd: Vector3): BVHIntersectionResult {
+    let rootNode = this.root;
+
+    if (!rootNode.nodeAABB.intersectRay(ro, rd).hit) {
+      return { hit: false, t: 0, hitPoint: new Vector3(0, 0, 0), triangle: null };
+    }
+
+    // from: https://github.com/gpuweb/gpuweb/issues/3431#issuecomment-1453667278
+    let highestFloat = Infinity;
+    var closestIntersection = { hit: false, t: highestFloat, hitPoint: new Vector3(0, 0, 0) };
+    var closestPrimitive;
+
+    var stack: Node[] = Array(128);
+    // set the first element to the root index of the bvhData array
+    stack[0] = rootNode;
+    var stackPointer = 0;
+
+    while (stackPointer !== -1) {
+      let node = stack[stackPointer];
+      stackPointer -= 1;
+
+      if (node.leaf) {
+        // try to hit all its primitives
+        let primitives = node.primitives;
+        for (var i = 0; i < primitives.length; i++) {
+          let primitive = primitives[i];
+          let ires = primitive.intersectRay(ro, rd);
+          if (ires.hit && ires.t < closestIntersection.t) {
+            closestIntersection = ires;
+            closestPrimitive = primitive;
+          }
+        }
+      }
+
+      if (!node.leaf) {
+        let leftIres = node.left!.nodeAABB.intersectRay(ro, rd);
+        let rightIres = node.right!.nodeAABB.intersectRay(ro, rd);
+
+        var closestNode;
+        var otherNode;
+        var closestNodeIntersection;
+        var otherNodeIntersection;
+
+        if (leftIres.t < rightIres.t) {
+          closestNode = node.left;
+          otherNode = node.right;
+          closestNodeIntersection = leftIres;
+          otherNodeIntersection = rightIres;
+        } else {
+          closestNode = node.right;
+          otherNode = node.left;
+          closestNodeIntersection = rightIres;
+          otherNodeIntersection = leftIres;
+        }
+
+        // we want to evaluate other node *after* evaluating the closest node, thus
+        // we're placing it sooner inside the stack
+        if (otherNodeIntersection.hit && otherNodeIntersection.t < closestIntersection.t) {
+          stackPointer += 1;
+          stack[stackPointer] = otherNode!;
+        }
+
+        if (closestNodeIntersection.hit && closestNodeIntersection.t < closestIntersection.t) {
+          stackPointer += 1;
+          stack[stackPointer] = closestNode!;
+        }
+      }
+    }
+
+    return {
+      hit: closestIntersection.hit,
+      t: closestIntersection.t,
+      hitPoint: closestIntersection.hitPoint,
+      triangle: closestPrimitive || null
+    };
   }
 
   getBufferData() {

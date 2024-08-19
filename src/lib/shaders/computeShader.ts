@@ -118,6 +118,10 @@ var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0);
 
     let ires = bvhIntersect(ray);
 
+    if (debugInfo.isSelectedPixel && i == 0) {
+      debugBuffer[5] = ires.t;
+    }
+
     if (ires.hit) {
       shade(ires, &ray, &reflectance, &rad, tid, i);
     } else if (shaderConfig.HAS_ENVMAP) {

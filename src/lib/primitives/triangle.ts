@@ -67,6 +67,57 @@ export class Triangle {
     return t * this.getArea();
   }
 
+  // https://github.com/johnnovak/raytriangle-test
+  // Simple, direct implementation of the Möller–Trumbore intersection algorithm.
+  intersectRay(ro: Vector3, rd: Vector3): { hit: boolean; t: number; hitPoint: Vector3 } {
+    let v0 = this.v0;
+    let v1 = this.v1;
+    let v2 = this.v2;
+
+    let v0v1 = v1.clone().sub(v0);
+    let v0v2 = v2.clone().sub(v0);
+    let pvec = rd.clone().cross(v0v2);
+
+    let det = v0v1.dot(pvec);
+
+    const CULLING = false;
+
+    if (CULLING) {
+      if (det < 0.000001) {
+        return { hit: false, t: 0, hitPoint: new Vector3(0, 0, 0) };
+      }
+    } else {
+      if (Math.abs(det) < 0.000001) {
+        return { hit: false, t: 0, hitPoint: new Vector3(0, 0, 0) };
+      }
+    }
+
+    let invDet = 1.0 / det;
+    let tvec = ro.clone().sub(v0);
+    let u = tvec.dot(pvec) * invDet;
+
+    if (u < 0 || u > 1) {
+      return { hit: false, t: 0, hitPoint: new Vector3(0, 0, 0) };
+    }
+
+    let qvec = tvec.clone().cross(v0v1);
+    let v = rd.dot(qvec) * invDet;
+
+    if (v < 0 || u + v > 1) {
+      return { hit: false, t: 0, hitPoint: new Vector3(0, 0, 0) };
+    }
+
+    let t = v0v2.dot(qvec) * invDet;
+
+    if (t < 0) {
+      return { hit: false, t: 0, hitPoint: new Vector3(0, 0, 0) };
+    }
+
+    let hitPoint = ro.clone().add(rd.clone().multiplyScalar(t));
+
+    return { hit: true, t, hitPoint };
+  }
+
   static getBufferData(triangles: Triangle[], materialOffsetsByIndex: number[]) {
     const STRUCT_SIZE = 96; /* determined with offset computer */
     const trianglesCount = triangles.length;

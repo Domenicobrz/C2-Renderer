@@ -2,16 +2,15 @@
   import { Renderer } from '$lib/C2';
   import type { RendererInterface } from '$lib/C2';
   import { onMount } from 'svelte';
-  import { bvhInfo, cameraInfoStore, configOptions, samplesInfo } from '../stores/main';
+  import { bvhInfo, configOptions, samplesInfo } from '../stores/main';
   import Folder from './Folder.svelte';
   import RangeSlider from 'svelte-range-slider-pips';
   import MisOptions from './MisOptions.svelte';
   import Toggle from './Toggle.svelte';
   import Spacer from './Spacer.svelte';
-  import { configManager } from '$lib/config';
-  import Checkbox from './Checkbox.svelte';
-  import { Vector2 } from 'three';
-  import IronSightIcon from './icons/IronSightIcon.svelte';
+  import LeftSidebar from './LeftSidebar.svelte';
+  import Envmap from './Envmap.svelte';
+  import CameraSettings from './CameraSettings.svelte';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidthSlidersValue = [0];
@@ -20,8 +19,6 @@
   let fullScreenCanvas = false;
   let maxCanvasSize = 0;
   let renderer: RendererInterface;
-
-  let clickSetFocusDistance = false;
 
   onMount(async () => {
     setMaxCanvasSize();
@@ -73,33 +70,8 @@
     samplesInfo.setLimit(newSampleLimit);
   }
 
-  function onEnvmapScaleChange(e: Event) {
-    const newScale = parseFloat((e.target as HTMLInputElement).value);
-    if (isNaN(newScale)) return;
-
-    configManager.setStoreProperty({ ENVMAP_SCALE: newScale });
-  }
-
-  function onEnvmapRotXChange(e: { detail: { value: number } }) {
-    const newRotX = e.detail.value;
-    if (isNaN(newRotX)) return;
-
-    configManager.setStoreProperty({ ENVMAP_ROTX: newRotX });
-  }
-
-  function onEnvmapRotYChange(e: { detail: { value: number } }) {
-    const newRotY = e.detail.value;
-    if (isNaN(newRotY)) return;
-
-    configManager.setStoreProperty({ ENVMAP_ROTY: newRotY });
-  }
-
   function onOneStepLimitIncrement() {
     samplesInfo.setLimit($samplesInfo.limit + 1);
-  }
-
-  function onFDBtnClick() {
-    clickSetFocusDistance = true;
   }
 
   function stop() {
@@ -114,27 +86,16 @@
     samplesInfo.setLimit(1);
     samplesInfo.reset();
   }
-
-  function onCanvasClick(e: MouseEvent & { currentTarget: EventTarget & HTMLCanvasElement }) {
-    if (clickSetFocusDistance) {
-      let x = e.offsetX;
-      let y = canvasHeightSlidersValue[0] - e.offsetY;
-      let t = renderer.getFocusDistanceFromScreenPoint(new Vector2(x, y));
-      if (t > -1) {
-        $cameraInfoStore.focusDistance = t;
-      }
-      clickSetFocusDistance = false;
-    }
-  }
 </script>
 
 <main>
+  <LeftSidebar />
+
   <div class="canvas-container" bind:this={canvasContainerEl}>
     <canvas
       width={canvasWidthSlidersValue[0]}
       height={canvasHeightSlidersValue[0]}
       bind:this={canvasRef}
-      on:click={onCanvasClick}
     />
   </div>
 
@@ -178,80 +139,10 @@
       </p>
     </Folder>
     <Folder name="Camera">
-      <span
-        >Exposure: <input
-          class="envmap-scale-input"
-          type="text"
-          bind:value={$cameraInfoStore.exposure}
-        /></span
-      >
-      <Spacer vertical={5} />
-      <span
-        >Fov: <input
-          class="envmap-scale-input"
-          type="text"
-          bind:value={$cameraInfoStore.fov}
-        /></span
-      >
-      <Spacer vertical={5} />
-      <span
-        >Aperture: <input
-          class="envmap-scale-input"
-          type="text"
-          bind:value={$cameraInfoStore.aperture}
-        /></span
-      >
-      <Spacer vertical={5} />
-      <div class="fd-flex-row">
-        <span>Focus distance:</span>
-        <Spacer horizontal={5} />
-        <input class="envmap-scale-input" type="text" bind:value={$cameraInfoStore.focusDistance} />
-        <Spacer horizontal={5} />
-        <button class="click-set-fd" class:active={clickSetFocusDistance} on:click={onFDBtnClick}
-          ><IronSightIcon /></button
-        >
-      </div>
+      <CameraSettings {canvasRef} {renderer} />
     </Folder>
     <Folder name="Envmap" disabled={!$configOptions.shaderConfig.HAS_ENVMAP}>
-      <span
-        >Scale: <input
-          class="envmap-scale-input"
-          type="text"
-          value={$configOptions.ENVMAP_SCALE}
-          on:change={onEnvmapScaleChange}
-        /></span
-      >
-      <div class="flex-row">
-        <label class="large no-margin">Rotation X: </label>
-        <RangeSlider
-          min={0}
-          max={Math.PI * 2}
-          on:change={onEnvmapRotXChange}
-          float
-          values={[$configOptions.ENVMAP_ROTX]}
-          step={0.1}
-          springValues={{ stiffness: 1, damping: 1 }}
-        />
-      </div>
-      <Spacer vertical={5} />
-      <div class="flex-row">
-        <label class="large no-margin">Rotation Y: </label>
-        <RangeSlider
-          min={0}
-          max={Math.PI * 2}
-          on:change={onEnvmapRotYChange}
-          float
-          values={[$configOptions.ENVMAP_ROTY]}
-          step={0.1}
-          springValues={{ stiffness: 1, damping: 1 }}
-        />
-      </div>
-      <Spacer vertical={12} />
-      <div class="flex-row">
-        <p>Use compensated distribution:&nbsp;</p>
-        <Checkbox bind:checked={$configOptions.ENVMAP_USE_COMPENSATED_DISTRIBUTION} />
-      </div>
-      <Spacer vertical={8} />
+      <Envmap />
     </Folder>
     <Folder name="Sampling" roundBox>
       <span
@@ -297,25 +188,9 @@
     margin: 0 0 -15px 0;
   }
 
-  .fd-flex-row {
-    display: flex;
-    flex-flow: row nowrap;
-    align-items: center;
-    margin: 0 0 -5px 0;
-  }
-
   .flex-row label {
     margin: 0 0 9px 0;
     width: 100px;
-  }
-
-  .flex-row label.large {
-    margin: 0 0 9px 0;
-    width: 150px;
-  }
-
-  .flex-row label.no-margin {
-    margin: 0;
   }
 
   :global(.flex-row > .rangeSlider) {
@@ -330,27 +205,6 @@
 
   p span {
     color: #aaa;
-  }
-
-  @font-face {
-    font-family: 'Inconsolata';
-    src: url('/fonts/Inconsolata-Light.ttf') format('truetype');
-    font-weight: 300;
-  }
-  @font-face {
-    font-family: 'Inconsolata';
-    src: url('/fonts/Inconsolata-Regular.ttf') format('truetype');
-    font-weight: 400;
-  }
-  @font-face {
-    font-family: 'Inconsolata';
-    src: url('/fonts/Inconsolata-Medium.ttf') format('truetype');
-    font-weight: 500;
-  }
-  @font-face {
-    font-family: 'Inconsolata';
-    src: url('/fonts/Inconsolata-Bold.ttf') format('truetype');
-    font-weight: 700;
   }
 
   main {
@@ -386,8 +240,7 @@
     overflow: auto;
   }
 
-  .samples-limit-input,
-  .envmap-scale-input {
+  .samples-limit-input {
     width: 50px;
   }
 
@@ -408,19 +261,8 @@
     margin: 0 -3px 0 0;
   }
 
-  button.click-set-fd {
-    width: 25px;
-    height: 25px;
-    padding: 0;
-  }
   button:active {
     background: #333;
-  }
-  :global(button.click-set-fd > svg) {
-    fill: #666;
-  }
-  :global(button.active.click-set-fd > svg) {
-    fill: #bbb;
   }
 
   input[type='text'] {

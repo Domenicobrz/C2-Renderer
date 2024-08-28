@@ -6,7 +6,7 @@
 
 <div class="left-sidebar">
   <button class=""> <ShadingSphere1 /> </button>
-  <!-- <button class=""> <ShadingSphere2 /> </button> -->
+  <button class=""> <ShadingSphere2 /> </button>
   <button class="active"> <ShadingSphere3 /> </button>
 </div>
 

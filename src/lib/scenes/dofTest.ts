@@ -91,12 +91,12 @@ export async function dofTestScene(): Promise<C2Scene> {
     }
   }
 
-  // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue.glb');
-  // let group = gltf.scene.children[0];
-  // group.scale.set(-2.7, 2.7, 2.7);
-  // group.position.set(0.3, -2.5 + gty, 1.5);
-  // group.rotation.z = 0.4;
-  // triangles = [...triangles, ...meshToTriangles(group, 5)];
+  let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue.glb');
+  let group = gltf.scene.children[0];
+  group.scale.set(-2.7, 2.7, 2.7);
+  group.position.set(0.3, -2.5 + gty, 1.5);
+  group.rotation.z = 0.4;
+  triangles = [...triangles, ...meshToTriangles(group, 5)];
 
   let envmap = new Envmap();
   // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');

@@ -1,9 +1,9 @@
 <script lang="ts">
   import { configManager } from '$lib/config';
   import RangeSlider from 'svelte-range-slider-pips';
-  import { configOptions } from '../stores/main';
-  import Spacer from './Spacer.svelte';
-  import Checkbox from './Checkbox.svelte';
+  import { configOptions } from '../../stores/main';
+  import Spacer from '../Spacer.svelte';
+  import Checkbox from '../Checkbox.svelte';
 
   function onEnvmapScaleChange(e: Event) {
     const newScale = parseFloat((e.target as HTMLInputElement).value);

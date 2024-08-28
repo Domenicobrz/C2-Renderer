@@ -4,60 +4,25 @@
   import { onMount } from 'svelte';
   import { bvhInfo, configOptions, samplesInfo } from '../stores/main';
   import Folder from './Folder.svelte';
-  import RangeSlider from 'svelte-range-slider-pips';
   import MisOptions from './MisOptions.svelte';
-  import Toggle from './Toggle.svelte';
-  import Spacer from './Spacer.svelte';
   import LeftSidebar from './LeftSidebar.svelte';
-  import Envmap from './Envmap.svelte';
-  import CameraSettings from './CameraSettings.svelte';
+  import Envmap from './right-sidebar/Envmap.svelte';
+  import CameraSettings from './right-sidebar/CameraSettings.svelte';
+  import CanvasSize from './right-sidebar/CanvasSize.svelte';
 
   let canvasRef: HTMLCanvasElement;
-  let canvasWidthSlidersValue = [0];
-  let canvasHeightSlidersValue = [0];
+  let canvasWidthSlidersValue: number[];
+  let canvasHeightSlidersValue: number[];
   let canvasContainerEl: HTMLDivElement;
-  let fullScreenCanvas = false;
-  let maxCanvasSize = 0;
   let renderer: RendererInterface;
 
   onMount(async () => {
-    setMaxCanvasSize();
-    canvasWidthSlidersValue = [800];
-    canvasHeightSlidersValue = [600];
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      setMaxCanvasSize();
-      // surprisingly, svelte "knows" the proper value of fullScreenCanvas
-      // even if this callback is being specified inside the onMount event
-      // listener
-      if (fullScreenCanvas) {
-        setFullScreenCanvasSize();
-      }
-    });
-    resizeObserver.observe(canvasContainerEl);
-
     try {
       renderer = await Renderer(canvasRef);
     } catch (error) {
       console.error(error);
     }
   });
-
-  function setMaxCanvasSize() {
-    maxCanvasSize = Math.floor(Math.max(innerHeight, innerWidth) * 1.0);
-  }
-
-  function setFullScreenCanvasSize() {
-    const cr = canvasContainerEl.getBoundingClientRect();
-    canvasWidthSlidersValue = [cr.width - 30];
-    canvasHeightSlidersValue = [cr.height - 30];
-  }
-
-  function toggleFullScreen() {
-    if (fullScreenCanvas) {
-      setFullScreenCanvasSize();
-    }
-  }
 
   function restart() {
     samplesInfo.reset();
@@ -93,40 +58,19 @@
 
   <div class="canvas-container" bind:this={canvasContainerEl}>
     <canvas
-      width={canvasWidthSlidersValue[0]}
-      height={canvasHeightSlidersValue[0]}
+      width={canvasWidthSlidersValue?.[0]}
+      height={canvasHeightSlidersValue?.[0]}
       bind:this={canvasRef}
     />
   </div>
 
   <div class="sidebar">
     <Folder name="Canvas">
-      <div class="flex-row">
-        <label>width: </label>
-        <RangeSlider
-          min={1}
-          max={maxCanvasSize}
-          bind:values={canvasWidthSlidersValue}
-          pips
-          float
-          pipstep={100}
-          springValues={{ stiffness: 1, damping: 1 }}
-        />
-      </div>
-      <div class="flex-row">
-        <label>height: </label>
-        <RangeSlider
-          min={1}
-          max={maxCanvasSize}
-          bind:values={canvasHeightSlidersValue}
-          pips
-          float
-          pipstep={100}
-          springValues={{ stiffness: 1, damping: 1 }}
-        />
-      </div>
-      <Spacer vertical={10} />
-      <Toggle label="Full screen:" bind:checked={fullScreenCanvas} on:change={toggleFullScreen} />
+      <CanvasSize
+        {canvasContainerEl}
+        bind:width={canvasWidthSlidersValue}
+        bind:height={canvasHeightSlidersValue}
+      />
     </Folder>
     <Folder name="Info">
       <p>Bvh nodes count: <span>{$bvhInfo.nodesCount}</span></p>
@@ -181,25 +125,8 @@
     box-sizing: border-box;
   }
 
-  .flex-row {
-    display: flex;
-    flex-flow: row nowrap;
-    align-items: center;
-    margin: 0 0 -15px 0;
-  }
-
-  .flex-row label {
-    margin: 0 0 9px 0;
-    width: 100px;
-  }
-
-  :global(.flex-row > .rangeSlider) {
-    width: 100%;
-  }
-
   p,
-  span,
-  label {
+  span {
     font-size: 15px;
   }
 

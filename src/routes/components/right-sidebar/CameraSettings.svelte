@@ -1,8 +1,8 @@
 <script lang="ts">
   import { Vector2 } from 'three';
-  import { cameraInfoStore } from '../stores/main';
-  import IronSightIcon from './icons/IronSightIcon.svelte';
-  import Spacer from './Spacer.svelte';
+  import { cameraInfoStore } from '../../stores/main';
+  import IronSightIcon from '../icons/IronSightIcon.svelte';
+  import Spacer from '../Spacer.svelte';
   import type { RendererInterface } from '$lib/C2';
 
   export let canvasRef: HTMLCanvasElement;
@@ -25,7 +25,6 @@
       let x = e.offsetX;
       let y = canvasRef.clientHeight - e.offsetY;
       let t = renderer.getFocusDistanceFromScreenPoint(new Vector2(x, y));
-      console.log(renderer);
       if (t > -1) {
         $cameraInfoStore.focusDistance = t;
       }

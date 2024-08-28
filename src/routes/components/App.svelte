@@ -2,13 +2,15 @@
   import { Renderer } from '$lib/C2';
   import type { RendererInterface } from '$lib/C2';
   import { onMount } from 'svelte';
-  import { bvhInfo, configOptions, samplesInfo } from '../stores/main';
+  import { configOptions } from '../stores/main';
   import Folder from './Folder.svelte';
-  import MisOptions from './MisOptions.svelte';
   import LeftSidebar from './LeftSidebar.svelte';
   import Envmap from './right-sidebar/Envmap.svelte';
   import CameraSettings from './right-sidebar/CameraSettings.svelte';
   import CanvasSize from './right-sidebar/CanvasSize.svelte';
+  import Sampling from './right-sidebar/Sampling.svelte';
+  import Info from './right-sidebar/Info.svelte';
+  import Operate from './right-sidebar/Operate.svelte';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidth: number;
@@ -23,34 +25,6 @@
       console.error(error);
     }
   });
-
-  function restart() {
-    samplesInfo.reset();
-  }
-
-  function onSampleLimitInputChange(e: Event) {
-    const newSampleLimit = parseInt((e.target as HTMLInputElement).value);
-    if (isNaN(newSampleLimit)) return;
-
-    samplesInfo.setLimit(newSampleLimit);
-  }
-
-  function onOneStepLimitIncrement() {
-    samplesInfo.setLimit($samplesInfo.limit + 1);
-  }
-
-  function stop() {
-    samplesInfo.setLimit($samplesInfo.count);
-  }
-
-  function infiniteSamplesLimit() {
-    samplesInfo.setLimit(999999);
-  }
-
-  function oneSampleLimit() {
-    samplesInfo.setLimit(1);
-    samplesInfo.reset();
-  }
 </script>
 
 <main>
@@ -65,14 +39,7 @@
       <CanvasSize {canvasContainerEl} bind:width={canvasWidth} bind:height={canvasHeight} />
     </Folder>
     <Folder name="Info">
-      <p>Bvh nodes count: <span>{$bvhInfo.nodesCount}</span></p>
-      <p>Sample: <span>{$samplesInfo.count}</span></p>
-      <p>Tile: <span>{$samplesInfo.tileSize}</span></p>
-      <p>
-        Performance: <span
-          >{$samplesInfo.count == $samplesInfo.limit ? 0 : $samplesInfo.ms.toFixed(0)} ms</span
-        >
-      </p>
+      <Info />
     </Folder>
     <Folder name="Camera">
       <CameraSettings {canvasRef} {renderer} />
@@ -81,25 +48,10 @@
       <Envmap />
     </Folder>
     <Folder name="Sampling" roundBox>
-      <span
-        >Sample Limit: <input
-          class="samples-limit-input"
-          type="text"
-          value={$samplesInfo.limit}
-          on:change={onSampleLimitInputChange}
-        /></span
-      >
-      <button class="sample-limit-btn" on:click={onOneStepLimitIncrement}>+</button>
-      <button class="sample-limit-btn" on:click={infiniteSamplesLimit}>∞</button>
-      <button class="sample-limit-btn" on:click={oneSampleLimit}>1</button>
-
-      <Folder name="Mis Options" roundBox>
-        <MisOptions />
-      </Folder>
+      <Sampling />
     </Folder>
     <Folder name="Operate" roundBox>
-      <button on:click={restart}>restart</button>
-      <button on:click={stop}>stop</button>
+      <Operate />
     </Folder>
   </div>
 </main>
@@ -115,15 +67,6 @@
 
   :global(*) {
     box-sizing: border-box;
-  }
-
-  p,
-  span {
-    font-size: 15px;
-  }
-
-  p span {
-    color: #aaa;
   }
 
   main {
@@ -157,40 +100,6 @@
     color: #ddd;
     background: #191919;
     overflow: auto;
-  }
-
-  .samples-limit-input {
-    width: 50px;
-  }
-
-  button {
-    background: #333;
-    color: #ddd;
-    border-radius: 4px;
-    padding: 5px 10px;
-    border: 1px solid #636363;
-  }
-
-  button:active {
-    background: #454545;
-  }
-
-  button.sample-limit-btn {
-    padding: 4px 8px;
-    margin: 0 -3px 0 0;
-  }
-
-  button:active {
-    background: #333;
-  }
-
-  input[type='text'] {
-    background: #454545;
-    color: #ddd;
-    border-radius: 4px;
-    padding: 3px 7px;
-    border: 1px solid #636363;
-    font-size: 12px;
   }
 
   ::-webkit-scrollbar {

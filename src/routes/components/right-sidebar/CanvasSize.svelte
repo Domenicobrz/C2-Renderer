@@ -5,8 +5,18 @@
   import { tick } from 'svelte';
 
   export let canvasContainerEl: HTMLDivElement;
-  export let width: number[] = [1];
-  export let height: number[] = [1];
+  export let width = 1;
+  export let height = 1;
+
+  let sliderWidth: number[] = [1];
+  let sliderHeight: number[] = [1];
+
+  // sadly RangeSlider wants values as arrays so I have to
+  // use this reactive block to return non-array values
+  $: {
+    width = sliderWidth[0];
+    height = sliderHeight[0];
+  }
 
   let maxCanvasSize = 0;
   let fullScreenCanvas = false;
@@ -21,8 +31,8 @@
         // wait for the range slider to fully initialize
         // before I can set the first resize values
         tick().then(() => {
-          width = [800];
-          height = [600];
+          sliderWidth = [800];
+          sliderHeight = [600];
         });
         hasDoneFirstResize = true;
       }
@@ -46,8 +56,8 @@
 
   function setFullScreenCanvasSize() {
     const cr = canvasContainerEl.getBoundingClientRect();
-    width = [cr.width - 30];
-    height = [cr.height - 30];
+    sliderWidth = [cr.width - 30];
+    sliderHeight = [cr.height - 30];
   }
 
   function toggleFullScreen() {
@@ -62,7 +72,7 @@
   <RangeSlider
     min={1}
     max={maxCanvasSize}
-    bind:values={width}
+    bind:values={sliderWidth}
     pips
     float
     pipstep={100}
@@ -74,7 +84,7 @@
   <RangeSlider
     min={1}
     max={maxCanvasSize}
-    bind:values={height}
+    bind:values={sliderHeight}
     pips
     float
     pipstep={100}

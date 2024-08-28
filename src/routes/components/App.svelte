@@ -11,8 +11,8 @@
   import CanvasSize from './right-sidebar/CanvasSize.svelte';
 
   let canvasRef: HTMLCanvasElement;
-  let canvasWidthSlidersValue: number[];
-  let canvasHeightSlidersValue: number[];
+  let canvasWidth: number;
+  let canvasHeight: number;
   let canvasContainerEl: HTMLDivElement;
   let renderer: RendererInterface;
 
@@ -57,20 +57,12 @@
   <LeftSidebar />
 
   <div class="canvas-container" bind:this={canvasContainerEl}>
-    <canvas
-      width={canvasWidthSlidersValue?.[0]}
-      height={canvasHeightSlidersValue?.[0]}
-      bind:this={canvasRef}
-    />
+    <canvas width={canvasWidth || 1} height={canvasHeight || 1} bind:this={canvasRef} />
   </div>
 
   <div class="sidebar">
     <Folder name="Canvas">
-      <CanvasSize
-        {canvasContainerEl}
-        bind:width={canvasWidthSlidersValue}
-        bind:height={canvasHeightSlidersValue}
-      />
+      <CanvasSize {canvasContainerEl} bind:width={canvasWidth} bind:height={canvasHeight} />
     </Folder>
     <Folder name="Info">
       <p>Bvh nodes count: <span>{$bvhInfo.nodesCount}</span></p>

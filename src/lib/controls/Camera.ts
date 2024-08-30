@@ -4,14 +4,17 @@ import { Matrix4, PerspectiveCamera, Vector2, Vector3 } from 'three';
 import { cameraInfoStore } from '../../routes/stores/main';
 import { get } from 'svelte/store';
 import { globals } from '$lib/C2';
+import { vec2 } from '$lib/utils/math';
 
 export class Camera {
   public e: EventHandler;
 
   public position: Vector3;
   public rotationMatrix: Matrix4;
-  public cameraMatrix: Matrix4;
+  public viewMatrix: Matrix4;
   public projectionMatrix: Matrix4;
+
+  private canvasSize: Vector2;
 
   public cameraSampleUniformBuffer: GPUBuffer;
   public cameraUniformBuffer: GPUBuffer;
@@ -22,11 +25,13 @@ export class Camera {
   private haltonSampler: HaltonSampler = new HaltonSampler();
   private device: GPUDevice;
 
+  private requestedBuffersUpdate: boolean = false;
+
   constructor() {
     this.e = new EventHandler();
-    this.position = new Vector3(0, 0, -10);
+    this.position = new Vector3(0, 0, -20);
     this.rotationMatrix = new Matrix4().identity();
-    this.cameraMatrix = new Matrix4().identity();
+    this.viewMatrix = new Matrix4().identity();
     this.projectionMatrix = new Matrix4().identity();
 
     this.device = globals.device;
@@ -55,20 +60,20 @@ export class Camera {
     this.aperture = 0.1;
     this.focusDistance = 10;
     this.exposure = 1;
-
-    const updateBuffers = () => {
-      this.updateCameraBuffer();
-      this.updateCameraMatricesBuffers();
-      this.updateExposureUniformBuffer();
-    };
+    this.canvasSize = vec2(1, 1);
 
     cameraInfoStore.subscribe((_) => {
-      updateBuffers();
+      this.requestedBuffersUpdate = true;
       this.e.fireEvent('change');
     });
     this.e.addEventListener('change', () => {
-      updateBuffers();
+      this.requestedBuffersUpdate = true;
     });
+  }
+
+  onCanvasResize(canvasSize: Vector2) {
+    this.canvasSize = canvasSize;
+    this.requestedBuffersUpdate = true;
   }
 
   get exposure() {
@@ -122,32 +127,36 @@ export class Camera {
     this.haltonSampler.reset();
   }
 
+  renderLoopUpdate() {
+    if (this.requestedBuffersUpdate) {
+      this.updateCameraBuffer();
+      this.updateCameraMatricesBuffers();
+      this.updateExposureUniformBuffer();
+      this.requestedBuffersUpdate = false;
+    }
+  }
+
   updateExposureUniformBuffer() {
     this.device.queue.writeBuffer(this.exposureUniformBuffer, 0, new Float32Array([this.exposure]));
   }
 
   // used on preview and realtime segments
   updateCameraMatricesBuffers() {
-    this.cameraMatrix.identity();
-    this.cameraMatrix.multiplyMatrices(this.cameraMatrix, this.rotationMatrix.clone().invert());
-    this.cameraMatrix.multiplyMatrices(
-      this.cameraMatrix,
+    this.viewMatrix.identity();
+    this.viewMatrix.multiplyMatrices(this.viewMatrix, this.rotationMatrix.clone().invert());
+    this.viewMatrix.multiplyMatrices(
+      this.viewMatrix,
       new Matrix4().makeTranslation(this.position).invert()
     );
-
-    // TODO: find a way of setting the aspect ratio on canvas resize
-    // TODO: test the cameraMatrix, right now you're simply passing in an identity
-    // TODO: change this.cameraMatrix to this.viewMatrix
 
     this.device.queue.writeBuffer(
       this.cameraMatrixUniformBuffer,
       0,
-      // new Float32Array(this.cameraMatrix.elements)
-      new Float32Array(new Matrix4().identity().elements)
+      new Float32Array(this.viewMatrix.elements)
     );
 
     // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix.html
-    let aspectRatio = 800 / 600;
+    let aspectRatio = this.canvasSize.x / this.canvasSize.y;
     let near = 0.1;
     let far = 10000;
     let top = Math.tan(this.fov * 0.5) * near;

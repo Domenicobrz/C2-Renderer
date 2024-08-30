@@ -1,6 +1,7 @@
 import { globals } from '$lib/C2';
 import type { C2Scene } from '$lib/createScene';
 import { previewSegmentShader } from '$lib/shaders/previewSegmentShader';
+import { Vector2 } from 'three';
 
 export class PreviewSegment {
   // private fields
@@ -11,6 +12,8 @@ export class PreviewSegment {
   private bindGroup0!: GPUBindGroup;
 
   private vertexBuffer!: GPUBuffer;
+
+  private depthStencilAttachment: GPURenderPassDepthStencilAttachment | null = null;
 
   private scene!: C2Scene;
   private sceneUpdateRequired: boolean = false;
@@ -54,8 +57,43 @@ export class PreviewSegment {
         module,
         entryPoint: 'fs',
         targets: [{ format: presentationFormat }]
+      },
+      depthStencil: {
+        format: 'depth24plus-stencil8',
+        depthWriteEnabled: true,
+        depthCompare: 'less-equal'
+      },
+      primitive: {
+        cullMode: 'none'
       }
     });
+  }
+
+  createDepthBufferResources(canvasSize: Vector2) {
+    let size: GPUExtent3D = {
+      width: canvasSize.x,
+      height: canvasSize.y,
+      depthOrArrayLayers: 1
+    };
+    let descriptor: GPUTextureDescriptor = {
+      size,
+      format: 'depth24plus-stencil8',
+      usage: GPUTextureUsage.RENDER_ATTACHMENT
+    };
+    let depthStencilBuffer = this.device.createTexture(descriptor);
+    let depthStencilView = depthStencilBuffer.createView();
+    this.depthStencilAttachment = {
+      view: depthStencilView,
+      depthClearValue: 1.0,
+      depthLoadOp: 'clear',
+      depthStoreOp: 'store',
+      stencilLoadOp: 'clear',
+      stencilStoreOp: 'discard' // we're not using stencil stuff
+    };
+  }
+
+  resize(canvasSize: Vector2) {
+    this.createDepthBufferResources(canvasSize);
   }
 
   updateScene(scene: C2Scene) {
@@ -73,32 +111,20 @@ export class PreviewSegment {
   }
 
   processScene() {
-    this.vertexCount = 100 * 3;
+    this.vertexCount = this.scene.triangles.length * 3;
     let vertexData = new Float32Array(this.vertexCount * 6);
 
-    for (let i = 0; i < 100; i++) {
-      let x = Math.random() * 2 - 1;
-      let y = Math.random() * 2 - 1;
-      let z = -Math.random() * 2 * 20;
+    for (let i = 0; i < this.scene.triangles.length; i++) {
+      let triangle = this.scene.triangles[i];
+      let vs = [triangle.v0, triangle.v1, triangle.v2];
 
       for (let j = 0; j < 3; j++) {
-        let offx = -1,
-          offy = 0;
-        if (j == 1) {
-          offx = +1;
-          offy = 0;
-        }
-        if (j == 2) {
-          offx = 0;
-          offy = 2;
-        }
-
-        vertexData[(i * 3 + j) * 6 + 0] = x + offx * 0.03;
-        vertexData[(i * 3 + j) * 6 + 1] = y + offy * 0.03;
-        vertexData[(i * 3 + j) * 6 + 2] = z;
-        vertexData[(i * 3 + j) * 6 + 3] = 0;
-        vertexData[(i * 3 + j) * 6 + 4] = 0;
-        vertexData[(i * 3 + j) * 6 + 5] = 0;
+        vertexData[(i * 3 + j) * 6 + 0] = vs[j].x;
+        vertexData[(i * 3 + j) * 6 + 1] = vs[j].y;
+        vertexData[(i * 3 + j) * 6 + 2] = vs[j].z;
+        vertexData[(i * 3 + j) * 6 + 3] = triangle.normal.x;
+        vertexData[(i * 3 + j) * 6 + 4] = triangle.normal.y;
+        vertexData[(i * 3 + j) * 6 + 5] = triangle.normal.z;
       }
     }
 
@@ -117,6 +143,10 @@ export class PreviewSegment {
       this.processScene();
     }
 
+    if (!this.depthStencilAttachment) {
+      throw new Error('missing depth stencil attachment');
+    }
+
     let renderPassDescriptor: GPURenderPassDescriptor = {
       label: 'preview segment renderPass',
       colorAttachments: [
@@ -126,7 +156,8 @@ export class PreviewSegment {
           storeOp: 'store',
           view: this.context.getCurrentTexture().createView()
         }
-      ]
+      ],
+      depthStencilAttachment: this.depthStencilAttachment
     };
 
     // make a command encoder to start encoding commands

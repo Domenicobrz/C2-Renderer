@@ -1,4 +1,4 @@
-import { Vector2, Vector3 } from 'three';
+import { Matrix4, Vector2, Vector3, Vector4 } from 'three';
 import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
@@ -6,6 +6,7 @@ import { Orbit } from './controls/Orbit';
 import { onKey } from './utils/keys';
 import { renderView, samplesInfo } from '../routes/stores/main';
 import { createScene } from './createScene';
+import type { C2Scene } from './createScene';
 import { TileSequence } from './tile';
 import { RenderTextureSegment } from './segment/renderTextureSegment';
 import type { BVHIntersectionResult } from './bvh/bvh';
@@ -16,6 +17,7 @@ let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
 let renderTextureSegment: RenderTextureSegment;
 let previewSegment: PreviewSegment;
+let scene: C2Scene;
 
 export const globals: {
   device: GPUDevice;
@@ -55,7 +57,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   computeSegment = new ComputeSegment(tileSequence);
 
   // passed down to both compute and render segment
-  let scene = await createScene();
+  scene = await createScene();
 
   computeSegment.updateScene(scene);
   computeSegment.setDebugPixelTarget(465, 28);
@@ -69,11 +71,11 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   previewSegment.updateScene(scene);
 
   const resizeObserver = new ResizeObserver((entries) => {
-    onCanvasResize(canvas, device, computeSegment, renderSegment);
+    onCanvasResize(canvas, device, scene, computeSegment, renderSegment, previewSegment);
   });
   resizeObserver.observe(canvas);
   // initialize work buffers immediately
-  onCanvasResize(canvas, device, computeSegment, renderSegment);
+  onCanvasResize(canvas, device, scene, computeSegment, renderSegment, previewSegment);
 
   onKey('l', () => computeSegment.logDebugResult());
   renderLoop();
@@ -87,10 +89,14 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
 function onCanvasResize(
   canvas: HTMLCanvasElement,
   device: GPUDevice,
+  scene: C2Scene,
   computeSegment: ComputeSegment,
-  renderSegment: RenderSegment
+  renderSegment: RenderSegment,
+  previewSegment: PreviewSegment
 ) {
   let canvasSize = vec2(canvas.width, canvas.height);
+
+  scene.camera.onCanvasResize(canvasSize);
 
   const input = new Float32Array(canvasSize.x * canvasSize.y * 4);
   const workBuffer = device.createBuffer({
@@ -110,11 +116,14 @@ function onCanvasResize(
   // we need to resize before we're able to render
   computeSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
   renderSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
+  previewSegment.resize(canvasSize);
 }
 
 let prevRW = '';
 async function renderLoop() {
   requestAnimationFrame(renderLoop);
+
+  scene.camera.renderLoopUpdate();
 
   let rw = get(renderView);
 

@@ -19,7 +19,10 @@ struct Vertex {
 ) -> VSOutput {
   
   var vsOutput: VSOutput;
-  vsOutput.position = projectionMatrix * viewMatrix * vec4f(vert.position, 1.0);
+  let transformed = viewMatrix * vec4f(vert.position, 1.0);
+  // I would love to build a proper left-handed projection matrix, and I tried,
+  // without success. At one point we should try again and get rid of "* vec4f(1,1,-1,1)"
+  vsOutput.position = projectionMatrix * (transformed * vec4f(1,1,-1,1));
   vsOutput.fragPos = vert.position;
   vsOutput.fragNorm = vert.normal;
   
@@ -27,6 +30,8 @@ struct Vertex {
 }
 
 @fragment fn fs(fsInput: VSOutput) -> @location(0) vec4f {
-  return vec4f(1.0);
+  let normal = normalize(fsInput.fragNorm);
+
+  return vec4f(normal * 0.5 + 0.5, 1.0);
 }
 `;

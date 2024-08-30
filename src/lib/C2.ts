@@ -4,15 +4,18 @@ import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
 import { Orbit } from './controls/Orbit';
 import { onKey } from './utils/keys';
-import { samplesInfo } from '../routes/stores/main';
+import { renderView, samplesInfo } from '../routes/stores/main';
 import { createScene } from './createScene';
 import { TileSequence } from './tile';
 import { RenderTextureSegment } from './segment/renderTextureSegment';
 import type { BVHIntersectionResult } from './bvh/bvh';
+import { PreviewSegment } from './segment/previewSegment';
+import { get } from 'svelte/store';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
 let renderTextureSegment: RenderTextureSegment;
+let previewSegment: PreviewSegment;
 
 export const globals: {
   device: GPUDevice;
@@ -62,6 +65,9 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
 
   renderTextureSegment = new RenderTextureSegment(context, presentationFormat);
 
+  previewSegment = new PreviewSegment(context, presentationFormat);
+  previewSegment.updateScene(scene);
+
   const resizeObserver = new ResizeObserver((entries) => {
     onCanvasResize(canvas, device, computeSegment, renderSegment);
   });
@@ -106,9 +112,35 @@ function onCanvasResize(
   renderSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
 }
 
+let prevRW = '';
 async function renderLoop() {
+  requestAnimationFrame(renderLoop);
+
+  let rw = get(renderView);
+
+  if (prevRW == 'compute' && rw != 'compute') {
+    computeSegment.resetSamplesAndTile();
+  }
+
+  if (rw == 'compute') {
+    computeRenderLoop();
+  } else if (rw == 'preview') {
+    previewRenderLoop();
+  } else if (rw == 'realtime') {
+    realtimeRenderLoop();
+  }
+
+  prevRW = rw;
+}
+
+function previewRenderLoop() {
+  previewSegment.render();
+}
+
+function realtimeRenderLoop() {}
+
+function computeRenderLoop() {
   if (samplesInfo.count >= samplesInfo.limit) {
-    requestAnimationFrame(renderLoop);
     return;
   }
 
@@ -130,6 +162,4 @@ async function renderLoop() {
     })
     .catch(() => {});
   renderSegment.render();
-
-  requestAnimationFrame(renderLoop);
 }

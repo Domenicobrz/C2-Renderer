@@ -1,13 +1,20 @@
-<script>
+<script lang="ts">
+  import { renderView } from '../stores/main';
   import ShadingSphere1 from './icons/ShadingSphere1.svelte';
   import ShadingSphere2 from './icons/ShadingSphere2.svelte';
   import ShadingSphere3 from './icons/ShadingSphere3.svelte';
 </script>
 
 <div class="left-sidebar">
-  <button class=""> <ShadingSphere1 /> </button>
-  <button class=""> <ShadingSphere2 /> </button>
-  <button class="active"> <ShadingSphere3 /> </button>
+  <button on:click={() => ($renderView = 'preview')} class:active={$renderView == 'preview'}>
+    <ShadingSphere1 />
+  </button>
+  <button on:click={() => ($renderView = 'realtime')} class:active={$renderView == 'realtime'}>
+    <ShadingSphere2 />
+  </button>
+  <button on:click={() => ($renderView = 'compute')} class:active={$renderView == 'compute'}>
+    <ShadingSphere3 />
+  </button>
 </div>
 
 <style>

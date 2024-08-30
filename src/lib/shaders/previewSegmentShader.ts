@@ -1,23 +1,27 @@
 export const previewSegmentShader = /* wgsl */ `
+@group(0) @binding(0) var<uniform> viewMatrix: mat4x4f;
+@group(0) @binding(1) var<uniform> projectionMatrix: mat4x4f;
+
 struct VSOutput {
   @builtin(position) position: vec4f,
-  @location(0) texcoord: vec2f,
+  @location(0) fragPos: vec3f,
+  @location(1) fragNorm: vec3f,
+};
+
+struct Vertex {
+  @location(0) position: vec3f,
+  @location(1) normal: vec3f,
 };
 
 @vertex fn vs(
+  vert: Vertex,
   @builtin(vertex_index) vertexIndex : u32
 ) -> VSOutput {
-  let pos = array(
-    vec2f(0.0,  0.0),  // center
-    vec2f(1.0,  0.0),  // right, center
-    vec2f(0.0,  1.0),  // center, top
-  );
-
+  
   var vsOutput: VSOutput;
-  let xy = pos[vertexIndex];
-
-  vsOutput.position = vec4f(xy * 2 - 1, 0.0, 1.0);
-  vsOutput.texcoord = xy;
+  vsOutput.position = projectionMatrix * viewMatrix * vec4f(vert.position, 1.0);
+  vsOutput.fragPos = vert.position;
+  vsOutput.fragNorm = vert.normal;
   
   return vsOutput;
 }

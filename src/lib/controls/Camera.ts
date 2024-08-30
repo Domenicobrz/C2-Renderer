@@ -1,6 +1,6 @@
 import { EventHandler } from '$lib/eventHandler';
 import { HaltonSampler } from '$lib/samplers/Halton';
-import { Matrix4, Vector2, Vector3 } from 'three';
+import { Matrix4, PerspectiveCamera, Vector2, Vector3 } from 'three';
 import { cameraInfoStore } from '../../routes/stores/main';
 import { get } from 'svelte/store';
 import { globals } from '$lib/C2';
@@ -10,10 +10,14 @@ export class Camera {
 
   public position: Vector3;
   public rotationMatrix: Matrix4;
+  public cameraMatrix: Matrix4;
+  public projectionMatrix: Matrix4;
 
   public cameraSampleUniformBuffer: GPUBuffer;
   public cameraUniformBuffer: GPUBuffer;
   public exposureUniformBuffer: GPUBuffer;
+  public cameraMatrixUniformBuffer: GPUBuffer;
+  public projectionMatrixUniformBuffer: GPUBuffer;
 
   private haltonSampler: HaltonSampler = new HaltonSampler();
   private device: GPUDevice;
@@ -22,6 +26,8 @@ export class Camera {
     this.e = new EventHandler();
     this.position = new Vector3(0, 0, -10);
     this.rotationMatrix = new Matrix4().identity();
+    this.cameraMatrix = new Matrix4().identity();
+    this.projectionMatrix = new Matrix4().identity();
 
     this.device = globals.device;
     this.cameraSampleUniformBuffer = this.device.createBuffer({
@@ -36,6 +42,14 @@ export class Camera {
       size: 1 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
+    this.cameraMatrixUniformBuffer = this.device.createBuffer({
+      size: 16 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+    this.projectionMatrixUniformBuffer = this.device.createBuffer({
+      size: 16 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
 
     this.fov = Math.PI * 0.25;
     this.aperture = 0.1;
@@ -44,6 +58,7 @@ export class Camera {
 
     const updateBuffers = () => {
       this.updateCameraBuffer();
+      this.updateCameraMatricesBuffers();
       this.updateExposureUniformBuffer();
     };
 
@@ -109,6 +124,94 @@ export class Camera {
 
   updateExposureUniformBuffer() {
     this.device.queue.writeBuffer(this.exposureUniformBuffer, 0, new Float32Array([this.exposure]));
+  }
+
+  // used on preview and realtime segments
+  updateCameraMatricesBuffers() {
+    this.cameraMatrix.identity();
+    this.cameraMatrix.multiplyMatrices(this.cameraMatrix, this.rotationMatrix.clone().invert());
+    this.cameraMatrix.multiplyMatrices(
+      this.cameraMatrix,
+      new Matrix4().makeTranslation(this.position).invert()
+    );
+
+    // TODO: find a way of setting the aspect ratio on canvas resize
+    // TODO: test the cameraMatrix, right now you're simply passing in an identity
+    // TODO: change this.cameraMatrix to this.viewMatrix
+
+    this.device.queue.writeBuffer(
+      this.cameraMatrixUniformBuffer,
+      0,
+      // new Float32Array(this.cameraMatrix.elements)
+      new Float32Array(new Matrix4().identity().elements)
+    );
+
+    // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix.html
+    let aspectRatio = 800 / 600;
+    let near = 0.1;
+    let far = 10000;
+    let top = Math.tan(this.fov * 0.5) * near;
+    let bottom = -top;
+    let right = top * aspectRatio;
+    let left = -top * aspectRatio;
+
+    let n = near,
+      f = far,
+      t = top,
+      r = right,
+      b = bottom,
+      l = left;
+
+    this.device.queue.writeBuffer(
+      this.projectionMatrixUniformBuffer,
+      0,
+      // this is the row-major version, which doesn't seem to work
+      // below this one I'm using the column-major version
+
+      // new Float32Array([
+      //   (2 * n) / (r - l),
+      //   0,
+      //   (r + l) / (r - l),
+      //   0,
+
+      //   0,
+      //   (2 * n) / (t - b),
+      //   (t + b) / (t - b),
+      //   0,
+
+      //   0,
+      //   0,
+      //   -(f + n) / (f - n),
+      //   -(2 * f * n) / (f - n),
+
+      //   0,
+      //   0,
+      //   -1,
+      //   0
+      // ])
+
+      new Float32Array([
+        (2 * n) / (r - l),
+        0,
+        0,
+        0,
+
+        0,
+        (2 * n) / (t - b),
+        0,
+        0,
+
+        (r + l) / (r - l),
+        (t + b) / (t - b),
+        -(f + n) / (f - n),
+        -1,
+
+        0,
+        0,
+        -(2 * f * n) / (f - n),
+        0
+      ])
+    );
   }
 
   updateCameraBuffer() {
@@ -203,9 +306,9 @@ export class Camera {
         let offsetRadius = aperture * sqrt(dofRands.x);
         let offsetTheta = dofRands.y * 2.0 * PI;
         var originOffset = vec3f(offsetRadius * cos(offsetTheta), offsetRadius * sin(offsetTheta), 0.0);
-        rd = normalize(camera.rotationMatrix * normalize(focalPoint - originOffset));
+        rd = normalize(camera.rotMatrix * normalize(focalPoint - originOffset));
       
-        originOffset = camera.rotationMatrix * originOffset;
+        originOffset = camera.rotMatrix * originOffset;
         let ro = camera.position + originOffset;
 
         return Ray(ro, rd);
@@ -218,7 +321,7 @@ export class Camera {
       struct Camera {
         position: vec3f,
         fov: f32,
-        rotationMatrix: mat3x3f,
+        rotMatrix: mat3x3f,
         aperture: f32,
         focusDistance: f32,
       }

@@ -94,31 +94,11 @@
   }
 
   .sidebar {
-    flex: 0 0 300px;
+    flex: 0 0 310px;
     height: 100%;
     border: 1px solid #333;
     color: #ddd;
     background: #191919;
     overflow: auto;
-  }
-
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #2f2f2f;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  ::-webkit-scrollbar-track {
-    background-color: #191919;
-    border: 5px solid #191919;
-  }
-  ::-webkit-scrollbar-button {
-    display: none;
-    background-color: #301934;
-    background-repeat: no-repeat;
-    background-size: 100%;
-    background-position: center;
   }
 </style>

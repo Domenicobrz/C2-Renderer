@@ -6,6 +6,8 @@ type BVHInfo = {
 };
 export const bvhInfo = writable<BVHInfo>({ nodesCount: 0 });
 
+export const renderView = writable<'preview' | 'realtime' | 'compute'>('compute');
+
 type SamplesInfo = {
   limit: number;
   count: number;

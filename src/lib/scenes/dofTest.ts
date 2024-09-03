@@ -94,7 +94,7 @@ export async function dofTestScene(): Promise<C2Scene> {
   let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue.glb');
   let group = gltf.scene.children[0];
   group.scale.set(-2.7, 2.7, 2.7);
-  group.position.set(0.3, -2.5 + gty, 1.5);
+  group.position.set(0.3, -1.25 + gty, 1.5);
   group.rotation.z = 0.4;
   triangles = [...triangles, ...meshToTriangles(group, 5)];
 
@@ -103,18 +103,21 @@ export async function dofTestScene(): Promise<C2Scene> {
   // await envmap.fromEquirect('scene-assets/envmaps/lebombo_1k.hdr');
   await envmap.fromEquirect('scene-assets/envmaps/large_corridor_1k.hdr', 300);
   envmap.scale = 0.9;
-  envmap.rotX = 0.3;
+  envmap.rotX = 5.2;
+  envmap.rotY = 0.5;
 
   // create & set camera
   const camera = new Orbit();
   camera.set(new Vector3(0, 1, -10), new Vector3(0, 0, 0));
+  camera.movementSpeed = 0.15;
 
-  // camera.fov = 0.37853981633974483;
-  camera.fov = 0.7853981633974483;
-  camera.aperture = 0.05;
+  camera.fov = 0.21;
+  camera.aperture = 0.25;
   camera.focusDistance = 11.289686875740895;
-  // camera.focusDistance = 19.271073071897735;
   camera.exposure = 1.85;
+  // camera.fov = 0.7853981633974483;
+  // camera.aperture = 0.05;
+  // camera.focusDistance = 19.271073071897735;
 
   return { triangles, materials, envmap, camera };
 }

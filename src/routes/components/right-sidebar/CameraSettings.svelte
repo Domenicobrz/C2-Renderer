@@ -4,6 +4,7 @@
   import IronSightIcon from '../icons/IronSightIcon.svelte';
   import Spacer from '../Spacer.svelte';
   import type { RendererInterface } from '$lib/C2';
+  import RangeSlider from 'svelte-range-slider-pips';
 
   export let canvasRef: HTMLCanvasElement;
   export let renderer: RendererInterface;
@@ -31,6 +32,17 @@
       clickSetFocusDistance = false;
     }
   }
+
+  let fovSliderValue = [0];
+  let fovRangeStep = 0.01;
+  cameraInfoStore.subscribe((newState) => {
+    if (fovSliderValue[0] !== newState.fov) {
+      fovSliderValue = [newState.fov - (newState.fov % fovRangeStep)];
+    }
+  });
+  function onFovSliderChange(e: any) {
+    $cameraInfoStore.fov = parseFloat(e.detail.value);
+  }
 </script>
 
 <span
@@ -41,8 +53,18 @@
   /></span
 >
 <Spacer vertical={5} />
-<span>Fov: <input class="samples-limit-input" type="text" bind:value={$cameraInfoStore.fov} /></span
->
+<div class="flex-row">
+  <span>Fov: </span>
+  <RangeSlider
+    min={0.001}
+    max={Math.PI * 0.5}
+    bind:values={fovSliderValue}
+    on:change={onFovSliderChange}
+    float
+    step={fovRangeStep}
+    springValues={{ stiffness: 1, damping: 1 }}
+  />
+</div>
 <Spacer vertical={5} />
 <span
   >Aperture: <input
@@ -112,5 +134,16 @@
     flex-flow: row nowrap;
     align-items: center;
     margin: 0 0 -5px 0;
+  }
+
+  .flex-row {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    margin: 0 0 0px 0;
+  }
+
+  .flex-row span {
+    margin: 0 9px 0 0;
   }
 </style>

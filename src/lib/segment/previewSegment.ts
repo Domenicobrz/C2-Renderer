@@ -105,7 +105,8 @@ export class PreviewSegment {
       layout: this.pipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: { buffer: this.scene.camera.cameraMatrixUniformBuffer } },
-        { binding: 1, resource: { buffer: this.scene.camera.projectionMatrixUniformBuffer } }
+        { binding: 1, resource: { buffer: this.scene.camera.projectionMatrixUniformBuffer } },
+        { binding: 2, resource: { buffer: this.scene.camera.cameraPositionUniformBuffer } }
       ]
     });
   }

@@ -18,6 +18,7 @@ export class Camera {
 
   public cameraSampleUniformBuffer: GPUBuffer;
   public cameraUniformBuffer: GPUBuffer;
+  public cameraPositionUniformBuffer: GPUBuffer;
   public exposureUniformBuffer: GPUBuffer;
   public cameraMatrixUniformBuffer: GPUBuffer;
   public projectionMatrixUniformBuffer: GPUBuffer;
@@ -53,6 +54,10 @@ export class Camera {
     });
     this.projectionMatrixUniformBuffer = this.device.createBuffer({
       size: 16 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+    this.cameraPositionUniformBuffer = this.device.createBuffer({
+      size: 3 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
@@ -220,6 +225,12 @@ export class Camera {
         -(2 * f * n) / (f - n),
         0
       ])
+    );
+
+    this.device.queue.writeBuffer(
+      this.cameraPositionUniformBuffer,
+      0,
+      new Float32Array([this.position.x, this.position.y, this.position.z])
     );
   }
 

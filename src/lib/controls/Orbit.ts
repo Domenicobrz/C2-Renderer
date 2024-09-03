@@ -55,6 +55,11 @@ export class Orbit extends Camera {
     if (this.theta < epsilon) this.theta = epsilon;
     if (this.theta > Math.PI - epsilon) this.theta = Math.PI - epsilon;
 
+    let shiftActive = false;
+    if (this.keys['shift']) {
+      shiftActive = true;
+    }
+
     // handle rotations first
     if (this.rotationChange) {
       const w = new Vector3(0, 1, 0);
@@ -67,39 +72,40 @@ export class Orbit extends Camera {
     }
 
     let { basisX, basisY, basisZ } = this.#getBasis();
+    let msm = shiftActive ? 0.1 : 1;
 
     if (this.keys['w']) {
-      let d = basisZ.clone().multiplyScalar(this.movementSpeed);
+      let d = basisZ.clone().multiplyScalar(this.movementSpeed * msm);
       this.target.add(d);
       this.position.add(d);
       this.movementChange = true;
     }
     if (this.keys['s']) {
-      let d = basisZ.clone().multiplyScalar(-this.movementSpeed);
+      let d = basisZ.clone().multiplyScalar(-this.movementSpeed * msm);
       this.target.add(d);
       this.position.add(d);
       this.movementChange = true;
     }
     if (this.keys['d']) {
-      let d = basisX.clone().multiplyScalar(this.movementSpeed);
+      let d = basisX.clone().multiplyScalar(this.movementSpeed * 0.7 * msm);
       this.target.add(d);
       this.position.add(d);
       this.movementChange = true;
     }
     if (this.keys['a']) {
-      let d = basisX.clone().multiplyScalar(-this.movementSpeed);
+      let d = basisX.clone().multiplyScalar(-this.movementSpeed * 0.7 * msm);
       this.target.add(d);
       this.position.add(d);
       this.movementChange = true;
     }
     if (this.keys['q']) {
-      let d = basisY.clone().multiplyScalar(this.movementSpeed);
+      let d = basisY.clone().multiplyScalar(this.movementSpeed * 0.3 * msm);
       this.target.add(d);
       this.position.add(d);
       this.movementChange = true;
     }
     if (this.keys['e']) {
-      let d = basisY.clone().multiplyScalar(-this.movementSpeed);
+      let d = basisY.clone().multiplyScalar(-this.movementSpeed * 0.3 * msm);
       this.target.add(d);
       this.position.add(d);
       this.movementChange = true;
@@ -141,19 +147,24 @@ export class Orbit extends Camera {
     let delta = currCoords.clone().sub(this.pointerDownCoords);
     if (delta.x == 0 && delta.y == 0) return;
 
-    this.theta += -delta.y * this.rotationSpeed * 5;
-    this.phi += delta.x * this.rotationSpeed * 5;
+    let rm = 1;
+    if (this.keys['shift']) {
+      rm = 0.1;
+    }
+
+    this.theta += -delta.y * this.rotationSpeed * 5 * rm;
+    this.phi += delta.x * this.rotationSpeed * 5 * rm;
     this.rotationChange = true;
 
     this.pointerDownCoords = currCoords;
   }
 
   #handleKeyDown(e: KeyboardEvent) {
-    this.keys[e.key] = true;
+    this.keys[e.key.toLowerCase()] = true;
   }
 
   #handleKeyUp(e: KeyboardEvent) {
-    this.keys[e.key] = false;
+    this.keys[e.key.toLowerCase()] = false;
   }
 
   set(position: Vector3, target: Vector3) {

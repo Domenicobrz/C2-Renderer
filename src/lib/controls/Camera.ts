@@ -28,6 +28,8 @@ export class Camera {
 
   private requestedBuffersUpdate: boolean = false;
 
+  protected canvasContainerEl!: HTMLDivElement;
+
   constructor() {
     this.e = new EventHandler();
     this.position = new Vector3(0, 0, -20);
@@ -74,6 +76,10 @@ export class Camera {
     this.e.addEventListener('change', () => {
       this.requestedBuffersUpdate = true;
     });
+  }
+
+  setCanvasContainer(canvasContainer: HTMLDivElement) {
+    this.canvasContainerEl = canvasContainer;
   }
 
   onCanvasResize(canvasSize: Vector2) {

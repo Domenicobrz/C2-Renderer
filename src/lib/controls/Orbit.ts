@@ -1,5 +1,5 @@
 import { EventHandler } from '$lib/eventHandler';
-import { Vector3, Matrix4 } from 'three';
+import { Vector3, Matrix4, Vector2 } from 'three';
 import { Camera } from './Camera';
 
 export class Orbit extends Camera {
@@ -7,6 +7,11 @@ export class Orbit extends Camera {
 
   #keys: { a: boolean; s: boolean; d: boolean; w: boolean };
   #disposed: boolean;
+
+  public rotationSpeed = 1;
+  private requestUpdate = false;
+  private isPointerDown = false;
+  private pointerDownCoords = new Vector2(-1, -1);
 
   #theta: number;
   #phi: number;
@@ -33,24 +38,48 @@ export class Orbit extends Camera {
     this.#loop();
   }
 
+  setCanvasContainer(canvasContainer: HTMLDivElement): void {
+    super.setCanvasContainer(canvasContainer);
+
+    canvasContainer.addEventListener('pointerdown', this.handlePointerDown.bind(this));
+    canvasContainer.addEventListener('pointerup', this.handlePointerUp.bind(this));
+    canvasContainer.addEventListener('pointermove', this.handlePointerMove.bind(this));
+  }
+
   dispose() {
     super.dispose();
     window.removeEventListener('keydown', this.#handleKeyDown.bind(this));
     window.removeEventListener('keyup', this.#handleKeyUp.bind(this));
+    this.canvasContainerEl.removeEventListener('pointerdown', this.handlePointerDown.bind(this));
+    this.canvasContainerEl.removeEventListener('pointerup', this.handlePointerUp.bind(this));
+    this.canvasContainerEl.removeEventListener('pointermove', this.handlePointerMove.bind(this));
     this.#disposed = true;
   }
 
   #loop() {
-    if (this.#keys['w']) this.#theta += 0.05;
-    if (this.#keys['s']) this.#theta -= 0.05;
-    if (this.#keys['d']) this.#phi += 0.05;
-    if (this.#keys['a']) this.#phi -= 0.05;
+    if (this.#keys['w']) {
+      this.#theta += 0.05;
+      this.requestUpdate = true;
+    }
+    if (this.#keys['s']) {
+      this.#theta -= 0.05;
+      this.requestUpdate = true;
+    }
+    if (this.#keys['d']) {
+      this.#phi += 0.05;
+      this.requestUpdate = true;
+    }
+    if (this.#keys['a']) {
+      this.#phi -= 0.05;
+      this.requestUpdate = true;
+    }
 
     const epsilon = 0.001;
     if (this.#theta < epsilon) this.#theta = epsilon;
     if (this.#theta > Math.PI - epsilon) this.#theta = Math.PI - epsilon;
 
-    if (this.#keys['w'] || this.#keys['s'] || this.#keys['d'] || this.#keys['a']) {
+    if (this.requestUpdate) {
+      this.requestUpdate = false;
       const dirV = new Vector3(0, 1, 0);
       dirV.applyAxisAngle(new Vector3(-1, 0, 0), this.#theta);
       dirV.applyAxisAngle(new Vector3(0, 1, 0), this.#phi);
@@ -67,6 +96,36 @@ export class Orbit extends Camera {
     if (!this.#disposed) {
       requestAnimationFrame(this.#loop.bind(this));
     }
+  }
+
+  private handlePointerDown(e: PointerEvent) {
+    if (!this.canvasContainerEl) return;
+
+    this.isPointerDown = true;
+    this.pointerDownCoords = new Vector2(
+      // both divided by clientHeight, to preserve AR
+      e.clientX / this.canvasContainerEl.clientHeight,
+      e.clientY / this.canvasContainerEl.clientHeight
+    );
+  }
+  private handlePointerUp(e: PointerEvent) {
+    this.isPointerDown = false;
+  }
+  private handlePointerMove(e: PointerEvent) {
+    if (!this.isPointerDown) return;
+
+    let currCoords = new Vector2(
+      // both divided by clientHeight, to preserve AR
+      e.clientX / this.canvasContainerEl.clientHeight,
+      e.clientY / this.canvasContainerEl.clientHeight
+    );
+    let delta = currCoords.clone().sub(this.pointerDownCoords);
+
+    this.#theta += -delta.y * this.rotationSpeed * 5;
+    this.#phi += delta.x * this.rotationSpeed * 5;
+    this.requestUpdate = true;
+
+    this.pointerDownCoords = currCoords;
   }
 
   #handleKeyDown(e: KeyboardEvent) {

@@ -120,6 +120,7 @@ export class Orbit extends Camera {
       e.clientY / this.canvasContainerEl.clientHeight
     );
     let delta = currCoords.clone().sub(this.pointerDownCoords);
+    if (delta.x == 0 && delta.y == 0) return;
 
     this.#theta += -delta.y * this.rotationSpeed * 5;
     this.#phi += delta.x * this.rotationSpeed * 5;

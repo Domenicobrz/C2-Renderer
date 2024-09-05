@@ -1,5 +1,6 @@
 import type { ConfigOptions } from '$lib/config';
 import { get, writable } from 'svelte/store';
+import { Vector2 } from 'three';
 
 type BVHInfo = {
   nodesCount: number;
@@ -68,6 +69,7 @@ type CameraInfo = {
   aperture: number;
   focusDistance: number;
   fov: number;
+  tiltShift: Vector2;
 };
 type CameraMovementInfo = {
   movementSpeed: number;
@@ -77,7 +79,8 @@ export const cameraInfoStore = writable<CameraInfo>({
   exposure: 1,
   aperture: 0,
   focusDistance: 1,
-  fov: Math.PI * 0.25
+  fov: Math.PI * 0.25,
+  tiltShift: new Vector2(0, 0)
 });
 
 export const cameraMovementInfoStore = writable<CameraMovementInfo>({

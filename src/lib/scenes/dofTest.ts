@@ -44,7 +44,7 @@ export async function dofTestScene(): Promise<C2Scene> {
     new Emissive(new Color(1, 0.7, 0.5), 20),
     new Diffuse(new Color(0.05, 1, 0.05)),
     new Dielectric(new Color(0.35, 0.68, 0.99).multiplyScalar(1.85), 0.01, 0.01, 1.6),
-    // new Dielectric(new Color(0.35, 0.68, 0.99).multiplyScalar(0.15), 0.01, 0.01, 1.6),
+    // new Diffuse(new Color(0.05, 0.05, 0.05)),
     new TorranceSparrow(new Color(0.5, 0.5, 0.5), 0.45, 0.45)
   ];
 
@@ -83,7 +83,6 @@ export async function dofTestScene(): Promise<C2Scene> {
 
       let rad = 0.4;
       let xOff = j % 2 === 0 ? 0 : rad;
-      // let height = noise2D(i * 0.03 + 3, j * 0.03 + 0.2) * 4 + 4;
       let height = noise2D(i * 0.03 + 3, j * 0.03 + 0.35) * 8 + 8;
       let cyl = new CylinderGeometry(rad, rad, height, 6, 1, false, 0);
       cyl.translate(rad * 1.9 * i + xOff - 2, -3 + height / 2 + gty, rad * 1.65 * j);
@@ -91,12 +90,12 @@ export async function dofTestScene(): Promise<C2Scene> {
     }
   }
 
-  // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue.glb');
-  // let group = gltf.scene.children[0];
-  // group.scale.set(-2.7, 2.7, 2.7);
-  // group.position.set(0.3, -1.25 + gty, 1.5);
-  // group.rotation.z = 0.4;
-  // triangles = [...triangles, ...meshToTriangles(group, 5)];
+  let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue.glb');
+  let group = gltf.scene.children[0];
+  group.scale.set(-2.7, 2.7, 2.7);
+  group.position.set(0.3, -1.25 + gty, 1.5);
+  group.rotation.z = 0.4;
+  triangles = [...triangles, ...meshToTriangles(group, 5)];
 
   let envmap = new Envmap();
   // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
@@ -108,12 +107,12 @@ export async function dofTestScene(): Promise<C2Scene> {
 
   // create & set camera
   const camera = new Orbit();
-  camera.set(new Vector3(0, 1, -10), new Vector3(0, 0, 0));
+  camera.set(new Vector3(0, 4, -10), new Vector3(0, 0, 0));
   camera.movementSpeed = 0.15;
 
-  camera.fov = 0.21;
+  camera.fov = 0.5;
   camera.aperture = 0.25;
-  camera.focusDistance = 11.289686875740895;
+  camera.focusDistance = 17;
   camera.exposure = 1.85;
   // camera.fov = 0.7853981633974483;
   // camera.aperture = 0.05;

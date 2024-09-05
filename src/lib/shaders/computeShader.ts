@@ -16,6 +16,7 @@ import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import { PC1D } from '$lib/samplers/PiecewiseConstant1D';
 import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
+import { Plane } from '$lib/primitives/plane';
 
 export function getComputeShader() {
   return /* wgsl */ `
@@ -57,6 +58,7 @@ ${PC2D.shaderStruct()}
 ${PC2D.shaderMethods()}
 ${Envmap.shaderStruct()}
 ${Envmap.shaderMethods()}
+${Plane.shaderMethods()}
 
 @group(0) @binding(0) var<storage, read_write> radianceOutput: array<vec3f>;
 @group(0) @binding(1) var<storage, read_write> samplesCount: array<u32>;

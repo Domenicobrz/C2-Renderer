@@ -5,6 +5,7 @@ import { cameraInfoStore, cameraMovementInfoStore } from '../../routes/stores/ma
 import { get } from 'svelte/store';
 import { globals } from '$lib/C2';
 import { vec2 } from '$lib/utils/math';
+import { Plane } from '$lib/primitives/plane';
 
 export class Camera {
   public e: EventHandler;
@@ -68,6 +69,7 @@ export class Camera {
     this.focusDistance = 10;
     this.exposure = 1;
     this.canvasSize = vec2(-1, -1);
+    this.tiltShift = vec2(0, 0);
 
     cameraInfoStore.subscribe((_) => {
       this.requestedBuffersUpdate = true;
@@ -142,6 +144,16 @@ export class Camera {
   set focusDistance(value) {
     cameraInfoStore.update((v) => {
       v.focusDistance = value;
+      return v;
+    });
+  }
+
+  get tiltShift() {
+    return get(cameraInfoStore).tiltShift;
+  }
+  set tiltShift(value) {
+    cameraInfoStore.update((v) => {
+      v.tiltShift = value;
       return v;
     });
   }
@@ -282,8 +294,8 @@ export class Camera {
         0,
         this.aperture,
         this.focusDistance,
-        0,
-        0 // padding
+        this.tiltShift.x,
+        this.tiltShift.y
       ])
     );
   }
@@ -298,10 +310,23 @@ export class Camera {
   }
 
   getFocusDistanceFromIntersectionPoint(point: Vector3) {
-    let dir = point.clone().sub(this.position);
-    var w = new Vector3(0, 0, 1).normalize();
-    w = w.applyMatrix4(this.rotationMatrix);
-    return dir.dot(w);
+    // simple solution, won't work with tilt shift
+    // let dir = point.clone().sub(this.position);
+    // var w = new Vector3(0, 0, 1).normalize();
+    // w = w.applyMatrix4(this.rotationMatrix);
+    // return dir.dot(w);
+
+    // general solution that works for tilt shift
+    let vec = point.clone().sub(this.position).applyMatrix4(this.rotationMatrix.clone().invert());
+    let dir = vec.clone().normalize();
+
+    let plane = new Plane(new Vector3(this.tiltShift.x, this.tiltShift.y, -1), 1);
+    let ires = plane.intersectRay(new Vector3(0, 0, 0), dir);
+
+    let tVec = vec.length();
+    let tPlane = ires.t;
+
+    return tVec / tPlane;
   }
 
   screenPointToRay(point: Vector2, canvasSize: Vector2) {
@@ -341,8 +366,17 @@ export class Camera {
       
         // aperture calculations
         let aperture = camera.aperture;
-        let focalDistance = camera.focusDistance * (1.0 / rd.z);
-        let focalPoint = rd * focalDistance;
+
+        // ***** old method, no tilt shift
+        // let focalDistance = camera.focusDistance * (1.0 / rd.z);
+        // let focalPoint = rd * focalDistance;
+        // ***** new method, with tilt shift 
+        var focalPoint = vec3f(0);
+        let planeDir = normalize(vec3f(camera.tiltShift.x, camera.tiltShift.y, -1));
+        let intersected = intersectPlane(
+          Ray(vec3f(0), rd), planeDir, camera.focusDistance * -planeDir.z, &focalPoint
+        );
+
         let r1 = rand4(tid.x * 31472 + tid.y * 71893);
         let dofRands = vec2f(
           fract(r1.x + cameraSample.z),
@@ -369,6 +403,7 @@ export class Camera {
         rotMatrix: mat3x3f,
         aperture: f32,
         focusDistance: f32,
+        tiltShift: vec2f,
       }
       struct Ray {
         origin: vec3f,

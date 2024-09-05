@@ -35,15 +35,36 @@
     }
   }
 
+  let tiltShiftX = 0;
+  let tiltShiftY = 0;
   let fovSliderValue = [0];
   let fovRangeStep = 0.01;
   cameraInfoStore.subscribe((newState) => {
     if (fovSliderValue[0] !== newState.fov) {
       fovSliderValue = [newState.fov - (newState.fov % fovRangeStep)];
     }
+    if (tiltShiftX !== newState.tiltShift.x) {
+      tiltShiftX = newState.tiltShift.x;
+    }
+    if (tiltShiftY !== newState.tiltShift.y) {
+      tiltShiftY = newState.tiltShift.y;
+    }
   });
   function onFovSliderChange(e: any) {
     $cameraInfoStore.fov = parseFloat(e.detail.value);
+  }
+
+  function onTiltShiftXChange(e: any) {
+    let value = parseFloat(e.target.value);
+    if (!isNaN(value)) {
+      $cameraInfoStore.tiltShift = new Vector2(value, tiltShiftY);
+    }
+  }
+  function onTiltShiftYChange(e: any) {
+    let value = parseFloat(e.target.value);
+    if (!isNaN(value)) {
+      $cameraInfoStore.tiltShift = new Vector2(tiltShiftX, value);
+    }
   }
 </script>
 
@@ -85,6 +106,21 @@
     ><IronSightIcon /></button
   >
 </div>
+<Spacer vertical={15} />
+<span
+  >Tilt Shift (x,y): <input
+    class="samples-limit-input"
+    type="text"
+    bind:value={tiltShiftX}
+    on:keyup={onTiltShiftXChange}
+  />
+  <input
+    class="samples-limit-input"
+    type="text"
+    bind:value={tiltShiftY}
+    on:keyup={onTiltShiftYChange}
+  />
+</span>
 
 <Folder name="Camera movement" roundBox expanded={false}>
   <p>

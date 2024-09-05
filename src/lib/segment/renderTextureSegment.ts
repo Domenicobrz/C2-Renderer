@@ -5,16 +5,16 @@ import { globals } from '$lib/C2';
 
 export class RenderTextureSegment {
   // private fields
-  #device: GPUDevice;
-  #context: GPUCanvasContext;
-  #pipeline: GPURenderPipeline;
+  private device: GPUDevice;
+  private context: GPUCanvasContext;
+  private pipeline: GPURenderPipeline;
 
-  #bindGroup0: GPUBindGroup | null = null;
+  private bindGroup0: GPUBindGroup | null = null;
 
   constructor(context: GPUCanvasContext, presentationFormat: GPUTextureFormat) {
-    this.#context = context;
+    this.context = context;
     let device = globals.device;
-    this.#device = device;
+    this.device = device;
 
     // *************** render pipeline ****************
     const module = device.createShaderModule({
@@ -22,7 +22,7 @@ export class RenderTextureSegment {
       code: renderTextureShader
     });
 
-    this.#pipeline = device.createRenderPipeline({
+    this.pipeline = device.createRenderPipeline({
       label: 'render texture pipeline',
       layout: 'auto',
       vertex: {
@@ -40,20 +40,20 @@ export class RenderTextureSegment {
   // we should also create another function that simply uses an existing texture
   // instead of having to pass the textureData and create the texture here
   setTextureData(textureData: Float32Array, textureSize: Vector2) {
-    const texture = this.#device.createTexture({
+    const texture = this.device.createTexture({
       size: [textureSize.x, textureSize.y],
       format: 'rgba32float',
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
     });
 
-    this.#device.queue.writeTexture(
+    this.device.queue.writeTexture(
       { texture },
       textureData,
       { bytesPerRow: textureSize.x * 16 },
       { width: textureSize.x, height: textureSize.y }
     );
 
-    const sampler = this.#device.createSampler({
+    const sampler = this.device.createSampler({
       addressModeU: 'repeat',
       addressModeV: 'repeat',
       magFilter: 'linear',
@@ -62,8 +62,8 @@ export class RenderTextureSegment {
 
     // we need to re-create the bindgroup since workBuffer
     // is a new buffer
-    this.#bindGroup0 = this.#device.createBindGroup({
-      layout: this.#pipeline.getBindGroupLayout(0),
+    this.bindGroup0 = this.device.createBindGroup({
+      layout: this.pipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: sampler },
         { binding: 1, resource: texture.createView() }
@@ -72,7 +72,7 @@ export class RenderTextureSegment {
   }
 
   render() {
-    if (!this.#bindGroup0) {
+    if (!this.bindGroup0) {
       throw new Error('undefined render bind group');
     }
 
@@ -82,7 +82,7 @@ export class RenderTextureSegment {
       label: 'our basic canvas renderPass',
       colorAttachments: [
         {
-          view: this.#context.getCurrentTexture().createView(),
+          view: this.context.getCurrentTexture().createView(),
           clearValue: [0, 0, 0, 1],
           loadOp: 'clear',
           storeOp: 'store'
@@ -90,14 +90,14 @@ export class RenderTextureSegment {
       ]
     };
 
-    const encoder = this.#device.createCommandEncoder({ label: 'render encoder' });
+    const encoder = this.device.createCommandEncoder({ label: 'render encoder' });
     const pass = encoder.beginRenderPass(passDescriptor);
-    pass.setPipeline(this.#pipeline);
-    pass.setBindGroup(0, this.#bindGroup0);
+    pass.setPipeline(this.pipeline);
+    pass.setBindGroup(0, this.bindGroup0);
     pass.draw(6); // call our vertex shader 6 times
     pass.end();
 
     const commandBuffer = encoder.finish();
-    this.#device.queue.submit([commandBuffer]);
+    this.device.queue.submit([commandBuffer]);
   }
 }

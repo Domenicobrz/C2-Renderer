@@ -24,10 +24,10 @@ export class Orbit extends Camera {
     this.phi = 0.0;
     this.disposed = false;
 
-    window.addEventListener('keydown', this.#handleKeyDown.bind(this));
-    window.addEventListener('keyup', this.#handleKeyUp.bind(this));
+    window.addEventListener('keydown', this.handleKeyDown.bind(this));
+    window.addEventListener('keyup', this.handleKeyUp.bind(this));
 
-    this.#loop();
+    this.loop();
   }
 
   setCanvasContainer(canvasContainer: HTMLDivElement): void {
@@ -40,15 +40,15 @@ export class Orbit extends Camera {
 
   dispose() {
     super.dispose();
-    window.removeEventListener('keydown', this.#handleKeyDown.bind(this));
-    window.removeEventListener('keyup', this.#handleKeyUp.bind(this));
+    window.removeEventListener('keydown', this.handleKeyDown.bind(this));
+    window.removeEventListener('keyup', this.handleKeyUp.bind(this));
     this.canvasContainerEl.removeEventListener('pointerdown', this.handlePointerDown.bind(this));
     this.canvasContainerEl.removeEventListener('pointerup', this.handlePointerUp.bind(this));
     this.canvasContainerEl.removeEventListener('pointermove', this.handlePointerMove.bind(this));
     this.disposed = true;
   }
 
-  #loop() {
+  private loop() {
     const epsilon = 0.001;
     if (this.theta < epsilon) this.theta = epsilon;
     if (this.theta > Math.PI - epsilon) this.theta = Math.PI - epsilon;
@@ -69,7 +69,7 @@ export class Orbit extends Camera {
       this.position.copy(newPos);
     }
 
-    let { basisX, basisY, basisZ } = this.#getBasis();
+    let { basisX, basisY, basisZ } = this.getBasis();
     let msm = shiftActive ? 0.1 : 1;
 
     if (this.keys['w']) {
@@ -110,14 +110,14 @@ export class Orbit extends Camera {
     }
 
     if (this.rotationChange || this.movementChange) {
-      this.#calculateMatrix();
+      this.calculateMatrix();
       this.e.fireEvent('change');
       this.rotationChange = false;
       this.movementChange = false;
     }
 
     if (!this.disposed) {
-      requestAnimationFrame(this.#loop.bind(this));
+      requestAnimationFrame(this.loop.bind(this));
     }
   }
 
@@ -157,11 +157,11 @@ export class Orbit extends Camera {
     this.pointerDownCoords = currCoords;
   }
 
-  #handleKeyDown(e: KeyboardEvent) {
+  private handleKeyDown(e: KeyboardEvent) {
     this.keys[e.key.toLowerCase()] = true;
   }
 
-  #handleKeyUp(e: KeyboardEvent) {
+  private handleKeyUp(e: KeyboardEvent) {
     this.keys[e.key.toLowerCase()] = false;
   }
 
@@ -169,11 +169,11 @@ export class Orbit extends Camera {
     this.position = position;
     this.target = target;
 
-    this.#calculateMatrix();
+    this.calculateMatrix();
     this.e.fireEvent('change');
   }
 
-  #getBasis(): { basisX: Vector3; basisY: Vector3; basisZ: Vector3 } {
+  private getBasis(): { basisX: Vector3; basisY: Vector3; basisZ: Vector3 } {
     const dir = this.target.clone().sub(this.position).normalize();
     const up = new Vector3(0, 1, 0);
 
@@ -187,8 +187,8 @@ export class Orbit extends Camera {
     return { basisX, basisY, basisZ };
   }
 
-  #calculateMatrix() {
-    let { basisX, basisY, basisZ } = this.#getBasis();
+  private calculateMatrix() {
+    let { basisX, basisY, basisZ } = this.getBasis();
 
     this.rotationMatrix = new Matrix4().makeBasis(basisX, basisY, basisZ);
   }

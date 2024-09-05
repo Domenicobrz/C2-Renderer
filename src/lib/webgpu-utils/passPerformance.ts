@@ -1,53 +1,53 @@
 export class ComputePassPerformance {
-  #querySet: GPUQuerySet;
-  #resolveBuffer: GPUBuffer;
-  #resultBuffer: GPUBuffer;
+  private querySet: GPUQuerySet;
+  private resolveBuffer: GPUBuffer;
+  private resultBuffer: GPUBuffer;
 
-  #average: number[] = [];
+  private average: number[] = [];
 
   constructor(device: GPUDevice) {
-    this.#querySet = device.createQuerySet({
+    this.querySet = device.createQuerySet({
       type: 'timestamp',
       count: 2
     });
-    this.#resolveBuffer = device.createBuffer({
-      size: this.#querySet.count * 8,
+    this.resolveBuffer = device.createBuffer({
+      size: this.querySet.count * 8,
       usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC
     });
-    this.#resultBuffer = device.createBuffer({
-      size: this.#resolveBuffer.size,
+    this.resultBuffer = device.createBuffer({
+      size: this.resolveBuffer.size,
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
     });
   }
 
   updateComputePassDescriptor(cpd: GPUComputePassDescriptor) {
     cpd.timestampWrites = {
-      querySet: this.#querySet,
+      querySet: this.querySet,
       beginningOfPassWriteIndex: 0,
       endOfPassWriteIndex: 1
     };
   }
 
   resolve(encoder: GPUCommandEncoder) {
-    encoder.resolveQuerySet(this.#querySet, 0, this.#querySet.count, this.#resolveBuffer, 0);
-    if (this.#resultBuffer.mapState === 'unmapped') {
+    encoder.resolveQuerySet(this.querySet, 0, this.querySet.count, this.resolveBuffer, 0);
+    if (this.resultBuffer.mapState === 'unmapped') {
       encoder.copyBufferToBuffer(
-        this.#resolveBuffer,
+        this.resolveBuffer,
         0,
-        this.#resultBuffer,
+        this.resultBuffer,
         0,
-        this.#resultBuffer.size
+        this.resultBuffer.size
       );
     }
   }
 
   getDeltaInMilliseconds(): Promise<number> {
     return new Promise((res, rej) => {
-      if (this.#resultBuffer.mapState === 'unmapped') {
-        this.#resultBuffer.mapAsync(GPUMapMode.READ).then(() => {
-          const times = new BigInt64Array(this.#resultBuffer.getMappedRange());
+      if (this.resultBuffer.mapState === 'unmapped') {
+        this.resultBuffer.mapAsync(GPUMapMode.READ).then(() => {
+          const times = new BigInt64Array(this.resultBuffer.getMappedRange());
           res(Number(times[1] - times[0]) / 1000000);
-          this.#resultBuffer.unmap();
+          this.resultBuffer.unmap();
         });
       } else {
         rej();
@@ -56,21 +56,21 @@ export class ComputePassPerformance {
   }
 
   reset() {
-    this.#average = [];
+    this.average = [];
   }
 
   getAverageDeltaInMilliseconds(): Promise<number> {
     return new Promise((res, rej) => {
-      if (this.#resultBuffer.mapState === 'unmapped') {
-        this.#resultBuffer.mapAsync(GPUMapMode.READ).then(() => {
-          const times = new BigInt64Array(this.#resultBuffer.getMappedRange());
+      if (this.resultBuffer.mapState === 'unmapped') {
+        this.resultBuffer.mapAsync(GPUMapMode.READ).then(() => {
+          const times = new BigInt64Array(this.resultBuffer.getMappedRange());
 
-          this.#average.push(Number(times[1] - times[0]) / 1000000);
-          if (this.#average.length > 30) this.#average.splice(0, 1);
+          this.average.push(Number(times[1] - times[0]) / 1000000);
+          if (this.average.length > 30) this.average.splice(0, 1);
 
-          res(this.#average.reduce((prev, curr) => prev + curr / this.#average.length));
+          res(this.average.reduce((prev, curr) => prev + curr / this.average.length));
 
-          this.#resultBuffer.unmap();
+          this.resultBuffer.unmap();
         });
       } else {
         rej();

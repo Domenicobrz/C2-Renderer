@@ -1,23 +1,21 @@
-import { Matrix4, Vector2, Vector3, Vector4 } from 'three';
+import { Vector2 } from 'three';
 import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
-import { Orbit } from './controls/Orbit';
 import { onKey } from './utils/keys';
 import { renderView, samplesInfo } from '../routes/stores/main';
 import { createScene } from './createScene';
 import type { C2Scene } from './createScene';
 import { TileSequence } from './tile';
 import { RenderTextureSegment } from './segment/renderTextureSegment';
-import type { BVHIntersectionResult } from './bvh/bvh';
 import { PreviewSegment } from './segment/previewSegment';
 import { get } from 'svelte/store';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
-let renderTextureSegment: RenderTextureSegment;
 let previewSegment: PreviewSegment;
 let scene: C2Scene;
+let canvasSize = new Vector2(-1, -1);
 
 export const globals: {
   device: GPUDevice;
@@ -66,8 +64,6 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   renderSegment = new RenderSegment(context, presentationFormat);
   renderSegment.updateScene(scene);
 
-  renderTextureSegment = new RenderTextureSegment(context, presentationFormat);
-
   previewSegment = new PreviewSegment(context, presentationFormat);
   previewSegment.updateScene(scene);
 
@@ -95,7 +91,12 @@ function onCanvasResize(
   renderSegment: RenderSegment,
   previewSegment: PreviewSegment
 ) {
-  let canvasSize = vec2(canvas.width, canvas.height);
+  // since this function will be called twice at startup, this check will
+  // prevent it from running twice
+  if (canvasSize.x == canvas.width && canvasSize.y == canvas.height) {
+    return;
+  }
+  canvasSize = vec2(canvas.width, canvas.height);
 
   scene.camera.onCanvasResize(canvasSize);
 

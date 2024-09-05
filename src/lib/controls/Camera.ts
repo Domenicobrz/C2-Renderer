@@ -67,7 +67,7 @@ export class Camera {
     this.aperture = 0.1;
     this.focusDistance = 10;
     this.exposure = 1;
-    this.canvasSize = vec2(1, 1);
+    this.canvasSize = vec2(-1, -1);
 
     cameraInfoStore.subscribe((_) => {
       this.requestedBuffersUpdate = true;

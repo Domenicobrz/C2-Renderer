@@ -1,7 +1,7 @@
 import { EventHandler } from '$lib/eventHandler';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import { Matrix4, PerspectiveCamera, Vector2, Vector3 } from 'three';
-import { cameraInfoStore } from '../../routes/stores/main';
+import { cameraInfoStore, cameraMovementInfoStore } from '../../routes/stores/main';
 import { get } from 'svelte/store';
 import { globals } from '$lib/C2';
 import { vec2 } from '$lib/utils/math';
@@ -85,6 +85,25 @@ export class Camera {
   onCanvasResize(canvasSize: Vector2) {
     this.canvasSize = canvasSize;
     this.requestedBuffersUpdate = true;
+  }
+
+  get rotationSpeed() {
+    return get(cameraMovementInfoStore).rotationSpeed;
+  }
+  set rotationSpeed(value) {
+    cameraMovementInfoStore.update((v) => {
+      v.rotationSpeed = value;
+      return v;
+    });
+  }
+  get movementSpeed() {
+    return get(cameraMovementInfoStore).movementSpeed;
+  }
+  set movementSpeed(value) {
+    cameraMovementInfoStore.update((v) => {
+      v.movementSpeed = value;
+      return v;
+    });
   }
 
   get exposure() {

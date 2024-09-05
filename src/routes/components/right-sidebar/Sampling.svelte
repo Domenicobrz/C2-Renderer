@@ -1,7 +1,7 @@
 <script lang="ts">
   import { samplesInfo } from '../../stores/main';
   import Folder from '../Folder.svelte';
-  import MisOptions from '../MisOptions.svelte';
+  import MisOptions from './MisOptions.svelte';
 
   function onSampleLimitInputChange(e: Event) {
     const newSampleLimit = parseInt((e.target as HTMLInputElement).value);

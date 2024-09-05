@@ -1,10 +1,11 @@
 <script lang="ts">
   import { MIS_TYPE } from '$lib/config';
-  import { configOptions } from '../stores/main';
+  import { configOptions } from '../../stores/main';
+  import Separator from '../Separator.svelte';
 </script>
 
 <p>Mis Type:</p>
-<hr />
+<Separator />
 
 <label>
   <input
@@ -37,7 +38,7 @@
 <br />
 <br />
 <p>Method:</p>
-<hr />
+<Separator />
 <label>
   <input
     type="radio"
@@ -58,12 +59,6 @@
 </label>
 
 <style>
-  hr {
-    border: none;
-    border-bottom: 1px solid #595959;
-    outline: none;
-    margin: 5px 0 15px 0;
-  }
   p {
     font-size: 14px;
   }

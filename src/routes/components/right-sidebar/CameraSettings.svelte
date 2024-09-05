@@ -1,10 +1,12 @@
 <script lang="ts">
   import { Vector2 } from 'three';
-  import { cameraInfoStore } from '../../stores/main';
+  import { cameraInfoStore, cameraMovementInfoStore } from '../../stores/main';
   import IronSightIcon from '../icons/IronSightIcon.svelte';
   import Spacer from '../Spacer.svelte';
   import type { RendererInterface } from '$lib/C2';
   import RangeSlider from 'svelte-range-slider-pips';
+  import Folder from '../Folder.svelte';
+  import Separator from '../Separator.svelte';
 
   export let canvasRef: HTMLCanvasElement;
   export let renderer: RendererInterface;
@@ -84,9 +86,57 @@
   >
 </div>
 
+<Folder name="Camera movement" roundBox expanded={false}>
+  <p>
+    Use <span class="kbtn">w</span><span class="kbtn">a</span><span class="kbtn">s</span><span
+      class="kbtn">d</span
+    ><span class="kbtn">q</span><span class="kbtn">e</span>to move
+  </p>
+  <Spacer vertical={10} />
+  <p>Click & drag to rotate</p>
+  <Spacer vertical={10} />
+  <p>Hold <span class="kbtn fit-to-size">shift</span>for precise movements</p>
+  <Spacer vertical={15} />
+  <Separator />
+  <span
+    >Movement speed: <input
+      class="samples-limit-input"
+      type="text"
+      bind:value={$cameraMovementInfoStore.movementSpeed}
+    /></span
+  >
+  <Spacer vertical={5} />
+  <span
+    >Rotation speed: <input
+      class="samples-limit-input"
+      type="text"
+      bind:value={$cameraMovementInfoStore.rotationSpeed}
+    /></span
+  >
+</Folder>
+
 <style>
   .samples-limit-input {
     width: 50px;
+  }
+
+  .kbtn {
+    font-size: 12px;
+    font-family: monospace;
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    padding: 3px;
+    border: 1px solid #666;
+    border-radius: 3px;
+    text-align: center;
+    line-height: calc(20px - 4px * 2);
+    background: #282828;
+    margin: 0 5px 0 0;
+  }
+  .kbtn.fit-to-size {
+    padding: 3px 6px;
+    width: unset;
   }
 
   button {
@@ -125,6 +175,7 @@
     font-size: 12px;
   }
 
+  p,
   span {
     font-size: 15px;
   }

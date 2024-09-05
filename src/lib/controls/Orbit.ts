@@ -3,8 +3,6 @@ import { Camera } from './Camera';
 
 export class Orbit extends Camera {
   public target: Vector3;
-  public rotationSpeed = 1;
-  public movementSpeed = 1;
 
   private keys: Record<string, boolean> = {};
   private disposed: boolean;

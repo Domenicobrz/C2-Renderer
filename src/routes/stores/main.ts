@@ -69,11 +69,20 @@ type CameraInfo = {
   focusDistance: number;
   fov: number;
 };
+type CameraMovementInfo = {
+  movementSpeed: number;
+  rotationSpeed: number;
+};
 export const cameraInfoStore = writable<CameraInfo>({
-  exposure: 0,
+  exposure: 1,
   aperture: 0,
-  focusDistance: 0,
-  fov: 0
+  focusDistance: 1,
+  fov: Math.PI * 0.25
+});
+
+export const cameraMovementInfoStore = writable<CameraMovementInfo>({
+  movementSpeed: 1,
+  rotationSpeed: 1
 });
 
 export const configOptions = createConfigStore({

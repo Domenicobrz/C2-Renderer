@@ -35,19 +35,19 @@
     }
   }
 
-  let tiltShiftX = 0;
-  let tiltShiftY = 0;
+  let tiltShiftX = '0';
+  let tiltShiftY = '0';
   let fovSliderValue = [0];
   let fovRangeStep = 0.01;
   cameraInfoStore.subscribe((newState) => {
     if (fovSliderValue[0] !== newState.fov) {
       fovSliderValue = [newState.fov - (newState.fov % fovRangeStep)];
     }
-    if (tiltShiftX !== newState.tiltShift.x) {
-      tiltShiftX = newState.tiltShift.x;
+    if (parseFloat(tiltShiftX) !== newState.tiltShift.x) {
+      tiltShiftX = newState.tiltShift.x.toString();
     }
-    if (tiltShiftY !== newState.tiltShift.y) {
-      tiltShiftY = newState.tiltShift.y;
+    if (parseFloat(tiltShiftY) !== newState.tiltShift.y) {
+      tiltShiftY = newState.tiltShift.y.toString();
     }
   });
   function onFovSliderChange(e: any) {
@@ -57,13 +57,13 @@
   function onTiltShiftXChange(e: any) {
     let value = parseFloat(e.target.value);
     if (!isNaN(value)) {
-      $cameraInfoStore.tiltShift = new Vector2(value, tiltShiftY);
+      $cameraInfoStore.tiltShift = new Vector2(value, parseFloat(tiltShiftY));
     }
   }
   function onTiltShiftYChange(e: any) {
     let value = parseFloat(e.target.value);
     if (!isNaN(value)) {
-      $cameraInfoStore.tiltShift = new Vector2(tiltShiftX, value);
+      $cameraInfoStore.tiltShift = new Vector2(parseFloat(tiltShiftX), value);
     }
   }
 </script>

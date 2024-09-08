@@ -132,9 +132,9 @@ var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0);
       break;
     }
   }
+
   radianceOutput[idx] += rad * rayContribution;
   samplesCount[idx] += 1;
-  // samplesCount[idx] += u32(select(0, 1, rayContribution > 0.5));
 
   if (debugInfo.isSelectedPixel) {
     debugBuffer[0] = f32(debugPixelTarget.x);

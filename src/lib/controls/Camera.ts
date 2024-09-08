@@ -395,47 +395,11 @@ export class Camera {
         // vector projection 
         // https://math.stackexchange.com/questions/4646578/finding-the-projection-of-a-vector-onto-another-vector
         let projectionDistance = abs(dot(oo, screenDir) / dot(screenDir, screenDir));
-        let effectMult = 0.1; // 1.0;
-        let effectPow = 17.0;
+        let effectMult = 1.0; // 1.0;
+        let effectPow = 2.0;
         let screenRayLength = length(rd.xy);
         let newAperture = mix(aperture, 0.0, projectionDistance * effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow));    
 
-        // // method 1
-        // // method 1
-        // // method 1
-        // if (offsetRadius > newAperture) {
-        //   *contribution = 0.0;
-        // } else {
-        //   // here we're trying to compensate for the loss of energy due to the reduced 
-        //   // area of effect with cat-eyed bokeh.
-        //   // We got to this solution by trying to find which "x" (projection on screenDir)
-        //   // where "x" is on the edge of the "re-computed aperture" circle.
-        //   // the "re-computed aperture" depends on where you land on the projected x-axis,
-        //   // and it can be either 1 (normalized max aperture) or 0.
-        //   // it was necessary to find at which point in this "x" axis, "x" would have been
-        //   // on the edge of the rc-aperture, meaning an x that had the same size of the rc-aperture
-        //   // I did it by using this equation:
-        //   // x = 1•(1-t) + 0•(t)    // 1 is max normalized aperture, 0 is min normalized aperture
-        //   // x = 1-t;
-        //   // x = 1-(xA)             // A is defined below, it's the mix() t argument
-        //   // -1 = -x(A+1) 
-        //   // x = 1 / (A+1)
-        //   let A = effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow);
-        //   let x = 1.0 / (A + 1.0);
-        //   let apertureAtEdge = mix(1.0, 0.0, x * A);    
-        //   *contribution = 1 / (apertureAtEdge);
-        //   // TODO: 
-        //   // unfortunately, even with this contribution fix, if I compare the results side by side
-        //   // there's still a loss of energy when using cat-eyed bokeh, so we'll use this code
-        //   // exclusively if the user demanded usage of the cat-eyed effect
-        //   // a better solution would be to re-try to find a working sample multiple times (up to 5-10) 
-        //   // and then modulate this contribution fix depending on the max N that we decide to use for 
-        //   // the sampling
-        // }
-
-        // method 3
-        // method 3
-        // method 3
         let A = effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow);
         let xt = 1.0 / (A + 1.0);
         let apertureAtEdge = mix(1.0, 0.0, xt * A); 

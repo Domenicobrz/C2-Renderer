@@ -367,6 +367,12 @@ export class BVH {
             lNolD = -lNolD;
             backSideHit = true;
           }
+          if (lNolD == 0) {
+            // in this case the ray is perpendicular to the normal,
+            // we'll consider it a backSideHit such that the misWeight will be
+            // set to 0
+            backSideHit = true;
+          }
           var lightSamplePdf = r2 / (lNolD * triangle.area);
           lightSamplePdf *= cdfEntry.pdf;
 

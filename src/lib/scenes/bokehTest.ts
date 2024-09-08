@@ -70,17 +70,26 @@ export async function bokehTestScene(): Promise<C2Scene> {
   );
 
   for (let i = 0; i <= 100; i++) {
+    let red = r() * 1 + 0.1;
+    let g = r() * 1 + 0.1;
+    let b = r() * 1 + 0.1;
+    let m = 1.75;
+
+    let mat = new Emissive(new Color(1 * red * m, 0.7 * g * m, 0.5 * b * m), 50);
+    materials.push(mat);
+    let idx = materials.length - 1;
+
     let sphereGeo = new SphereGeometry(0.1, 5, 5);
-    sphereGeo.translate(nr() * 22, r() * 13 - 5, 10 + r() * 40);
-    triangles = [...triangles, ...geometryToTriangles(sphereGeo, 3)];
+    sphereGeo.translate(nr() * 22, r() * 13 - 5, 0 + r() * 40);
+    triangles = [...triangles, ...geometryToTriangles(sphereGeo, idx)];
   }
 
-  // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue.glb');
-  // let group = gltf.scene.children[0];
-  // group.scale.set(-2.7, 2.7, 2.7);
-  // group.position.set(0.3, -1.25 + gty, 1.5);
-  // group.rotation.z = 0.4;
-  // triangles = [...triangles, ...meshToTriangles(group, 5)];
+  let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue.glb');
+  let group = gltf.scene.children[0];
+  group.scale.set(-2.7, 2.7, 2.7);
+  group.position.set(0.3, -2.8 + gty, 1.5);
+  group.rotation.z = 0.4;
+  triangles = [...triangles, ...meshToTriangles(group, 5)];
 
   // let envmap = new Envmap();
   // // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');

@@ -129,7 +129,7 @@ export class Diffuse extends Material {
           }
 
           if (backSideHit) {
-            *misWeight = 0.0;
+            *misWeight = 0; *pdf = 1; 
           }
         }
 
@@ -156,12 +156,12 @@ export class Diffuse extends Material {
               let emissive = material.color * material.intensity;
               *lightSampleRadiance = emissive;
             } else {
-              *misWeight = 0;
+              *misWeight = 0; *pdf = 1; 
             }
           } else if (!ires.hit && lightSample.isEnvmap) {
             *lightSampleRadiance = getEnvmapRadiance((*ray).direction);
           } else {
-            *misWeight = 0;
+            *misWeight = 0; *pdf = 1; 
           }
         }
       }

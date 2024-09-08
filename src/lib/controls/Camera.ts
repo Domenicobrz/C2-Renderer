@@ -345,10 +345,11 @@ export class Camera {
 
   static shaderMethods() {
     return /* wgsl */ `
-      fn getCameraRay(tid: vec3u, idx: u32) -> Ray {
-
+      fn getCameraRay(tid: vec3u, idx: u32, contribution: ptr<function, f32>) -> Ray {
         // if you change the inner workings of ray direction creation,
         // also remember to update screenPointToRay(...)
+
+        *contribution = 1.0;
 
         // from [0...1] to [-1...+1]
         let nuv = vec2f(
@@ -382,9 +383,93 @@ export class Camera {
           fract(r1.x + cameraSample.z),
           fract(r1.y + cameraSample.w),
         );
-        let offsetRadius = aperture * sqrt(dofRands.x);
+        var offsetRadius = aperture * sqrt(dofRands.x);
         let offsetTheta = dofRands.y * 2.0 * PI;
         var originOffset = vec3f(offsetRadius * cos(offsetTheta), offsetRadius * sin(offsetTheta), 0.0);
+        
+
+        // cat-eyed bokeh
+        var oo = (originOffset / aperture).xy;
+        let screenDir = -normalize(rd.xy);
+        let screenDirNorm = vec2f(-screenDir.y, screenDir.x);
+        // vector projection 
+        // https://math.stackexchange.com/questions/4646578/finding-the-projection-of-a-vector-onto-another-vector
+        let projectionDistance = abs(dot(oo, screenDir) / dot(screenDir, screenDir));
+        let effectMult = 0.1; // 1.0;
+        let effectPow = 17.0;
+        let screenRayLength = length(rd.xy);
+        let newAperture = mix(aperture, 0.0, projectionDistance * effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow));    
+
+        // // method 1
+        // // method 1
+        // // method 1
+        // if (offsetRadius > newAperture) {
+        //   *contribution = 0.0;
+        // } else {
+        //   // here we're trying to compensate for the loss of energy due to the reduced 
+        //   // area of effect with cat-eyed bokeh.
+        //   // We got to this solution by trying to find which "x" (projection on screenDir)
+        //   // where "x" is on the edge of the "re-computed aperture" circle.
+        //   // the "re-computed aperture" depends on where you land on the projected x-axis,
+        //   // and it can be either 1 (normalized max aperture) or 0.
+        //   // it was necessary to find at which point in this "x" axis, "x" would have been
+        //   // on the edge of the rc-aperture, meaning an x that had the same size of the rc-aperture
+        //   // I did it by using this equation:
+        //   // x = 1•(1-t) + 0•(t)    // 1 is max normalized aperture, 0 is min normalized aperture
+        //   // x = 1-t;
+        //   // x = 1-(xA)             // A is defined below, it's the mix() t argument
+        //   // -1 = -x(A+1) 
+        //   // x = 1 / (A+1)
+        //   let A = effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow);
+        //   let x = 1.0 / (A + 1.0);
+        //   let apertureAtEdge = mix(1.0, 0.0, x * A);    
+        //   *contribution = 1 / (apertureAtEdge);
+        //   // TODO: 
+        //   // unfortunately, even with this contribution fix, if I compare the results side by side
+        //   // there's still a loss of energy when using cat-eyed bokeh, so we'll use this code
+        //   // exclusively if the user demanded usage of the cat-eyed effect
+        //   // a better solution would be to re-try to find a working sample multiple times (up to 5-10) 
+        //   // and then modulate this contribution fix depending on the max N that we decide to use for 
+        //   // the sampling
+        // }
+
+        // method 3
+        // method 3
+        // method 3
+        let A = effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow);
+        let xt = 1.0 / (A + 1.0);
+        let apertureAtEdge = mix(1.0, 0.0, xt * A); 
+
+        *contribution = 0.0;
+        for(var i = 0; i < 10; i++) {
+          let rds = rand4(tid.x * 31472 + tid.y * 71893 + u32(i) * 19537);
+          let r0 = fract(rds.x + cameraSample.z);
+          let r1 = fract(rds.y + cameraSample.w);
+
+          var oo = screenDir * (r0 * 2 - 1) * apertureAtEdge;
+          oo = oo + screenDirNorm * (r1 * 2 - 1);    
+        
+          let offsetRadius = length(oo);
+          if (offsetRadius > 1.0) {
+            continue;
+          }
+        
+          let projectionDistance = abs(dot(oo, screenDir) / dot(screenDir, screenDir));
+          let t = projectionDistance * A;
+          let newAperture = mix(1.0, 0.0, t);
+
+          if (offsetRadius > newAperture) {
+            continue;
+          }
+
+          originOffset = vec3f(oo * aperture, 0.0);
+          // the contribution adjustment is not necessary now that we're drawing 
+          // these 10 samples according to the apertureAtEdge distribution,
+          // since it's extremely likely that we'll find a valid sample
+          *contribution = 1.0;
+          break;
+        }
+
         rd = normalize(camera.rotMatrix * normalize(focalPoint - originOffset));
       
         originOffset = camera.rotMatrix * originOffset;

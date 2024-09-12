@@ -70,6 +70,9 @@ type CameraInfo = {
   focusDistance: number;
   fov: number;
   tiltShift: Vector2;
+  catsEyeBokehEnabled: boolean;
+  catsEyeBokehMult: number;
+  catsEyeBokehPow: number;
 };
 type CameraMovementInfo = {
   movementSpeed: number;
@@ -80,7 +83,10 @@ export const cameraInfoStore = writable<CameraInfo>({
   aperture: 0,
   focusDistance: 1,
   fov: Math.PI * 0.25,
-  tiltShift: new Vector2(0, 0)
+  tiltShift: new Vector2(0, 0),
+  catsEyeBokehEnabled: false,
+  catsEyeBokehMult: 0,
+  catsEyeBokehPow: 0
 });
 
 export const cameraMovementInfoStore = writable<CameraMovementInfo>({

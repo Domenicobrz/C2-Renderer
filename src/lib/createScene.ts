@@ -17,8 +17,8 @@ export async function createScene(): Promise<C2Scene> {
   // return cornellSphereScene();
   // return planeAndSphere();
   // return envmapHorseScene();
-  // return dofTestScene();
-  return bokehTestScene();
+  return dofTestScene();
+  // return bokehTestScene();
   // return cornellTrianglesScene();
   // return misTestScene();
 }

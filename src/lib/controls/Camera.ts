@@ -44,7 +44,7 @@ export class Camera {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     this.cameraUniformBuffer = this.device.createBuffer({
-      size: 80 /* determined with offset computer */,
+      size: 96 /* determined with offset computer */,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     this.exposureUniformBuffer = this.device.createBuffer({
@@ -154,6 +154,36 @@ export class Camera {
   set tiltShift(value) {
     cameraInfoStore.update((v) => {
       v.tiltShift = value;
+      return v;
+    });
+  }
+
+  get catsEyeBokehEnabled() {
+    return get(cameraInfoStore).catsEyeBokehEnabled;
+  }
+  set catsEyeBokehEnabled(value) {
+    cameraInfoStore.update((v) => {
+      v.catsEyeBokehEnabled = value;
+      return v;
+    });
+  }
+
+  get catsEyeBokehMult() {
+    return get(cameraInfoStore).catsEyeBokehMult;
+  }
+  set catsEyeBokehMult(value) {
+    cameraInfoStore.update((v) => {
+      v.catsEyeBokehMult = value;
+      return v;
+    });
+  }
+
+  get catsEyeBokehPow() {
+    return get(cameraInfoStore).catsEyeBokehPow;
+  }
+  set catsEyeBokehPow(value) {
+    cameraInfoStore.update((v) => {
+      v.catsEyeBokehPow = value;
       return v;
     });
   }
@@ -295,7 +325,11 @@ export class Camera {
         this.aperture,
         this.focusDistance,
         this.tiltShift.x,
-        this.tiltShift.y
+        this.tiltShift.y,
+        this.catsEyeBokehEnabled ? 1 : 0,
+        this.catsEyeBokehMult,
+        this.catsEyeBokehPow,
+        0 // padding
       ])
     );
   }
@@ -387,51 +421,52 @@ export class Camera {
         let offsetTheta = dofRands.y * 2.0 * PI;
         var originOffset = vec3f(offsetRadius * cos(offsetTheta), offsetRadius * sin(offsetTheta), 0.0);
         
-
-        // cat-eyed bokeh
-        var oo = (originOffset / aperture).xy;
-        let screenDir = -normalize(rd.xy);
-        let screenDirNorm = vec2f(-screenDir.y, screenDir.x);
-        // vector projection 
-        // https://math.stackexchange.com/questions/4646578/finding-the-projection-of-a-vector-onto-another-vector
-        let projectionDistance = abs(dot(oo, screenDir) / dot(screenDir, screenDir));
-        let effectMult = 1.0; // 1.0;
-        let effectPow = 2.0;
-        let screenRayLength = length(rd.xy);
-        let newAperture = mix(aperture, 0.0, projectionDistance * effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow));    
-
-        let A = effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow);
-        let xt = 1.0 / (A + 1.0);
-        let apertureAtEdge = mix(1.0, 0.0, xt * A); 
-
-        *contribution = 0.0;
-        for(var i = 0; i < 10; i++) {
-          let rds = rand4(tid.x * 31472 + tid.y * 71893 + u32(i) * 19537);
-          let r0 = fract(rds.x + cameraSample.z);
-          let r1 = fract(rds.y + cameraSample.w);
-
-          var oo = screenDir * (r0 * 2 - 1) * apertureAtEdge;
-          oo = oo + screenDirNorm * (r1 * 2 - 1);    
-        
-          let offsetRadius = length(oo);
-          if (offsetRadius > 1.0) {
-            continue;
-          }
-        
+        if (camera.catsEyeBokehEnabled > 0) {
+          // cat-eyed bokeh
+          var oo = (originOffset / aperture).xy;
+          let screenDir = -normalize(rd.xy);
+          let screenDirNorm = vec2f(-screenDir.y, screenDir.x);
+          // vector projection 
+          // https://math.stackexchange.com/questions/4646578/finding-the-projection-of-a-vector-onto-another-vector
           let projectionDistance = abs(dot(oo, screenDir) / dot(screenDir, screenDir));
-          let t = projectionDistance * A;
-          let newAperture = mix(1.0, 0.0, t);
+          let effectMult = camera.catsEyeBokehMult;
+          let effectPow = camera.catsEyeBokehPow;
+          let screenRayLength = length(rd.xy);
+          let newAperture = mix(aperture, 0.0, projectionDistance * effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow));    
 
-          if (offsetRadius > newAperture) {
-            continue;
+          let A = effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow);
+          let xt = 1.0 / (A + 1.0);
+          let apertureAtEdge = mix(1.0, 0.0, xt * A); 
+
+          *contribution = 0.0;
+          for(var i = 0; i < 10; i++) {
+            let rds = rand4(tid.x * 31472 + tid.y * 71893 + u32(i) * 19537);
+            let r0 = fract(rds.x + cameraSample.z);
+            let r1 = fract(rds.y + cameraSample.w);
+
+            var oo = screenDir * (r0 * 2 - 1) * apertureAtEdge;
+            oo = oo + screenDirNorm * (r1 * 2 - 1);    
+          
+            let offsetRadius = length(oo);
+            if (offsetRadius > 1.0) {
+              continue;
+            }
+          
+            let projectionDistance = abs(dot(oo, screenDir) / dot(screenDir, screenDir));
+            let t = projectionDistance * A;
+            let newAperture = mix(1.0, 0.0, t);
+
+            if (offsetRadius > newAperture) {
+              continue;
+            }
+
+            originOffset = vec3f(oo * aperture, 0.0);
+            // the contribution adjustment is not necessary now that we're drawing 
+            // these 10 samples according to the apertureAtEdge distribution,
+            // since it's extremely likely that we'll find a valid sample
+            *contribution = 1.0;
+            break;
           }
-
-          originOffset = vec3f(oo * aperture, 0.0);
-          // the contribution adjustment is not necessary now that we're drawing 
-          // these 10 samples according to the apertureAtEdge distribution,
-          // since it's extremely likely that we'll find a valid sample
-          *contribution = 1.0;
-          break;
         }
 
         rd = normalize(camera.rotMatrix * normalize(focalPoint - originOffset));
@@ -453,6 +488,9 @@ export class Camera {
         aperture: f32,
         focusDistance: f32,
         tiltShift: vec2f,
+        catsEyeBokehEnabled: u32,
+        catsEyeBokehMult: f32,
+        catsEyeBokehPow: f32
       }
       struct Ray {
         origin: vec3f,

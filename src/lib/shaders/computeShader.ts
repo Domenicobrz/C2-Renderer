@@ -88,9 +88,14 @@ struct DebugInfo {
   isSelectedPixel: bool,
   bounce: i32,
   sample: u32,
+  debugLogIndex: u32,
 } 
 // https://www.w3.org/TR/WGSL/#address-spaces-private
-var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0);
+var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0, 0);
+fn debugLog(value: f32) {
+  debugBuffer[debugInfo.debugLogIndex] = value;
+  debugInfo.debugLogIndex++;
+}
 
 // things to remember: maximum storage entries on my GPU is 8
 // I might need to re-architect this shader to pack togheter some types of data
@@ -137,11 +142,11 @@ var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0);
   samplesCount[idx] += 1;
 
   if (debugInfo.isSelectedPixel) {
-    debugBuffer[0] = f32(debugPixelTarget.x);
-    debugBuffer[1] = f32(debugPixelTarget.y);
-    debugBuffer[2] = 999;
-    debugBuffer[3] = 999;
-    debugBuffer[4] = 999;
+    debugLog(f32(debugPixelTarget.x));
+    debugLog(f32(debugPixelTarget.y));
+    debugLog(999);
+    debugLog(999);
+    debugLog(999);
     radianceOutput[idx] += vec3f(1, 0, 1);
   }
 }

@@ -40,7 +40,7 @@ export class Camera {
 
     this.device = globals.device;
     this.cameraSampleUniformBuffer = this.device.createBuffer({
-      size: 4 * 4,
+      size: 8 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     this.cameraUniformBuffer = this.device.createBuffer({
@@ -335,12 +335,8 @@ export class Camera {
   }
 
   updateCameraSample() {
-    let sample = this.haltonSampler.get4DSample();
-    this.device.queue.writeBuffer(
-      this.cameraSampleUniformBuffer,
-      0,
-      new Float32Array([sample.x, sample.y, sample.z, sample.w])
-    );
+    let samples = this.haltonSampler.getSamples(8);
+    this.device.queue.writeBuffer(this.cameraSampleUniformBuffer, 0, new Float32Array(samples));
   }
 
   getFocusDistanceFromIntersectionPoint(point: Vector3) {
@@ -387,8 +383,8 @@ export class Camera {
 
         // from [0...1] to [-1...+1]
         let nuv = vec2f(
-          (f32(tid.x) + cameraSample.x) / f32(canvasSize.x) * 2 - 1,
-          (f32(tid.y) + cameraSample.y) / f32(canvasSize.y) * 2 - 1,
+          (f32(tid.x) + cameraSamples.a.x) / f32(canvasSize.x) * 2 - 1,
+          (f32(tid.y) + cameraSamples.a.y) / f32(canvasSize.y) * 2 - 1,
         );
       
         let aspectRatio = f32(canvasSize.x) / f32(canvasSize.y);
@@ -414,8 +410,8 @@ export class Camera {
 
         let r1 = rand4(tid.x * 31472 + tid.y * 71893);
         let dofRands = vec2f(
-          fract(r1.x + cameraSample.z),
-          fract(r1.y + cameraSample.w),
+          fract(r1.x + cameraSamples.a.z),
+          fract(r1.y + cameraSamples.a.w),
         );
         var offsetRadius = aperture * sqrt(dofRands.x);
         let offsetTheta = dofRands.y * 2.0 * PI;
@@ -432,17 +428,17 @@ export class Camera {
           let effectMult = camera.catsEyeBokehMult;
           let effectPow = camera.catsEyeBokehPow;
           let screenRayLength = length(rd.xy);
-          let newAperture = mix(aperture, 0.0, projectionDistance * effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow));    
-
           let A = effectMult * screenRayLength * pow(1.0 + screenRayLength, effectPow);
+          let newAperture = mix(aperture, 0.0, projectionDistance * A);    
+
           let xt = 1.0 / (A + 1.0);
           let apertureAtEdge = mix(1.0, 0.0, xt * A); 
 
           *contribution = 0.0;
           for(var i = 0; i < 10; i++) {
             let rds = rand4(tid.x * 31472 + tid.y * 71893 + u32(i) * 19537);
-            let r0 = fract(rds.x + cameraSample.z);
-            let r1 = fract(rds.y + cameraSample.w);
+            let r0 = fract(rds.x + cameraSamples.b.x);
+            let r1 = fract(rds.y + cameraSamples.b.y);
 
             var oo = screenDir * (r0 * 2 - 1) * apertureAtEdge;
             oo = oo + screenDirNorm * (r1 * 2 - 1);    
@@ -496,6 +492,12 @@ export class Camera {
         origin: vec3f,
         direction: vec3f,
       }
+      // can't use an array of f32 since I'd have to switch to a storage buffer
+      // (error: runtime-sized arrays can only be used in the <storage> address space) 
+      struct CameraSamples {
+        a: vec4f,
+        b: vec4f,
+      } 
     `;
   }
 }

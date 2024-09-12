@@ -212,7 +212,7 @@ export class TorranceSparrow extends Material {
     
         let rands = rand4(
           tid.y * canvasSize.x + tid.x +
-          u32(cameraSample.x * 928373289 + cameraSample.y * 877973289) +
+          u32(cameraSamples.a.x * 928373289 + cameraSamples.a.y * 877973289) +
           u32(i * 17325799),
         );
 

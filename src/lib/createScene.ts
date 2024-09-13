@@ -4,6 +4,8 @@ import type { Material } from './materials/material';
 import type { Triangle } from './primitives/triangle';
 import { bokehTestScene } from './scenes/bokehTest';
 import { dofTestScene } from './scenes/dofTest';
+import { envmapHorseScene } from './scenes/envmapHorse';
+import { planeAndSphere } from './scenes/planeAndSphere';
 
 export type C2Scene = {
   triangles: Triangle[];
@@ -16,9 +18,9 @@ export async function createScene(): Promise<C2Scene> {
   // return horseStatueScene();
   // return cornellSphereScene();
   // return planeAndSphere();
-  // return envmapHorseScene();
+  return envmapHorseScene();
   // return dofTestScene();
-  return bokehTestScene();
+  // return bokehTestScene();
   // return cornellTrianglesScene();
   // return misTestScene();
 }

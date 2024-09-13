@@ -54,7 +54,8 @@ export class Diffuse extends Material {
         let rand_2 = rands.y;
         let phi = 2.0 * PI * rand_1;
         let root = sqrt(1 - rand_2 * rand_2);
-        let nd = vec3f(cos(phi) * root, rand_2, sin(phi) * root);
+        // local space new ray direction
+        let newDir = vec3f(cos(phi) * root, rand_2, sin(phi) * root);
 
         var brdfSamplePdf = 1 / (2 * PI);
 
@@ -62,7 +63,8 @@ export class Diffuse extends Material {
         var Nb = vec3f(0,0,0);
         getCoordinateSystem(N, &Nt, &Nb);
     
-        (*ray).direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
+        // back to world space
+        (*ray).direction = normalize(Nt * newDir.x + N * newDir.y + Nb * newDir.z);
         
         if (config.MIS_TYPE == BRDF_ONLY) {
           *pdf = brdfSamplePdf;
@@ -116,6 +118,7 @@ export class Diffuse extends Material {
         if (dot((*ray).direction, N) < 0.0) {
           brdfSamplePdf = 0;
           *misWeight = 0; *pdf = 1; 
+          *lightSampleRadiance = vec3f(0.0);
           return;
         }
 
@@ -157,11 +160,13 @@ export class Diffuse extends Material {
               *lightSampleRadiance = emissive;
             } else {
               *misWeight = 0; *pdf = 1; 
+              *lightSampleRadiance = vec3f(0.0);
             }
           } else if (!ires.hit && lightSample.isEnvmap) {
             *lightSampleRadiance = getEnvmapRadiance((*ray).direction);
           } else {
             *misWeight = 0; *pdf = 1; 
+            *lightSampleRadiance = vec3f(0.0);
           }
         }
       }
@@ -196,7 +201,7 @@ export class Diffuse extends Material {
         );
         let rands2 = rand4(
           tid.y * canvasSize.x + tid.x + 148789 +
-          u32(cameraSamples.a.x * 597834279 + cameraSamples.a.y * 34219873) +
+          u32(cameraSamples.a.z * 597834279 + cameraSamples.a.w * 34219873) +
           u32(i * 86210973),
         );
 
@@ -230,10 +235,9 @@ export class Diffuse extends Material {
           (*ray).origin = rayBrdf.origin;
           (*ray).direction = rayBrdf.direction;
 
-          *reflectance *= brdf * color;
           // light contribution
-          *rad += lightSampleRadiance * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
-          *reflectance *= (brdfMisWeight / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);
+          *rad += color * brdf * lightSampleRadiance * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
+          *reflectance *= color * brdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);
         }
       }
     `;

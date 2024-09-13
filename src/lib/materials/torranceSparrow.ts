@@ -119,8 +119,6 @@ export class TorranceSparrow extends Material {
         wi:  ptr<function, vec3f>,
         pdf: ptr<function, f32>,
         f:   ptr<function, vec3f>,
-        tid: vec3u,
-        i: i32
       ) {
         let wm = TS_Sample_wm(wo, u, alpha_x, alpha_y);
         // reflect from wgsl needs the wo vector to point "inside" the surface
@@ -143,6 +141,18 @@ export class TorranceSparrow extends Material {
         *f = TR_D(wm, alpha_x, alpha_y) * F * TR_G(wo, *wi, alpha_x, alpha_y) /
                             (4 * cosTheta_i * cosTheta_o);
 
+        /*
+        TODO:
+          Incident and outgoing directions at glancing angles need to be handled explicitly to avoid the generation of NaN values:
+
+          <<Compute cosines and  for conductor BRDF>>= 
+            Float cosTheta_o = AbsCosTheta(wo), cosTheta_i = AbsCosTheta(wi);
+            if (cosTheta_i == 0 || cosTheta_o == 0) return {};
+            Vector3f wm = wi + wo;
+            if (LengthSquared(wm) == 0) return {};
+            wm = Normalize(wm);
+        */
+
         if (*pdf <= 0.0) {
           *f = vec3f(0.0);
           *pdf = 1.0;
@@ -157,11 +167,6 @@ export class TorranceSparrow extends Material {
         }
       }
 
-      // I honestly don't understand why we need this one, it seems useless
-      // I honestly don't understand why we need this one, it seems useless
-      // unless it's being used to get the brdf when we sample light sources
-      // or if for some strange reason we're not importance sampling the brdf and we're 
-      // randomly throwing rays into the hemisphere
       fn TS_f(wo: vec3f, wi: vec3f, alpha_x: f32, alpha_y: f32, color: vec3f) -> vec3f {
         if (!SameHemisphere(wo, wi)) {
           return vec3f(0);
@@ -190,6 +195,132 @@ export class TorranceSparrow extends Material {
         return f;
       }
 
+
+      fn shadeTorranceSparrowSampleBRDF(
+        rands: vec4f, 
+        material: TORRANCE_SPARROW,
+        wo: vec3f,
+        wi: ptr<function, vec3f>,
+        worldSpaceRay: ptr<function, Ray>, 
+        TBN: mat3x3f,
+        brdf: ptr<function, vec3f>,
+        pdf: ptr<function, f32>,
+        misWeight: ptr<function, f32>,
+      ) {
+        var brdfSamplePdf: f32;
+        TS_Sample_f(wo, rands.xy, material.ax, material.ay, material.color, wi, &brdfSamplePdf, brdf);
+
+        if (config.MIS_TYPE == BRDF_ONLY) {
+          *pdf = brdfSamplePdf;
+        } 
+
+        if (config.MIS_TYPE == ONE_SAMPLE_MODEL || config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
+          var ray = Ray((*worldSpaceRay).origin, normalize(TBN * *wi));
+          let lightSamplePdf = getLightPDF(&ray);  
+
+          if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
+            *pdf = brdfSamplePdf;
+            *misWeight = brdfSamplePdf / ((brdfSamplePdf + lightSamplePdf) * 0.5);
+            if (config.USE_POWER_HEURISTIC == 1) {
+              let b1 = brdfSamplePdf;
+              let b2 = lightSamplePdf;
+              *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
+            }
+          }
+
+          if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
+            *pdf = brdfSamplePdf;
+            *misWeight = brdfSamplePdf / (brdfSamplePdf + lightSamplePdf);
+            if (config.USE_POWER_HEURISTIC == 1) {
+              let b1 = brdfSamplePdf;
+              let b2 = lightSamplePdf;
+              *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
+            }
+          }
+        }
+      }
+
+      fn shadeTorranceSparrowSampleLight(
+        rands: vec4f, 
+        material: TORRANCE_SPARROW,
+        wo: vec3f,
+        wi: ptr<function, vec3f>,
+        worldSpaceRay: ptr<function, Ray>, 
+        TBN: mat3x3f,
+        TBNinverse: mat3x3f,
+        brdf: ptr<function, vec3f>,
+        pdf: ptr<function, f32>,
+        misWeight: ptr<function, f32>,
+        lightSampleRadiance: ptr<function, vec3f>,
+      ) {
+        let lightSample = getLightSample(worldSpaceRay, rands);
+        let lightSamplePdf = lightSample.pdf;
+        let backSideHit = lightSample.backSideHit;
+
+        // from world-space to tangent-space
+        *wi = TBNinverse * lightSample.direction;
+        
+        var brdfSamplePdf = TS_PDF(wo, *wi, material.ax, material.ay);
+        *brdf = TS_f(wo, *wi, material.ax, material.ay, material.color);
+        if (brdfSamplePdf == 0.0) {
+          *misWeight = 0; *pdf = 1; 
+          *lightSampleRadiance = vec3f(0.0);
+          return;
+        }
+
+
+        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
+          *pdf = lightSamplePdf;
+          *misWeight = *pdf / ((brdfSamplePdf + *pdf) * 0.5);
+          if (config.USE_POWER_HEURISTIC == 1) {
+            let b1 = lightSamplePdf;
+            let b2 = brdfSamplePdf;
+            *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
+          }
+
+          if (backSideHit) {
+            *misWeight = 0; *pdf = 1; 
+          }
+        }
+
+        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
+          *pdf = lightSamplePdf;
+          *misWeight = *pdf / (brdfSamplePdf + *pdf);
+          if (config.USE_POWER_HEURISTIC == 1) {
+            let b1 = lightSamplePdf;
+            let b2 = brdfSamplePdf;
+            *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
+          }
+
+          // I wonder if we should check wheter it's the same triangle or not
+          // since the light sampling routine might hit a different light source from ours here
+          // I can probably construct cases where this could be a problem
+          let ray = Ray((*worldSpaceRay).origin, lightSample.direction);
+          let ires = bvhIntersect(ray);
+          if (ires.hit && !lightSample.isEnvmap) {
+            let materialType = materialsData[ires.triangle.materialOffset];
+            if (
+              materialType == ${MATERIAL_TYPE.EMISSIVE} && 
+              !backSideHit
+            ) {
+              let material: Emissive = createEmissive(ires.triangle.materialOffset);
+              let emissive = material.color * material.intensity;
+              *lightSampleRadiance = emissive;
+            } else {
+              *misWeight = 0; *pdf = 1; 
+              *lightSampleRadiance = vec3f(0.0);
+            }
+          } else if (!ires.hit && lightSample.isEnvmap) {
+            *lightSampleRadiance = getEnvmapRadiance(lightSample.direction);
+          } else {
+            *misWeight = 0; *pdf = 1; 
+            *lightSampleRadiance = vec3f(0.0);
+          }
+        }
+      }
+
+
+
       fn shadeTorranceSparrow(
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
@@ -210,10 +341,18 @@ export class TorranceSparrow extends Material {
         
         (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
     
-        let rands = rand4(
+        // rands1.w is used for ONE_SAMPLE_MODEL
+        // rands1.xy is used for brdf samples
+        // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
+        let rands1 = rand4(
           tid.y * canvasSize.x + tid.x +
           u32(cameraSamples.a.x * 928373289 + cameraSamples.a.y * 877973289) +
           u32(i * 17325799),
+        );
+        let rands2 = rand4(
+          tid.y * canvasSize.x + tid.x + 148789 +
+          u32(cameraSamples.a.z * 597834279 + cameraSamples.a.w * 34219873) +
+          u32(i * 86210973),
         );
 
         // we need to calculate a TBN matrix
@@ -233,20 +372,56 @@ export class TorranceSparrow extends Material {
         var wi = vec3f(0,0,0); 
         let wo = TBNinverse * -(*ray).direction;
 
-        // some components cancel out when using this function, thus "reflectance"
-        // takes into account cos(theta), the brdf, division by pdf and also the
-        // color component
-        var pdf = 0.0;
-        var brdf = vec3f(1.0);
-        TS_Sample_f(wo, rands.xy, material.ax, material.ay, color, &wi, &pdf, &brdf, tid, i);
 
-        // to transform vectors from tangent space to world space, we multiply by
-        // the TBN     
-        // --- without normalizing, it could go slightly beyond 1 in length
-        // and that messes up envmap bilinear filtering
-        (*ray).direction = normalize(TBN * wi);
+        if (config.MIS_TYPE == BRDF_ONLY) {
+          var pdf: f32; var w: f32; var brdf: vec3f;
+          shadeTorranceSparrowSampleBRDF(
+            rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &w
+          );
+          (*ray).direction = normalize(TBN * wi);
+          *reflectance *= color * brdf * (1 / pdf) * max(dot(N, (*ray).direction), 0.0);
+        }
 
-        *reflectance *= brdf / pdf * max(dot((*ray).direction, N), 0.0);
+        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
+          var pdf: f32; var misWeight: f32; var brdf: vec3f; var ls: vec3f;
+          if (rands1.w < 0.5) {
+            shadeTorranceSparrowSampleBRDF(
+              rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &misWeight
+            );
+          } else {
+            shadeTorranceSparrowSampleLight(
+              rands2, material, wo, &wi, ray, TBN, TBNinverse, 
+              &brdf, &pdf, &misWeight, &ls
+            );
+          }
+          (*ray).direction = normalize(TBN * wi);
+          *reflectance *= color * brdf * (misWeight / pdf) * max(dot(N, (*ray).direction), 0.0);
+        }
+
+        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
+          var brdfSamplePdf: f32; var brdfMisWeight: f32; 
+          var brdfSampleBrdf: vec3f; 
+
+          var lightSamplePdf: f32; var lightMisWeight: f32; 
+          var lightRadiance: vec3f; var lightSampleBrdf: vec3f;
+          var lightSampleWi: vec3f;
+
+          shadeTorranceSparrowSampleBRDF(
+            rands1, material, wo, &wi, ray, TBN, &brdfSampleBrdf, &brdfSamplePdf, &brdfMisWeight
+          );
+          shadeTorranceSparrowSampleLight(
+            rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse, 
+            &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
+          );
+
+          (*ray).direction = normalize(TBN * wi);
+          // from tangent space to world space
+          lightSampleWi = normalize(TBN * lightSampleWi);
+          // light contribution, we have to multiply by *reflectance to account for reduced reflectance
+          // caused by previous light-bounces. You did miss this term when first implementing MIS here
+          *rad += color * *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * max(dot(N, lightSampleWi), 0.0);
+          *reflectance *= color * brdfSampleBrdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);
+        }
       } 
     `;
   }

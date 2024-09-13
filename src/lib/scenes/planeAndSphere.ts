@@ -9,6 +9,7 @@ import { Envmap } from '$lib/envmap/envmap';
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 import { loadArrayBuffer } from '$lib/utils/loadArrayBuffer';
 import { saveArrayBufferLocally } from '$lib/utils/saveArrayBufferLocally';
+import { Orbit } from '$lib/controls/Orbit';
 
 export async function planeAndSphere(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -16,7 +17,7 @@ export async function planeAndSphere(): Promise<C2Scene> {
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
     new Emissive(new Color(1, 0.45, 0.25), 20),
-    new TorranceSparrow(new Color(0.5, 0.5, 0.5), 0.09, 0.09)
+    new TorranceSparrow(new Color(0.5, 0.5, 0.5), 0.9, 0.9)
   ];
 
   let ps = 4;
@@ -38,24 +39,24 @@ export async function planeAndSphere(): Promise<C2Scene> {
     )
   );
 
-  const ls = 0.75;
-  const lt = new Vector3(0, 3.9, 0);
-  triangles.push(
-    new Triangle(
-      new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
-      new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
-      new Vector3(-1, 0, +1).multiplyScalar(ls).add(lt),
-      2
-    )
-  );
-  triangles.push(
-    new Triangle(
-      new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
-      new Vector3(+1, 0, -1).multiplyScalar(ls).add(lt),
-      new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
-      2
-    )
-  );
+  // const ls = 0.75;
+  // const lt = new Vector3(0, 3.9, 0);
+  // triangles.push(
+  //   new Triangle(
+  //     new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
+  //     new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
+  //     new Vector3(-1, 0, +1).multiplyScalar(ls).add(lt),
+  //     2
+  //   )
+  // );
+  // triangles.push(
+  //   new Triangle(
+  //     new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
+  //     new Vector3(+1, 0, -1).multiplyScalar(ls).add(lt),
+  //     new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
+  //     2
+  //   )
+  // );
 
   let mesh = new Mesh(new SphereGeometry(1, 100, 100));
   mesh.scale.set(2, 2, 2);
@@ -70,6 +71,15 @@ export async function planeAndSphere(): Promise<C2Scene> {
   // saveArrayBufferLocally(envmap.getArrayBuffer(), 'envmap.env');
   envmap.scale = 0.9;
 
-  return { triangles, materials, envmap };
-  // return { triangles, materials };
+  // create & set camera
+  const camera = new Orbit();
+  camera.set(new Vector3(0, 4, -10), new Vector3(0, 0, 0));
+  camera.movementSpeed = 0.15;
+
+  camera.fov = 0.69;
+  camera.aperture = 0.025;
+  camera.focusDistance = 10.623570517658289;
+  camera.exposure = 1.85;
+
+  return { triangles, materials, envmap, camera };
 }

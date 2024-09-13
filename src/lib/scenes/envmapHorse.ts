@@ -11,6 +11,7 @@ import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
+import { Orbit } from '$lib/controls/Orbit';
 
 random.use('test-string' as unknown as RNG);
 // random.use(Math.random() as unknown as RNG);
@@ -30,7 +31,9 @@ export async function envmapHorseScene(): Promise<C2Scene> {
     // new Dielectric(new Color(0.135, 0.4, 0.99).multiplyScalar(3), 0.2, 0.2, 1.6),
     // new Dielectric(new Color(0.78, 0.7, 0.678).multiplyScalar(1.5), 0.2, 0.2, 1.6),
     new Dielectric(new Color(0.35, 0.68, 0.99).multiplyScalar(1.85), 0.01, 0.01, 1.6),
-    new TorranceSparrow(new Color(0.5, 0.5, 0.5), 0.45, 0.45)
+    new TorranceSparrow(new Color(0.5, 0.5, 0.5), 0.45, 0.45),
+    new Diffuse(new Color(0.1, 0.1, 0.1)),
+    new TorranceSparrow(new Color(0.5, 0.5, 0.5), 0.85, 0.85)
   ];
 
   // for (let i = 0; i < 5; i++) {
@@ -85,7 +88,7 @@ export async function envmapHorseScene(): Promise<C2Scene> {
   // }
 
   let ps = 100;
-  let mi = 6;
+  let mi = 7;
   triangles.push(
     new Triangle(
       new Vector3(-1, -3, -1).multiply(new Vector3(ps, 1, ps)),
@@ -110,7 +113,7 @@ export async function envmapHorseScene(): Promise<C2Scene> {
   group.position.set(0.3, -3, 1);
   group.rotation.z = 0.4;
 
-  triangles = [...triangles, ...meshToTriangles(group, 5)];
+  triangles = [...triangles, ...meshToTriangles(group, 8)];
 
   let envmap = new Envmap();
   // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
@@ -119,5 +122,15 @@ export async function envmapHorseScene(): Promise<C2Scene> {
   envmap.scale = 0.9;
   envmap.rotX = 0.3;
 
-  return { triangles, materials, envmap };
+  // create & set camera
+  const camera = new Orbit();
+  camera.set(new Vector3(0, 4, -10), new Vector3(0, 0, 0));
+  camera.movementSpeed = 0.15;
+
+  camera.fov = 0.69;
+  camera.aperture = 0.025;
+  camera.focusDistance = 10.623570517658289;
+  camera.exposure = 1.85;
+
+  return { triangles, materials, envmap, camera };
 }

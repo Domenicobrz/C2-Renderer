@@ -59,7 +59,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   scene.camera.setCanvasContainer(canvas.parentElement as HTMLDivElement);
 
   computeSegment.updateScene(scene);
-  computeSegment.setDebugPixelTarget(600, 300);
+  computeSegment.setDebugPixelTarget(400, 427);
 
   renderSegment = new RenderSegment(context, presentationFormat);
   renderSegment.updateScene(scene);

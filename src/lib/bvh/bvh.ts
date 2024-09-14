@@ -354,7 +354,7 @@ export class BVH {
         if (cdfEntry.triangleIndex > -1) {
           let triangle = triangles[cdfEntry.triangleIndex];
           let samplePoint = sampleTrianglePoint(triangle, rands.x, rands.y);
-  
+
           let lD = normalize(samplePoint - (*ray).origin);
           let sampleDirection = lD;
   
@@ -425,7 +425,7 @@ export class BVH {
             lightSamplePdf = r2 / (lNolD * ires.triangle.area);
             return lightSamplePdf;
           } 
-        } else {
+        } else if (shaderConfig.HAS_ENVMAP) {
           // envmap pdf retrieval
           let dir = envmapInfo.transform * (*ray).direction;
           let uv = envEqualAreaSphereToSquare(dir);
@@ -435,6 +435,7 @@ export class BVH {
             uv, 
             envmapPC2D.domain,
           );
+
           return pdf / (4 * PI);
         }
         

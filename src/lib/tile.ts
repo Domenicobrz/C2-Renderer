@@ -107,7 +107,7 @@ export class TileSequence {
     const size = 16;
     samplesInfo.setTileSize(`${size} x ${size}`);
     // we decided tilesize will be a multiple of 8
-    this.tile = { x: this.canvasSize.x, y: this.canvasSize.y, w: 16, h: 16 };
+    this.tile = { x: this.canvasSize.x, y: this.canvasSize.y, w: size, h: size };
   }
 
   getNextTile(onTileStart: () => void) {

@@ -48,8 +48,8 @@ struct Vertex {
 
   // by using abs(..) instead of max(.., 0.0)
   // I'm correcting for flipped normals
-  let col = abs(dot(wo, normal));
-  // return vec4f(col, col, col, 1.0);
+  // let col = abs(dot(wo, normal));
+  let col = dot(wo, normal);
 
   var coloredVSNormal = fsInput.viewSpaceNorm * vec3f(1,1,-1) * 0.5 + 0.5;
   if (dot(wo, normal) < 0.0) {

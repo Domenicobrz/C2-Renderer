@@ -136,17 +136,17 @@ fn debugLog(value: f32) {
       rad += reflectance * envmapRad;
       break;
     }
+
+    if (reflectance.x == 0.0 && reflectance.y == 0.0 && reflectance.z == 0.0) {
+      break;
+    }
   }
 
   radianceOutput[idx] += rad * rayContribution;
   samplesCount[idx] += 1;
 
   if (debugInfo.isSelectedPixel) {
-    debugLog(f32(debugPixelTarget.x));
-    debugLog(f32(debugPixelTarget.y));
-    debugLog(999);
-    debugLog(999);
-    debugLog(999);
+    // debugLog(999);
     radianceOutput[idx] += vec3f(1, 0, 1);
   }
 }

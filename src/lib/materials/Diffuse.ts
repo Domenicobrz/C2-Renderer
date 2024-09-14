@@ -122,27 +122,25 @@ export class Diffuse extends Material {
           return;
         }
 
-        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-          *pdf = lightSamplePdf;
-          *misWeight = *pdf / ((brdfSamplePdf + *pdf) * 0.5);
-          if (config.USE_POWER_HEURISTIC == 1) {
-            let b1 = lightSamplePdf;
-            let b2 = brdfSamplePdf;
-            *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
+        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION || config.MIS_TYPE == ONE_SAMPLE_MODEL) {
+          if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
+            *pdf = lightSamplePdf;
+            *misWeight = *pdf / ((brdfSamplePdf + *pdf) * 0.5);
+            if (config.USE_POWER_HEURISTIC == 1) {
+              let b1 = lightSamplePdf;
+              let b2 = brdfSamplePdf;
+              *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
+            }
           }
 
-          if (backSideHit) {
-            *misWeight = 0; *pdf = 1; 
-          }
-        }
-
-        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-          *pdf = lightSamplePdf;
-          *misWeight = *pdf / (brdfSamplePdf + *pdf);
-          if (config.USE_POWER_HEURISTIC == 1) {
-            let b1 = lightSamplePdf;
-            let b2 = brdfSamplePdf;
-            *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
+          if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
+            *pdf = lightSamplePdf;
+            *misWeight = *pdf / (brdfSamplePdf + *pdf);
+            if (config.USE_POWER_HEURISTIC == 1) {
+              let b1 = lightSamplePdf;
+              let b2 = brdfSamplePdf;
+              *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
+            }
           }
 
           // I wonder if we should check wheter it's the same triangle or not
@@ -215,10 +213,11 @@ export class Diffuse extends Material {
 
         if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
           var pdf: f32; var misWeight: f32; var ls: vec3f;
-          if (rands1.w < 0.5) {
+          let isBrdfSample = rands1.w < 0.5;
+          if (isBrdfSample) {
             shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &misWeight);
           } else {
-            shadeDiffuseSampleLight(rands2, N, ray, &pdf, &misWeight, &ls);
+            shadeDiffuseSampleLight(rands2, N, ray, &pdf, &misWeight, &ls);          
           }
           *reflectance *= brdf * (misWeight / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }

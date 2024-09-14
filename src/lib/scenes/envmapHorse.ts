@@ -113,7 +113,7 @@ export async function envmapHorseScene(): Promise<C2Scene> {
   group.position.set(0.3, -3, 1);
   group.rotation.z = 0.4;
 
-  triangles = [...triangles, ...meshToTriangles(group, 8)];
+  triangles = [...triangles, ...meshToTriangles(group, 5)];
 
   let envmap = new Envmap();
   // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');

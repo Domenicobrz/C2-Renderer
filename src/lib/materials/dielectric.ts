@@ -82,19 +82,9 @@ export class Dielectric extends Material {
         return (Sqr(r_parl) + Sqr(r_perp)) / 2;
       }
 
-      fn D_Sample_wm(w: vec3f, u: vec2f, alpha_x: f32, alpha_y: f32) -> vec3f {
-      
-      
-      
-        return vec3f(0);
-      
-      
-      
-      }
-
-      fn D_PDF(wo: vec3f, wi: vec3f, material: DIELECTRIC) -> f32 {
+      fn Dielectric_PDF(wo: vec3f, wi: vec3f, material: DIELECTRIC) -> f32 {
         if (material.eta == 1 || (material.ax < 0.0005 && material.ay < 0.0005)) {
-          return 1;
+          return 0;
         }
 
         // Evaluate sampling PDF of rough dielectric BSDF
@@ -111,14 +101,12 @@ export class Dielectric extends Material {
         }
         var wm = wi * etap + wo;
         if (cosTheta_i == 0 || cosTheta_o == 0 || LengthSquared(wm) == 0) {
-          // fragment should be discarded, lets return a super high pdf
-          return 9999999999999999;
+          return 0;
         }
         wm = FaceForward(normalize(wm), vec3f(0, 0, 1));
 
         if (dot(wm, wi) * cosTheta_i < 0 || dot(wm, wo) * cosTheta_o < 0) {
-          // fragment should be discarded, lets return a super high pdf
-          return 9999999999999999;
+          return 0;
         }
 
         let R = FrDielectric(dot(wo, wm), material.eta);
@@ -139,16 +127,14 @@ export class Dielectric extends Material {
       }
 
       // this function samples the new wi direction, and returns the brdf and pdf
-      fn D_Sample_f(
-        wo:  vec3f, u: vec2f, 
+      fn Dielectric_Sample_f(
+        wo:  vec3f,
         material: DIELECTRIC,
         color: vec3f,
         rands: vec4f,
         wi:  ptr<function, vec3f>,
         pdf: ptr<function, f32>,
         f:   ptr<function, vec3f>,
-        tid: vec3u,
-        i: i32
       ) {
         if (material.eta == 1.0 || (material.ax < 0.0005 && material.ay < 0.0005)) {
           // sample perfect specular BRDF
@@ -252,14 +238,9 @@ export class Dielectric extends Material {
         }
       }
 
-      // I honestly don't understand why we need this one, it seems useless
-      // I honestly don't understand why we need this one, it seems useless
-      // unless it's being used to get the brdf when we sample light sources
-      // or if for some strange reason we're not importance sampling the brdf and we're 
-      // randomly throwing rays into the hemisphere
-      fn D_f(wo: vec3f, wi: vec3f, material: DIELECTRIC, color: vec3f) -> vec3f {
+      fn Dielectric_f(wo: vec3f, wi: vec3f, material: DIELECTRIC, color: vec3f) -> vec3f {
         if (material.eta == 1.0 || (material.ax < 0.0005 && material.ay < 0.0005)) {
-          // sample perfect specular BRDF
+          // TODO: use correct dirac-delta values for perfect specular BRDF
           return vec3f(1.0);
         } else {
 
@@ -318,6 +299,129 @@ export class Dielectric extends Material {
         }
       }
 
+
+      fn shadeDielectricSampleBRDF(
+        rands: vec4f, 
+        material: DIELECTRIC,
+        wo: vec3f,
+        wi: ptr<function, vec3f>,
+        worldSpaceRay: ptr<function, Ray>, 
+        TBN: mat3x3f,
+        brdf: ptr<function, vec3f>,
+        pdf: ptr<function, f32>,
+        misWeight: ptr<function, f32>,
+      ) {
+        var brdfSamplePdf: f32;
+        Dielectric_Sample_f(wo, material, material.color, rands, wi, &brdfSamplePdf, brdf);
+      
+        if (config.MIS_TYPE == BRDF_ONLY) {
+          *pdf = brdfSamplePdf;
+        } 
+
+        if (config.MIS_TYPE == ONE_SAMPLE_MODEL || config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
+          var ray = Ray((*worldSpaceRay).origin, normalize(TBN * *wi));
+          let lightSamplePdf = getLightPDF(&ray);  
+
+          if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
+            *pdf = brdfSamplePdf;
+            *misWeight = brdfSamplePdf / ((brdfSamplePdf + lightSamplePdf) * 0.5);
+            if (config.USE_POWER_HEURISTIC == 1) {
+              let b1 = brdfSamplePdf;
+              let b2 = lightSamplePdf;
+              *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
+            }
+          }
+
+          if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
+            *pdf = brdfSamplePdf;
+            *misWeight = brdfSamplePdf / (brdfSamplePdf + lightSamplePdf);
+            if (config.USE_POWER_HEURISTIC == 1) {
+              let b1 = brdfSamplePdf;
+              let b2 = lightSamplePdf;
+              *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
+            }
+          }
+        }
+      }
+
+      fn shadeDielectricSampleLight(
+        rands: vec4f, 
+        material: DIELECTRIC,
+        wo: vec3f,
+        wi: ptr<function, vec3f>,
+        worldSpaceRay: ptr<function, Ray>, 
+        TBN: mat3x3f,
+        TBNinverse: mat3x3f,
+        brdf: ptr<function, vec3f>,
+        pdf: ptr<function, f32>,
+        misWeight: ptr<function, f32>,
+        lightSampleRadiance: ptr<function, vec3f>,
+      ) {
+        let lightSample = getLightSample(worldSpaceRay, rands);
+        let lightSamplePdf = lightSample.pdf;
+        let backSideHit = lightSample.backSideHit;
+
+        // from world-space to tangent-space
+        *wi = TBNinverse * lightSample.direction;
+        
+        var brdfSamplePdf = Dielectric_PDF(wo, *wi, material);
+        *brdf = Dielectric_f(wo, *wi, material, material.color);
+
+        if (brdfSamplePdf == 0.0) {
+          *misWeight = 0; *pdf = 1; *brdf = vec3f(0.0);
+          *lightSampleRadiance = vec3f(0.0);
+          return;
+        }
+
+        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION || config.MIS_TYPE == ONE_SAMPLE_MODEL) {
+          if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
+            *pdf = lightSamplePdf;
+            *misWeight = *pdf / ((brdfSamplePdf + *pdf) * 0.5);
+            if (config.USE_POWER_HEURISTIC == 1) {
+              let b1 = lightSamplePdf;
+              let b2 = brdfSamplePdf;
+              *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
+            }
+          }
+          
+          if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
+            *pdf = lightSamplePdf;
+            *misWeight = *pdf / (brdfSamplePdf + *pdf);
+            if (config.USE_POWER_HEURISTIC == 1) {
+              let b1 = lightSamplePdf;
+              let b2 = brdfSamplePdf;
+              *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
+            }
+          }
+
+          // I wonder if we should check wheter it's the same triangle or not
+          // since the light sampling routine might hit a different light source from ours here
+          // I can probably construct cases where this could be a problem
+          let ray = Ray((*worldSpaceRay).origin + lightSample.direction * 0.0001, lightSample.direction);
+          let ires = bvhIntersect(ray);
+          if (ires.hit && !lightSample.isEnvmap) {
+            let materialType = materialsData[ires.triangle.materialOffset];
+            if (
+              materialType == ${MATERIAL_TYPE.EMISSIVE} && 
+              !backSideHit
+            ) {
+              let material: Emissive = createEmissive(ires.triangle.materialOffset);
+              let emissive = material.color * material.intensity;
+              *lightSampleRadiance = emissive;
+            } else {
+              *misWeight = 0; *pdf = 1; 
+              *lightSampleRadiance = vec3f(0.0);
+            }
+          } else if (!ires.hit && lightSample.isEnvmap) {
+            *lightSampleRadiance = getEnvmapRadiance(lightSample.direction);
+          } else {
+            *misWeight = 0; *pdf = 1; 
+            *lightSampleRadiance = vec3f(0.0);
+          }
+        }
+      }
+
+
       fn shadeDielectric(
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
@@ -332,10 +436,12 @@ export class Dielectric extends Material {
         let color = material.color;
 
         var N = ires.triangle.normal;     
+        var isInsideMedium = dot(N, (*ray).direction) > 0;
         
         // we'll assume we're exiting the dielectric medium and apply
         // beer-lambert absorption 
-        if (dot(N, (*ray).direction) > 0) {
+        // TODO: this is only an assumption, and should consider the internal reflection case
+        if (isInsideMedium) {
           *reflectance *= vec3f(
             exp(-color.x * ires.t), 
             exp(-color.y * ires.t), 
@@ -343,10 +449,24 @@ export class Dielectric extends Material {
           );
         }
         
-        let rands = rand4(
+        // we need to set an origin now, to make sure the light sampling strategy
+        // will have the origin of the surface hitpoint, then after we complete
+        // sampling we'll move the origin to make sure it's either inside the medium
+        // if we're transmitting the ray, or outside if it's reflected
+        (*ray).origin = ires.hitPoint;
+
+        // rands1.w is used for ONE_SAMPLE_MODEL
+        // rands1.xyz is used for brdf samples
+        // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
+        let rands1 = rand4(
           tid.y * canvasSize.x + tid.x +
           u32(cameraSamples.a.x * 928373289 + cameraSamples.a.y * 877973289) +
           u32(i * 17325799),
+        );
+        let rands2 = rand4(
+          tid.y * canvasSize.x + tid.x + 148789 +
+          u32(cameraSamples.a.z * 597834279 + cameraSamples.a.w * 34219873) +
+          u32(i * 86210973),
         );
 
         // we need to calculate a TBN matrix
@@ -366,24 +486,65 @@ export class Dielectric extends Material {
         var wi = vec3f(0,0,0); 
         let wo = TBNinverse * -(*ray).direction;
 
-        // some components cancel out when using this function, thus "reflectance"
-        // takes into account cos(theta), the brdf, division by pdf and also the
-        // color component
-        var pdf = 0.0;
-        var brdf = vec3f(1.0);
-        D_Sample_f(wo, rands.xy, material, color, rands, &wi, &pdf, &brdf, tid, i);
+        if (config.MIS_TYPE == BRDF_ONLY) {
+          var pdf: f32; var w: f32; var brdf: vec3f;
+          shadeDielectricSampleBRDF(
+            rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &w
+          );
+          (*ray).direction = normalize(TBN * wi);
+          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
+          *reflectance *= (brdf / pdf) * abs(dot(N, (*ray).direction));
+        }
 
-        // to transform vectors from tangent space to world space, we multiply by
-        // the TBN     
-        // --- without normalization we might go slightly above 1 in length,
-        // and that messes up envmap bilinear filtering
-        (*ray).direction = normalize(TBN * wi);
-        (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
+        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
+          var pdf: f32; var misWeight: f32; var brdf: vec3f; var ls: vec3f;
+          var isBrdfSample = rands1.w < 0.5;
+          if (isBrdfSample) {
+            shadeDielectricSampleBRDF(
+              rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &misWeight
+            );
+          } else {
+            shadeDielectricSampleLight(
+              rands2, material, wo, &wi, ray, TBN, TBNinverse, 
+              &brdf, &pdf, &misWeight, &ls
+            );
+          }
 
-        
-        // *reflectance *= brdf / pdf * max(dot((*ray).direction, N), 0.0);
-        let normRefl = abs(dot((*ray).direction, N));
-        *reflectance *= brdf / pdf * normRefl;
+          (*ray).direction = normalize(TBN * wi);
+          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
+          *reflectance *= brdf * (misWeight / pdf) * abs(dot(N, (*ray).direction));
+        }
+
+        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
+          var brdfSamplePdf: f32; var brdfMisWeight: f32; 
+          var brdfSampleBrdf: vec3f; 
+
+          var lightSamplePdf: f32; var lightMisWeight: f32; 
+          var lightRadiance: vec3f; var lightSampleBrdf: vec3f;
+          var lightSampleWi: vec3f;
+
+          shadeDielectricSampleBRDF(
+            rands1, material, wo, &wi, ray, TBN, &brdfSampleBrdf, &brdfSamplePdf, &brdfMisWeight
+          );
+          shadeDielectricSampleLight(
+            rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse, 
+            &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
+          );
+
+          (*ray).direction = normalize(TBN * wi);
+          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
+          // from tangent space to world space
+          lightSampleWi = normalize(TBN * lightSampleWi);
+          // *****************
+          // The reason why we can use NEE without issues here is that if the light sample ray 
+          // ends up inside the medium, the bvh intersection routine will find the other side of 
+          // the object instead of a light source, thus setting misWeight to zero.
+          // We're also making sure the light-sample ray is correctly being positioned inside or outside 
+          // the medium before using the ray
+          // *****************
+          *rad += *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * abs(dot(N, lightSampleWi));
+          *reflectance *= brdfSampleBrdf * (brdfMisWeight / brdfSamplePdf) * abs(dot(N, (*ray).direction));
+        }
       } 
     `;
   }

@@ -142,13 +142,14 @@ fn debugLog(value: f32) {
     }
   }
 
-  radianceOutput[idx] += rad * rayContribution;
-  samplesCount[idx] += 1;
-
   if (debugInfo.isSelectedPixel) {
     // debugLog(999);
-    radianceOutput[idx] += vec3f(1, 0, 1);
+    radianceOutput[idx] += vec3f(100, 0, 100);
+  } else {
+    radianceOutput[idx] += rad * rayContribution;
   }
+
+  samplesCount[idx] += 1;
 }
 `;
 }

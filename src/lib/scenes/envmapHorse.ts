@@ -30,10 +30,8 @@ export async function envmapHorseScene(): Promise<C2Scene> {
     new Diffuse(new Color(0.05, 1, 0.05)),
     // new Dielectric(new Color(0.135, 0.4, 0.99).multiplyScalar(3), 0.2, 0.2, 1.6),
     // new Dielectric(new Color(0.78, 0.7, 0.678).multiplyScalar(1.5), 0.2, 0.2, 1.6),
-    new Dielectric(new Color(0.35, 0.68, 0.99).multiplyScalar(1.85), 0.01, 0.01, 1.6),
-    new TorranceSparrow(new Color(0.5, 0.5, 0.5), 0.45, 0.45),
-    new Diffuse(new Color(0.1, 0.1, 0.1)),
-    new TorranceSparrow(new Color(0.5, 0.5, 0.5), 0.85, 0.85)
+    new Dielectric(new Color(0.35, 0.68, 0.99).multiplyScalar(1.85), 0.41, 0.41, 1.6),
+    new TorranceSparrow(new Color(0.15, 0.15, 0.15), 0.085, 0.085)
   ];
 
   // for (let i = 0; i < 5; i++) {
@@ -88,7 +86,7 @@ export async function envmapHorseScene(): Promise<C2Scene> {
   // }
 
   let ps = 100;
-  let mi = 7;
+  let mi = 6;
   triangles.push(
     new Triangle(
       new Vector3(-1, -3, -1).multiply(new Vector3(ps, 1, ps)),
@@ -116,9 +114,9 @@ export async function envmapHorseScene(): Promise<C2Scene> {
   triangles = [...triangles, ...meshToTriangles(group, 5)];
 
   let envmap = new Envmap();
-  // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
+  await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr', 400);
   // await envmap.fromEquirect('scene-assets/envmaps/lebombo_1k.hdr');
-  await envmap.fromEquirect('scene-assets/envmaps/large_corridor_1k.hdr');
+  // await envmap.fromEquirect('scene-assets/envmaps/large_corridor_1k.hdr');
   envmap.scale = 0.9;
   envmap.rotX = 0.3;
 

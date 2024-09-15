@@ -17,9 +17,9 @@ export async function planeAndSphere(): Promise<C2Scene> {
   let materials: Material[] = [
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
-    new Emissive(new Color(1, 0.45, 0.25), 10),
+    new Emissive(new Color(1, 0.45, 0.25), 3),
     new TorranceSparrow(new Color(0.5, 0.5, 0.5), 0.9, 0.9),
-    new Dielectric(new Color(0.35, 0.68, 0.99).multiplyScalar(0), 0.1, 0.1, 1.6)
+    new Dielectric(new Color(0.35, 0.68, 0.99).multiplyScalar(0), 0.5, 0.5, 2.0)
   ];
 
   let ps = 4;
@@ -60,7 +60,7 @@ export async function planeAndSphere(): Promise<C2Scene> {
     )
   );
 
-  let mesh = new Mesh(new SphereGeometry(1, 100, 100));
+  let mesh = new Mesh(new SphereGeometry(1, 30, 30));
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0.35, 0);
   triangles = [...triangles, ...meshToTriangles(mesh, 4)];
@@ -83,7 +83,7 @@ export async function planeAndSphere(): Promise<C2Scene> {
   camera.set(new Vector3(0, 4, -10), new Vector3(0, 0, 0));
   camera.movementSpeed = 0.15;
 
-  camera.fov = 0.69;
+  camera.fov = 0.61;
   camera.aperture = 0.025;
   camera.focusDistance = 10.623570517658289;
   camera.exposure = 1.85;

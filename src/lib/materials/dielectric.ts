@@ -55,10 +55,6 @@ export class Dielectric extends Material {
       // assuming throwbridge reitz distribution methods are already defined ...
       // assuming throwbridge reitz distribution methods are already defined ...
       // assuming throwbridge reitz distribution methods are already defined ...
-      // assuming throwbridge reitz distribution methods are already defined ...
-      // assuming throwbridge reitz distribution methods are already defined ...
-      // assuming throwbridge reitz distribution methods are already defined ...
-
       fn FrDielectric(_cosTheta_i: f32, _eta: f32) -> f32 {
         var cosTheta_i = _cosTheta_i;
         var eta = _eta;
@@ -319,7 +315,8 @@ export class Dielectric extends Material {
         } 
 
         if (config.MIS_TYPE == ONE_SAMPLE_MODEL || config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-          var ray = Ray((*worldSpaceRay).origin, normalize(TBN * *wi));
+          let newDir = normalize(TBN * *wi);
+          var ray = Ray((*worldSpaceRay).origin + newDir * 0.001, newDir);
           let lightSamplePdf = getLightPDF(&ray);  
 
           if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
@@ -484,7 +481,7 @@ export class Dielectric extends Material {
         let TBNinverse = transpose(TBN);
 
         var wi = vec3f(0,0,0); 
-        let wo = TBNinverse * -(*ray).direction;
+        let wo = normalize(TBNinverse * -(*ray).direction);
 
         if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32; var brdf: vec3f;

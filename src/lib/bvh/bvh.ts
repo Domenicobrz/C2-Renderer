@@ -405,8 +405,8 @@ export class BVH {
       // when you're using BRDF sampling in conjuction with MIS, given a brdf direction
       // you might need to know the associated light sample pdf for that direction
       // this function will provide that value
-      fn getLightPDF(ray: ptr<function, Ray>) -> f32 {
-        let ires = bvhIntersect(*ray);
+      fn getLightPDF(ray: Ray) -> f32 {
+        let ires = bvhIntersect(ray);
 
         if (ires.hit) {
           // if we don't hit a primitive, bvhIntersect will set ires.triangle to the first triangle
@@ -414,8 +414,8 @@ export class BVH {
           let materialType = materialsData[ires.triangle.materialOffset];
           var lightSamplePdf = 0.0;
           if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-            let lD = (*ray).direction;
-            let r2 = squaredLength(ires.hitPoint - (*ray).origin);
+            let lD = ray.direction;
+            let r2 = squaredLength(ires.hitPoint - ray.origin);
             var lN = ires.triangle.normal;
             var lNolD = dot(lN, -lD);
             if (lNolD < 0) {
@@ -427,7 +427,7 @@ export class BVH {
           } 
         } else if (shaderConfig.HAS_ENVMAP) {
           // envmap pdf retrieval
-          let dir = envmapInfo.transform * (*ray).direction;
+          let dir = envmapInfo.transform * ray.direction;
           let uv = envEqualAreaSphereToSquare(dir);
           var pdf = getPC2Dpdf( 
             &envmapPC2D.data, 

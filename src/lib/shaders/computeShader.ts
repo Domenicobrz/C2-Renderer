@@ -17,6 +17,7 @@ import { PC1D } from '$lib/samplers/PiecewiseConstant1D';
 import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
 import { Plane } from '$lib/primitives/plane';
+import { misPart } from './parts/mis';
 
 export function getComputeShader() {
   return /* wgsl */ `
@@ -27,6 +28,7 @@ ${configManager.shaderPart()}
 ${randomPart}
 ${mathUtilsPart}
 ${pbrtMathUtilsPart}
+${misPart}
 ${TileSequence.shaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}

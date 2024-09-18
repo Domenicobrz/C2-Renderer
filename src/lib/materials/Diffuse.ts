@@ -66,33 +66,9 @@ export class Diffuse extends Material {
         // back to world space
         (*ray).direction = normalize(Nt * newDir.x + N * newDir.y + Nb * newDir.z);
         
-        if (config.MIS_TYPE == BRDF_ONLY) {
-          *pdf = brdfSamplePdf;
-        } 
+        *pdf = brdfSamplePdf;
 
-        if (config.MIS_TYPE == ONE_SAMPLE_MODEL || config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-          let lightSamplePdf = getLightPDF(ray);  
-
-          if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-            *pdf = brdfSamplePdf;
-            *misWeight = brdfSamplePdf / ((brdfSamplePdf + lightSamplePdf) * 0.5);
-            if (config.USE_POWER_HEURISTIC == 1) {
-              let b1 = brdfSamplePdf;
-              let b2 = lightSamplePdf;
-              *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
-            }
-          }
-
-          if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-            *pdf = brdfSamplePdf;
-            *misWeight = brdfSamplePdf / (brdfSamplePdf + lightSamplePdf);
-            if (config.USE_POWER_HEURISTIC == 1) {
-              let b1 = brdfSamplePdf;
-              let b2 = lightSamplePdf;
-              *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
-            }
-          }
-        }
+        surfaceSampleMisWeight(brdfSamplePdf, *ray, misWeight);
       }
 
       fn shadeDiffuseSampleLight(
@@ -104,7 +80,7 @@ export class Diffuse extends Material {
         lightSampleRadiance: ptr<function, vec3f>,
       ) {
         let lightSample = getLightSample(ray, rands);
-        let lightSamplePdf = lightSample.pdf;
+        *pdf = lightSample.pdf;
         let backSideHit = lightSample.backSideHit;
 
         (*ray).direction = lightSample.direction;
@@ -122,51 +98,7 @@ export class Diffuse extends Material {
           return;
         }
 
-        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION || config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-          if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-            *pdf = lightSamplePdf;
-            *misWeight = *pdf / ((brdfSamplePdf + *pdf) * 0.5);
-            if (config.USE_POWER_HEURISTIC == 1) {
-              let b1 = lightSamplePdf;
-              let b2 = brdfSamplePdf;
-              *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
-            }
-          }
-
-          if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-            *pdf = lightSamplePdf;
-            *misWeight = *pdf / (brdfSamplePdf + *pdf);
-            if (config.USE_POWER_HEURISTIC == 1) {
-              let b1 = lightSamplePdf;
-              let b2 = brdfSamplePdf;
-              *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
-            }
-          }
-
-          // I wonder if we should check wheter it's the same triangle or not
-          // since the light sampling routine might hit a different light source from ours here
-          // I can probably construct cases where this could be a problem
-          let ires = bvhIntersect(*ray);
-          if (ires.hit && !lightSample.isEnvmap) {
-            let materialType = materialsData[ires.triangle.materialOffset];
-            if (
-              materialType == ${MATERIAL_TYPE.EMISSIVE} && 
-              !backSideHit
-            ) {
-              let material: Emissive = createEmissive(ires.triangle.materialOffset);
-              let emissive = material.color * material.intensity;
-              *lightSampleRadiance = emissive;
-            } else {
-              *misWeight = 0; *pdf = 1; 
-              *lightSampleRadiance = vec3f(0.0);
-            }
-          } else if (!ires.hit && lightSample.isEnvmap) {
-            *lightSampleRadiance = getEnvmapRadiance((*ray).direction);
-          } else {
-            *misWeight = 0; *pdf = 1; 
-            *lightSampleRadiance = vec3f(0.0);
-          }
-        }
+        lightSampleMisWeight(*ray, brdfSamplePdf, lightSample, pdf, lightSampleRadiance, misWeight);
       }
 
       fn shadeDiffuse(

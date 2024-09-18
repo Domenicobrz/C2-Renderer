@@ -307,38 +307,11 @@ export class Dielectric extends Material {
         pdf: ptr<function, f32>,
         misWeight: ptr<function, f32>,
       ) {
-        var brdfSamplePdf: f32;
-        Dielectric_Sample_f(wo, material, material.color, rands, wi, &brdfSamplePdf, brdf);
-      
-        if (config.MIS_TYPE == BRDF_ONLY) {
-          *pdf = brdfSamplePdf;
-        } 
-
-        if (config.MIS_TYPE == ONE_SAMPLE_MODEL || config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-          let newDir = normalize(TBN * *wi);
-          var ray = Ray((*worldSpaceRay).origin + newDir * 0.001, newDir);
-          let lightSamplePdf = getLightPDF(&ray);  
-
-          if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-            *pdf = brdfSamplePdf;
-            *misWeight = brdfSamplePdf / ((brdfSamplePdf + lightSamplePdf) * 0.5);
-            if (config.USE_POWER_HEURISTIC == 1) {
-              let b1 = brdfSamplePdf;
-              let b2 = lightSamplePdf;
-              *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
-            }
-          }
-
-          if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-            *pdf = brdfSamplePdf;
-            *misWeight = brdfSamplePdf / (brdfSamplePdf + lightSamplePdf);
-            if (config.USE_POWER_HEURISTIC == 1) {
-              let b1 = brdfSamplePdf;
-              let b2 = lightSamplePdf;
-              *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
-            }
-          }
-        }
+        Dielectric_Sample_f(wo, material, material.color, rands, wi, pdf, brdf);
+        
+        let newDir = normalize(TBN * *wi);
+        var ray = Ray((*worldSpaceRay).origin + newDir * 0.001, newDir);
+        surfaceSampleMisWeight(*pdf, ray, misWeight);
       }
 
       fn shadeDielectricSampleLight(
@@ -355,7 +328,7 @@ export class Dielectric extends Material {
         lightSampleRadiance: ptr<function, vec3f>,
       ) {
         let lightSample = getLightSample(worldSpaceRay, rands);
-        let lightSamplePdf = lightSample.pdf;
+        *pdf = lightSample.pdf;
         let backSideHit = lightSample.backSideHit;
 
         // from world-space to tangent-space
@@ -370,52 +343,10 @@ export class Dielectric extends Material {
           return;
         }
 
-        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION || config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-          if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-            *pdf = lightSamplePdf;
-            *misWeight = *pdf / ((brdfSamplePdf + *pdf) * 0.5);
-            if (config.USE_POWER_HEURISTIC == 1) {
-              let b1 = lightSamplePdf;
-              let b2 = brdfSamplePdf;
-              *misWeight = (b1 * b1) / ((b1 * b1 + b2 * b2) * 0.5);
-            }
-          }
-          
-          if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-            *pdf = lightSamplePdf;
-            *misWeight = *pdf / (brdfSamplePdf + *pdf);
-            if (config.USE_POWER_HEURISTIC == 1) {
-              let b1 = lightSamplePdf;
-              let b2 = brdfSamplePdf;
-              *misWeight = (b1 * b1) / (b1 * b1 + b2 * b2);
-            }
-          }
-
-          // I wonder if we should check wheter it's the same triangle or not
-          // since the light sampling routine might hit a different light source from ours here
-          // I can probably construct cases where this could be a problem
-          let ray = Ray((*worldSpaceRay).origin + lightSample.direction * 0.0001, lightSample.direction);
-          let ires = bvhIntersect(ray);
-          if (ires.hit && !lightSample.isEnvmap) {
-            let materialType = materialsData[ires.triangle.materialOffset];
-            if (
-              materialType == ${MATERIAL_TYPE.EMISSIVE} && 
-              !backSideHit
-            ) {
-              let material: Emissive = createEmissive(ires.triangle.materialOffset);
-              let emissive = material.color * material.intensity;
-              *lightSampleRadiance = emissive;
-            } else {
-              *misWeight = 0; *pdf = 1; 
-              *lightSampleRadiance = vec3f(0.0);
-            }
-          } else if (!ires.hit && lightSample.isEnvmap) {
-            *lightSampleRadiance = getEnvmapRadiance(lightSample.direction);
-          } else {
-            *misWeight = 0; *pdf = 1; 
-            *lightSampleRadiance = vec3f(0.0);
-          }
-        }
+        lightSampleMisWeight(
+          Ray((*worldSpaceRay).origin + lightSample.direction * 0.0001, lightSample.direction),
+          brdfSamplePdf, lightSample, pdf, lightSampleRadiance, misWeight
+        );
       }
 
 

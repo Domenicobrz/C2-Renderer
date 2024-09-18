@@ -9,6 +9,7 @@ import { CookTorrance } from '$lib/materials/cookTorrance';
 import { Dielectric } from '$lib/materials/dielectric';
 import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 import type { C2Scene } from '$lib/createScene';
+import { Orbit } from '$lib/controls/Orbit';
 
 export async function cornellSphereScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -104,5 +105,15 @@ export async function cornellSphereScene(): Promise<C2Scene> {
 
   triangles = [...triangles, ...meshToTriangles(mesh, 11)];
 
-  return { triangles, materials };
+  // create & set camera
+  const camera = new Orbit();
+  camera.set(new Vector3(0, 4, -10), new Vector3(0, 0, 0));
+  camera.movementSpeed = 0.15;
+
+  camera.fov = 0.69;
+  camera.aperture = 0.25;
+  camera.focusDistance = 9.53;
+  camera.exposure = 1.85;
+
+  return { triangles, materials, camera };
 }

@@ -387,7 +387,6 @@ export class BVH {
           let emissive = material.color * material.intensity;
           let radiance = emissive;
 
-
           return LightSample(false, backSideHit, lightSamplePdf, sampleDirection, cdfEntry.triangleIndex, radiance);
         }
 

@@ -310,8 +310,8 @@ export class Dielectric extends Material {
         Dielectric_Sample_f(wo, material, material.color, rands, wi, pdf, brdf);
         
         let newDir = normalize(TBN * *wi);
-        var ray = Ray((*worldSpaceRay).origin + newDir * 0.001, newDir);
-        surfaceSampleMisWeight(*pdf, ray, misWeight);
+        let lightSamplePdf = getLightPDF(Ray((*worldSpaceRay).origin, newDir));
+        *misWeight = getMisWeight(*pdf, lightSamplePdf);
       }
 
       fn shadeDielectricSampleLight(
@@ -333,20 +333,23 @@ export class Dielectric extends Material {
 
         // from world-space to tangent-space
         *wi = TBNinverse * lightSample.direction;
-        
+
         var brdfSamplePdf = Dielectric_PDF(wo, *wi, material);
         *brdf = Dielectric_f(wo, *wi, material, material.color);
 
-        if (brdfSamplePdf == 0.0) {
+        if (
+          brdfSamplePdf == 0.0 ||
+          lightSample.pdf == 0.0
+        ) {
           *misWeight = 0; *pdf = 1; *brdf = vec3f(0.0);
           *lightSampleRadiance = vec3f(0.0);
+          // this will avoid NaNs when we try to normalize wi
+          *wi = vec3f(-1);
           return;
         }
 
-        lightSampleMisWeight(
-          Ray((*worldSpaceRay).origin + lightSample.direction * 0.0001, lightSample.direction),
-          brdfSamplePdf, lightSample, pdf, lightSampleRadiance, misWeight
-        );
+        *lightSampleRadiance = lightSample.radiance;
+        *misWeight = getMisWeight(lightSample.pdf, brdfSamplePdf);
       }
 
 

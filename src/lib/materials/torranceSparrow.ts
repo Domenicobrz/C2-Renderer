@@ -208,7 +208,9 @@ export class TorranceSparrow extends Material {
         misWeight: ptr<function, f32>,
       ) {
         TS_Sample_f(wo, rands.xy, material.ax, material.ay, material.color, wi, pdf, brdf);
-        surfaceSampleMisWeight(*pdf, Ray((*worldSpaceRay).origin, normalize(TBN * *wi)), misWeight);
+        
+        let lightSamplePdf = getLightPDF(Ray((*worldSpaceRay).origin, normalize(TBN * *wi)));
+        *misWeight = getMisWeight(*pdf, lightSamplePdf);
       }
 
       fn shadeTorranceSparrowSampleLight(
@@ -233,17 +235,19 @@ export class TorranceSparrow extends Material {
         
         var brdfSamplePdf = TS_PDF(wo, *wi, material.ax, material.ay);
         *brdf = TS_f(wo, *wi, material.ax, material.ay, material.color);
-        if (brdfSamplePdf == 0.0) {
+        if (
+          brdfSamplePdf == 0.0 || 
+          lightSample.pdf == 0.0
+        ) {
           *misWeight = 0; *pdf = 1; 
           *lightSampleRadiance = vec3f(0.0);
+          // this will avoid NaNs when we try to normalize wi
+          *wi = vec3f(-1);
           return;
         }
 
-        lightSampleMisWeight(
-          Ray((*worldSpaceRay).origin, lightSample.direction),
-          brdfSamplePdf, lightSample, pdf, lightSampleRadiance,
-          misWeight,
-        );
+        *lightSampleRadiance = lightSample.radiance;
+        *misWeight = getMisWeight(lightSample.pdf, brdfSamplePdf);
       }
 
 

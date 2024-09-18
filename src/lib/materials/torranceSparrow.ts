@@ -208,7 +208,9 @@ export class TorranceSparrow extends Material {
         misWeight: ptr<function, f32>,
       ) {
         TS_Sample_f(wo, rands.xy, material.ax, material.ay, material.color, wi, pdf, brdf);
-        surfaceSampleMisWeight(*pdf, Ray((*worldSpaceRay).origin, normalize(TBN * *wi)), misWeight);
+        
+        let lightSamplePdf = getLightPDF(Ray((*worldSpaceRay).origin, normalize(TBN * *wi)));
+        *misWeight = getMisWeight(*pdf, lightSamplePdf);
       }
 
       fn shadeTorranceSparrowSampleLight(
@@ -224,7 +226,7 @@ export class TorranceSparrow extends Material {
         misWeight: ptr<function, f32>,
         lightSampleRadiance: ptr<function, vec3f>,
       ) {
-        let lightSample = getLightSample(worldSpaceRay, rands);
+        let lightSample = getLightSample(worldSpaceRay.origin, rands);
         *pdf = lightSample.pdf;
         let backSideHit = lightSample.backSideHit;
 
@@ -233,17 +235,19 @@ export class TorranceSparrow extends Material {
         
         var brdfSamplePdf = TS_PDF(wo, *wi, material.ax, material.ay);
         *brdf = TS_f(wo, *wi, material.ax, material.ay, material.color);
-        if (brdfSamplePdf == 0.0) {
+        if (
+          brdfSamplePdf == 0.0 || 
+          lightSample.pdf == 0.0
+        ) {
           *misWeight = 0; *pdf = 1; 
           *lightSampleRadiance = vec3f(0.0);
+          // this will avoid NaNs when we try to normalize wi
+          *wi = vec3f(-1);
           return;
         }
 
-        lightSampleMisWeight(
-          Ray((*worldSpaceRay).origin, lightSample.direction),
-          brdfSamplePdf, lightSample, pdf, lightSampleRadiance,
-          misWeight,
-        );
+        *lightSampleRadiance = lightSample.radiance;
+        *misWeight = getMisWeight(lightSample.pdf, brdfSamplePdf);
       }
 
 
@@ -265,7 +269,8 @@ export class TorranceSparrow extends Material {
           N = -N;
         }
         
-        (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
+        // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
+        (*ray).origin = ires.hitPoint;
     
         // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xy is used for brdf samples
@@ -305,6 +310,7 @@ export class TorranceSparrow extends Material {
             rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &w
           );
           (*ray).direction = normalize(TBN * wi);
+          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
           *reflectance *= color * brdf * (1 / pdf) * max(dot(N, (*ray).direction), 0.0);
         }
 
@@ -321,6 +327,7 @@ export class TorranceSparrow extends Material {
             );
           }
           (*ray).direction = normalize(TBN * wi);
+          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
           *reflectance *= color * brdf * (misWeight / pdf) * max(dot(N, (*ray).direction), 0.0);
         }
 
@@ -341,6 +348,7 @@ export class TorranceSparrow extends Material {
           );
 
           (*ray).direction = normalize(TBN * wi);
+          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
           // from tangent space to world space
           lightSampleWi = normalize(TBN * lightSampleWi);
           // light contribution, we have to multiply by *reflectance to account for reduced reflectance

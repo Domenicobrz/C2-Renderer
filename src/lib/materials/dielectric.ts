@@ -310,8 +310,8 @@ export class Dielectric extends Material {
         Dielectric_Sample_f(wo, material, material.color, rands, wi, pdf, brdf);
         
         let newDir = normalize(TBN * *wi);
-        var ray = Ray((*worldSpaceRay).origin + newDir * 0.001, newDir);
-        surfaceSampleMisWeight(*pdf, ray, misWeight);
+        let lightSamplePdf = getLightPDF(Ray((*worldSpaceRay).origin, newDir));
+        *misWeight = getMisWeight(*pdf, lightSamplePdf);
       }
 
       fn shadeDielectricSampleLight(
@@ -327,26 +327,29 @@ export class Dielectric extends Material {
         misWeight: ptr<function, f32>,
         lightSampleRadiance: ptr<function, vec3f>,
       ) {
-        let lightSample = getLightSample(worldSpaceRay, rands);
+        let lightSample = getLightSample(worldSpaceRay.origin, rands);
         *pdf = lightSample.pdf;
         let backSideHit = lightSample.backSideHit;
 
         // from world-space to tangent-space
         *wi = TBNinverse * lightSample.direction;
-        
+
         var brdfSamplePdf = Dielectric_PDF(wo, *wi, material);
         *brdf = Dielectric_f(wo, *wi, material, material.color);
 
-        if (brdfSamplePdf == 0.0) {
+        if (
+          brdfSamplePdf == 0.0 ||
+          lightSample.pdf == 0.0
+        ) {
           *misWeight = 0; *pdf = 1; *brdf = vec3f(0.0);
           *lightSampleRadiance = vec3f(0.0);
+          // this will avoid NaNs when we try to normalize wi
+          *wi = vec3f(-1);
           return;
         }
 
-        lightSampleMisWeight(
-          Ray((*worldSpaceRay).origin + lightSample.direction * 0.0001, lightSample.direction),
-          brdfSamplePdf, lightSample, pdf, lightSampleRadiance, misWeight
-        );
+        *lightSampleRadiance = lightSample.radiance;
+        *misWeight = getMisWeight(lightSample.pdf, brdfSamplePdf);
       }
 
 
@@ -377,10 +380,7 @@ export class Dielectric extends Material {
           );
         }
         
-        // we need to set an origin now, to make sure the light sampling strategy
-        // will have the origin of the surface hitpoint, then after we complete
-        // sampling we'll move the origin to make sure it's either inside the medium
-        // if we're transmitting the ray, or outside if it's reflected
+        // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
         (*ray).origin = ires.hitPoint;
 
         // rands1.w is used for ONE_SAMPLE_MODEL

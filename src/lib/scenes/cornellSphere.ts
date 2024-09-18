@@ -17,7 +17,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.125, 0.025),
-    new Emissive(new Color(1, 0.7, 0.5), 20),
+    new Emissive(new Color(1, 0.7, 0.5), 0.5),
     new Diffuse(new Color(0.05, 1, 0.05)),
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.45, 0.45),
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.175, 0.175),
@@ -78,7 +78,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     );
   }
 
-  const ls = 0.75;
+  const ls = 6.75;
   // const ls = 0.05;
   // const ls = 4.05;
   const lt = new Vector3(0, 3.9, 0);
@@ -103,7 +103,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 0);
 
-  triangles = [...triangles, ...meshToTriangles(mesh, 11)];
+  triangles = [...triangles, ...meshToTriangles(mesh, 0)];
 
   // create & set camera
   const camera = new Orbit();

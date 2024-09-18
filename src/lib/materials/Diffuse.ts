@@ -67,8 +67,8 @@ export class Diffuse extends Material {
         (*ray).direction = normalize(Nt * newDir.x + N * newDir.y + Nb * newDir.z);
         
         *pdf = brdfSamplePdf;
-
-        surfaceSampleMisWeight(brdfSamplePdf, *ray, misWeight);
+        let lightSamplePdf = getLightPDF(*ray);
+        *misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
       }
 
       fn shadeDiffuseSampleLight(
@@ -79,7 +79,7 @@ export class Diffuse extends Material {
         misWeight: ptr<function, f32>,
         lightSampleRadiance: ptr<function, vec3f>,
       ) {
-        let lightSample = getLightSample(ray, rands);
+        let lightSample = getLightSample(ray.origin, rands);
         *pdf = lightSample.pdf;
         let backSideHit = lightSample.backSideHit;
 
@@ -91,14 +91,18 @@ export class Diffuse extends Material {
         // However at this point, it doesn't even make sense to evaluate the 
         // rest of this function since we would be wasting a sample, thus we'll return
         // misWeight = 0 instead.
-        if (dot((*ray).direction, N) < 0.0) {
+        if (
+          dot((*ray).direction, N) < 0.0 ||
+          lightSample.pdf == 0.0
+        ) {
           brdfSamplePdf = 0;
           *misWeight = 0; *pdf = 1; 
           *lightSampleRadiance = vec3f(0.0);
           return;
         }
 
-        lightSampleMisWeight(*ray, brdfSamplePdf, lightSample, pdf, lightSampleRadiance, misWeight);
+        *lightSampleRadiance = lightSample.radiance;
+        *misWeight = getMisWeight(lightSample.pdf, brdfSamplePdf);
       }
 
       fn shadeDiffuse(
@@ -119,7 +123,8 @@ export class Diffuse extends Material {
           N = -N;
         }
     
-        (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
+        // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
+        (*ray).origin = ires.hitPoint;
     
         // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xy is used for brdf samples
@@ -140,6 +145,7 @@ export class Diffuse extends Material {
         if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32;
           shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &w);
+          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
           *reflectance *= brdf * (1 / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
 
@@ -151,6 +157,7 @@ export class Diffuse extends Material {
           } else {
             shadeDiffuseSampleLight(rands2, N, ray, &pdf, &misWeight, &ls);          
           }
+          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
           *reflectance *= brdf * (misWeight / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
 
@@ -163,7 +170,7 @@ export class Diffuse extends Material {
           shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight);
           shadeDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
 
-          (*ray).origin = rayBrdf.origin;
+          (*ray).origin = rayBrdf.origin + rayBrdf.direction * 0.001;
           (*ray).direction = rayBrdf.direction;
 
           // light contribution

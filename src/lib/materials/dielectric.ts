@@ -327,7 +327,7 @@ export class Dielectric extends Material {
         misWeight: ptr<function, f32>,
         lightSampleRadiance: ptr<function, vec3f>,
       ) {
-        let lightSample = getLightSample(worldSpaceRay, rands);
+        let lightSample = getLightSample(worldSpaceRay.origin, rands);
         *pdf = lightSample.pdf;
         let backSideHit = lightSample.backSideHit;
 
@@ -377,10 +377,7 @@ export class Dielectric extends Material {
           );
         }
         
-        // we need to set an origin now, to make sure the light sampling strategy
-        // will have the origin of the surface hitpoint, then after we complete
-        // sampling we'll move the origin to make sure it's either inside the medium
-        // if we're transmitting the ray, or outside if it's reflected
+        // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
         (*ray).origin = ires.hitPoint;
 
         // rands1.w is used for ONE_SAMPLE_MODEL

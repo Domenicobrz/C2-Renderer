@@ -325,6 +325,7 @@ export class BVH {
         t: f32,
         hitPoint: vec3f,
         triangle: Triangle,
+        triangleIndex: i32,
       }
 
       struct LightCDFEntry {
@@ -339,7 +340,8 @@ export class BVH {
         backSideHit: bool,
         pdf: f32,
         direction: vec3f,
-        triangleIndex: i32
+        triangleIndex: i32,
+        radiance: vec3f,
       }
     `;
   }
@@ -347,7 +349,7 @@ export class BVH {
   static shaderIntersect() {
     return /* wgsl */ `
       fn getLightSample(
-        ray: ptr<function, Ray>, rands: vec4f
+        rayOrigin: vec3f, rands: vec4f
       ) -> LightSample {
         let cdfEntry = getLightCDFEntry(rands.z);
 
@@ -355,10 +357,11 @@ export class BVH {
           let triangle = triangles[cdfEntry.triangleIndex];
           let samplePoint = sampleTrianglePoint(triangle, rands.x, rands.y);
 
-          let lD = normalize(samplePoint - (*ray).origin);
+          let samplePointT = length(samplePoint - rayOrigin);
+          let lD = normalize(samplePoint - rayOrigin);
           let sampleDirection = lD;
   
-          let r2 = squaredLength(samplePoint - (*ray).origin);
+          let r2 = squaredLength(samplePoint - rayOrigin);
           var lN = triangle.normal;
           var lNolD = dot(lN, -lD);
           var backSideHit = false;
@@ -376,7 +379,16 @@ export class BVH {
           var lightSamplePdf = r2 / (lNolD * triangle.area);
           lightSamplePdf *= cdfEntry.pdf;
 
-          return LightSample(false, backSideHit, lightSamplePdf, sampleDirection, cdfEntry.triangleIndex);
+          let ires = bvhIntersect(Ray(rayOrigin + sampleDirection * 0.001, sampleDirection));
+          if (!ires.hit || cdfEntry.triangleIndex != ires.triangleIndex || backSideHit) {
+            return LightSample(false, false, 0, vec3f(0), -1, vec3f(0));
+          }
+          let material: Emissive = createEmissive(ires.triangle.materialOffset);
+          let emissive = material.color * material.intensity;
+          let radiance = emissive;
+
+
+          return LightSample(false, backSideHit, lightSamplePdf, sampleDirection, cdfEntry.triangleIndex, radiance);
         }
 
         if (cdfEntry.triangleIndex == -2) {
@@ -396,17 +408,21 @@ export class BVH {
           var lightSamplePdf = pc2d_pdf / (4 * PI);
           lightSamplePdf *= cdfEntry.pdf;
 
-          return LightSample(true, false, lightSamplePdf, sampleDirection, -1);
+
+          let ires = bvhIntersect(Ray(rayOrigin, sampleDirection));
+          if (ires.hit) {
+            return LightSample(false, false, 0, vec3f(0), -1, vec3f(0));
+          }
+          let radiance = getEnvmapRadiance(sampleDirection);
+
+          return LightSample(true, false, lightSamplePdf, sampleDirection, -1, radiance);
         }
 
-        return LightSample(false, false, 0, vec3f(0), -1);
+        return LightSample(false, false, 0, vec3f(0), -1, vec3f(0));
       }
 
-      // when you're using BRDF sampling in conjuction with MIS, given a brdf direction
-      // you might need to know the associated light sample pdf for that direction
-      // this function will provide that value
       fn getLightPDF(ray: Ray) -> f32 {
-        let ires = bvhIntersect(ray);
+        let ires = bvhIntersect(Ray(ray.origin + ray.direction * 0.001, ray.direction));
 
         if (ires.hit) {
           // if we don't hit a primitive, bvhIntersect will set ires.triangle to the first triangle
@@ -472,7 +488,7 @@ export class BVH {
         let rootNode = bvhData[0];
 
         if (!aabbIntersect(ray.origin, ray.direction, rootNode.aabb).hit) {
-          return BVHIntersectionResult(false, 0, vec3f(0,0,0), triangles[0]);
+          return BVHIntersectionResult(false, 0, vec3f(0,0,0), triangles[0], 0);
         }
 
         // from: https://github.com/gpuweb/gpuweb/issues/3431#issuecomment-1453667278
@@ -550,7 +566,8 @@ export class BVH {
           closestIntersection.hit, 
           closestIntersection.t, 
           closestIntersection.hitPoint, 
-          triangles[closestPrimitiveIndex]
+          triangles[closestPrimitiveIndex],
+          closestPrimitiveIndex
         );
       } 
     `;

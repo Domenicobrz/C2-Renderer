@@ -340,7 +340,6 @@ export class BVH {
         backSideHit: bool,
         pdf: f32,
         direction: vec3f,
-        triangleIndex: i32,
         radiance: vec3f,
       }
     `;
@@ -381,13 +380,13 @@ export class BVH {
 
           let ires = bvhIntersect(Ray(rayOrigin + sampleDirection * 0.001, sampleDirection));
           if (!ires.hit || cdfEntry.triangleIndex != ires.triangleIndex || backSideHit) {
-            return LightSample(false, false, 0, vec3f(0), -1, vec3f(0));
+            return LightSample(false, false, 0, vec3f(0), vec3f(0));
           }
           let material: Emissive = createEmissive(ires.triangle.materialOffset);
           let emissive = material.color * material.intensity;
           let radiance = emissive;
 
-          return LightSample(false, backSideHit, lightSamplePdf, sampleDirection, cdfEntry.triangleIndex, radiance);
+          return LightSample(false, backSideHit, lightSamplePdf, sampleDirection, radiance);
         }
 
         if (cdfEntry.triangleIndex == -2) {
@@ -410,14 +409,14 @@ export class BVH {
 
           let ires = bvhIntersect(Ray(rayOrigin, sampleDirection));
           if (ires.hit) {
-            return LightSample(false, false, 0, vec3f(0), -1, vec3f(0));
+            return LightSample(false, false, 0, vec3f(0), vec3f(0));
           }
           let radiance = getEnvmapRadiance(sampleDirection);
 
-          return LightSample(true, false, lightSamplePdf, sampleDirection, -1, radiance);
+          return LightSample(true, false, lightSamplePdf, sampleDirection, radiance);
         }
 
-        return LightSample(false, false, 0, vec3f(0), -1, vec3f(0));
+        return LightSample(false, false, 0, vec3f(0), vec3f(0));
       }
 
       fn getLightPDF(ray: Ray) -> f32 {

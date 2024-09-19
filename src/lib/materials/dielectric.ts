@@ -369,9 +369,7 @@ export class Dielectric extends Material {
         var N = ires.triangle.normal;     
         var isInsideMedium = dot(N, (*ray).direction) > 0;
         
-        // we'll assume we're exiting the dielectric medium and apply
         // beer-lambert absorption 
-        // TODO: this is only an assumption, and should consider the internal reflection case
         if (isInsideMedium) {
           *reflectance *= vec3f(
             exp(-color.x * ires.t), 

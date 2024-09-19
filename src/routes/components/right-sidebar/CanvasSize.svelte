@@ -3,6 +3,7 @@
   import Spacer from '../Spacer.svelte';
   import Toggle from '../Toggle.svelte';
   import { tick } from 'svelte';
+  import { configOptions } from '../../stores/main';
 
   export let canvasContainerEl: HTMLDivElement;
   export let width = 1;
@@ -93,6 +94,8 @@
 </div>
 <Spacer vertical={10} />
 <Toggle label="Full screen:" bind:checked={fullScreenCanvas} on:change={toggleFullScreen} />
+<Spacer vertical={10} />
+<Toggle label="Force max tile size:" bind:checked={$configOptions.forceMaxTileSize} />
 
 <style>
   .flex-row {

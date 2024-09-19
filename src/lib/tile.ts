@@ -1,5 +1,7 @@
 import { Vector2 } from 'three';
 import { samplesInfo } from '../routes/stores/main';
+import { configManager } from './config';
+import type { ConfigOptions } from './config';
 
 export type Tile = {
   x: number;
@@ -13,8 +15,13 @@ export class TileSequence {
   private tile: Tile = { x: 0, y: 0, w: 0, h: 0 };
   // used for both increments and decrements
   private tileIncrementCount = 0;
+  private forceMaxTileSize: boolean = false;
 
-  constructor() {}
+  constructor() {
+    configManager.e.addEventListener('config-update', (options: ConfigOptions) => {
+      this.forceMaxTileSize = options.forceMaxTileSize;
+    });
+  }
 
   setCanvasSize(canvasSize: Vector2) {
     this.canvasSize = canvasSize;
@@ -46,6 +53,8 @@ export class TileSequence {
   }
 
   decreaseTileSize() {
+    if (this.forceMaxTileSize) return;
+
     // we're either decreasing the width or the height,
     // to decrease the performance load of 2x
     // (if we decrease both performance load decreases by 4x)
@@ -104,10 +113,17 @@ export class TileSequence {
 
   resetTile() {
     this.tileIncrementCount = 0;
-    const size = 16;
-    samplesInfo.setTileSize(`${size} x ${size}`);
+    let sizex = 16;
+    let sizey = 16;
+
+    if (this.forceMaxTileSize) {
+      sizex = this.canvasSize.x;
+      sizey = this.canvasSize.y;
+    }
+
+    samplesInfo.setTileSize(`${sizex} x ${sizey}`);
     // we decided tilesize will be a multiple of 8
-    this.tile = { x: this.canvasSize.x, y: this.canvasSize.y, w: size, h: size };
+    this.tile = { x: this.canvasSize.x, y: this.canvasSize.y, w: sizex, h: sizey };
   }
 
   getNextTile(onTileStart: () => void) {

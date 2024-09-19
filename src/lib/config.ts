@@ -15,6 +15,7 @@ type ShaderConfig = {
 // this object needs to be serializeable, because of limitations caused by
 // the optionsHistory madness inside createConfigStore(...)
 export type ConfigOptions = {
+  forceMaxTileSize: boolean;
   MIS_TYPE: MIS_TYPE;
   USE_POWER_HEURISTIC: 0 | 1;
   ENVMAP_SCALE: number;
@@ -39,7 +40,7 @@ class ConfigManager {
     configOptions.subscribe((value) => {
       this.options = value;
       this.prevOptions = configOptions.getOldValue();
-      this.e.fireEvent('config-update');
+      this.e.fireEvent('config-update', this.options);
     });
   }
 

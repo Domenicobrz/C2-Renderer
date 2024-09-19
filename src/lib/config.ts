@@ -16,6 +16,7 @@ type ShaderConfig = {
 // the optionsHistory madness inside createConfigStore(...)
 export type ConfigOptions = {
   forceMaxTileSize: boolean;
+  BOUNCES_COUNT: number;
   MIS_TYPE: MIS_TYPE;
   USE_POWER_HEURISTIC: 0 | 1;
   ENVMAP_SCALE: number;
@@ -29,7 +30,7 @@ class ConfigManager {
   public options: ConfigOptions;
   public prevOptions: ConfigOptions;
   public e: EventHandler;
-  public bufferSize = 8;
+  public bufferSize = 12;
 
   constructor() {
     this.options = get(configOptions);
@@ -49,7 +50,11 @@ class ConfigManager {
   }
 
   getOptionsBuffer(): ArrayBuffer {
-    return new Uint32Array([this.options.MIS_TYPE, this.options.USE_POWER_HEURISTIC]);
+    return new Uint32Array([
+      this.options.MIS_TYPE,
+      this.options.USE_POWER_HEURISTIC,
+      this.options.BOUNCES_COUNT
+    ]);
   }
 
   // might return a different string with each invocation if internal shader configurations
@@ -64,6 +69,7 @@ class ConfigManager {
     struct Config {
       MIS_TYPE: u32,
       USE_POWER_HEURISTIC: u32,
+      BOUNCES_COUNT: i32,
     }
 
     struct ShaderConfig {

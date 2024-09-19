@@ -94,8 +94,6 @@
 </div>
 <Spacer vertical={10} />
 <Toggle label="Full screen:" bind:checked={fullScreenCanvas} on:change={toggleFullScreen} />
-<Spacer vertical={10} />
-<Toggle label="Force max tile size:" bind:checked={$configOptions.forceMaxTileSize} />
 
 <style>
   .flex-row {

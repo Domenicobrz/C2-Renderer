@@ -11,6 +11,7 @@
   import Sampling from './right-sidebar/Sampling.svelte';
   import Info from './right-sidebar/Info.svelte';
   import Operate from './right-sidebar/Operate.svelte';
+  import Performance from './right-sidebar/Performance.svelte';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidth: number;
@@ -49,6 +50,9 @@
     </Folder>
     <Folder name="Sampling" roundBox>
       <Sampling />
+    </Folder>
+    <Folder name="Performance" expanded={false}>
+      <Performance />
     </Folder>
     <Folder name="Operate" roundBox>
       <Operate />

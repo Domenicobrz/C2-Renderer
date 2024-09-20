@@ -99,8 +99,12 @@ fn debugLog(value: f32) {
   debugInfo.debugLogIndex++;
 }
 
-// things to remember: maximum storage entries on my GPU is 8
-// I might need to re-architect this shader to pack togheter some types of data
+// ***** Things to remember:  (https://webgpureport.org/)
+// maxStorageBuffersPerShaderStage = 8
+// maxUniformBuffersPerShaderStage = 12 (maxUniformBuffersPerShaderStage)
+// maxBindingsPerBindGroup = 1000
+// maxSampledTexturesPerShaderStage = 16
+// maxTextureDimension3D = 2048
 
 @compute @workgroup_size(8, 8) fn computeSomething(
   @builtin(global_invocation_id) gid: vec3<u32>,

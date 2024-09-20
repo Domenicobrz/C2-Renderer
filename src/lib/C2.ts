@@ -1,4 +1,4 @@
-import { Vector2 } from 'three';
+import { TextureLoader, Vector2 } from 'three';
 import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
@@ -19,9 +19,13 @@ let canvasSize = new Vector2(-1, -1);
 
 export const globals: {
   device: GPUDevice;
+  context: GPUCanvasContext;
+  format: GPUTextureFormat;
 } = {
   // not sure how to tell typescript that this value will exist when I'll try to access it
-  device: null as any
+  device: null as any,
+  context: null as any,
+  format: null as any
 };
 
 export type RendererInterface = {
@@ -38,7 +42,6 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
     requiredFeatures: [...(canTimestamp ? ['timestamp-query'] : []), 'float32-filterable']
   });
   const context = canvas.getContext('webgpu');
-  globals.device = device;
 
   if (!device || !context) {
     throw new Error('need a browser that supports WebGPU');
@@ -49,6 +52,10 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
     device,
     format: presentationFormat
   });
+
+  globals.device = device;
+  globals.context = context;
+  globals.format = presentationFormat;
 
   // *************** compute & render segments ****************
   const tileSequence = new TileSequence();

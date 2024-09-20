@@ -37,6 +37,25 @@ export class RenderTextureSegment {
     });
   }
 
+  setTexture(texture: GPUTexture) {
+    const sampler = this.device.createSampler({
+      addressModeU: 'repeat',
+      addressModeV: 'repeat',
+      magFilter: 'linear',
+      minFilter: 'linear'
+    });
+
+    // we need to re-create the bindgroup since workBuffer
+    // is a new buffer
+    this.bindGroup0 = this.device.createBindGroup({
+      layout: this.pipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: sampler },
+        { binding: 1, resource: texture.createView() }
+      ]
+    });
+  }
+
   // we should also create another function that simply uses an existing texture
   // instead of having to pass the textureData and create the texture here
   setTextureData(textureData: Float32Array, textureSize: Vector2) {

@@ -3,9 +3,9 @@ import { TextureLoader, type Vector2 } from 'three';
 import { renderTextureShader } from '$lib/shaders/renderTextureShader';
 import { globals } from '$lib/C2';
 import { textureArraysSegmentShader } from '$lib/shaders/textureArraysShader';
-import { C2Scene } from '$lib/createScene';
+import type { C2Scene } from '$lib/createScene';
 
-export class RenderTextureSegment {
+export class TextureArraysSegment {
   // private fields
   private device: GPUDevice;
   private context: GPUCanvasContext;
@@ -13,7 +13,7 @@ export class RenderTextureSegment {
 
   private sampler: GPUSampler;
   private bindGroup0: GPUBindGroup | null = null;
-  private textures512: GPUTexture | null = null;
+  public textures512: GPUTexture | null = null;
 
   constructor() {
     this.context = globals.context;
@@ -45,14 +45,29 @@ export class RenderTextureSegment {
     });
   }
 
-  updateScene(scene: C2Scene) {
-    (async () => {
-      let threeTextures = [await new TextureLoader().loadAsync('favicon.png')];
+  async updateScene(scene: C2Scene) {
+    let threeTextures = [
+      await new TextureLoader().loadAsync('test.png'),
+      await new TextureLoader().loadAsync('favicon.png')
+    ];
 
-      const textures512count = threeTextures.length;
+    const textures512count = threeTextures.length;
 
-      this.textures512 = this.device.createTexture({
-        size: [512, 512, textures512count],
+    this.textures512 = this.device.createTexture({
+      label: 'texture array segment 512 texture',
+      size: [512, 512, textures512count],
+      format: 'rgba8unorm',
+      usage:
+        GPUTextureUsage.RENDER_ATTACHMENT |
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.COPY_DST
+    });
+
+    for (let i = 0; i < textures512count; i++) {
+      let htmlImg = threeTextures[i].source.data as HTMLImageElement;
+
+      const texture = this.device.createTexture({
+        size: [htmlImg.width, htmlImg.height],
         format: 'rgba8unorm',
         usage:
           GPUTextureUsage.RENDER_ATTACHMENT |
@@ -60,33 +75,22 @@ export class RenderTextureSegment {
           GPUTextureUsage.COPY_DST
       });
 
-      for (let i = 0; i < textures512count; i++) {
-        let htmlImg = threeTextures[i].source.data as HTMLImageElement;
+      this.device.queue.copyExternalImageToTexture(
+        { source: htmlImg, flipY: false },
+        { texture },
+        { width: htmlImg.width, height: htmlImg.height }
+      );
 
-        const texture = this.device.createTexture({
-          size: [htmlImg.width, htmlImg.height],
-          format: 'rgba8unorm',
-          usage:
-            GPUTextureUsage.RENDER_ATTACHMENT |
-            GPUTextureUsage.TEXTURE_BINDING |
-            GPUTextureUsage.COPY_DST
-        });
+      this.bindGroup0 = this.device.createBindGroup({
+        layout: this.pipeline.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: this.sampler },
+          { binding: 1, resource: texture.createView() }
+        ]
+      });
 
-        this.device.queue.copyExternalImageToTexture(
-          { source: htmlImg, flipY: true },
-          { texture },
-          { width: htmlImg.width, height: htmlImg.height }
-        );
-
-        // now we have to create the render stuff to
-        // now we have to create the render stuff to
-        // now we have to create the render stuff to
-        // now we have to create the render stuff to
-        // now we have to create the render stuff to render into the array layer
-        // also remember that you can create all the bindgroups in advance,
-        // so that you can use them later in case this could be useful
-      }
-    })();
+      this.render(this.textures512, i);
+    }
   }
 
   // setTexture(texture: GPUTexture) {
@@ -101,33 +105,37 @@ export class RenderTextureSegment {
   //   });
   // }
 
-  // render() {
-  //   if (!this.bindGroup0) {
-  //     throw new Error('undefined render bind group');
-  //   }
+  render(arrayTexture: GPUTexture, layerIndex: number) {
+    if (!this.bindGroup0) {
+      throw new Error('undefined render bind group');
+    }
 
-  //   // Get the current texture from the canvas context and
-  //   // set it as the texture to render to.
-  //   const passDescriptor: GPURenderPassDescriptor = {
-  //     label: 'our basic canvas renderPass',
-  //     colorAttachments: [
-  //       {
-  //         view: this.context.getCurrentTexture().createView(),
-  //         clearValue: [0, 0, 0, 1],
-  //         loadOp: 'clear',
-  //         storeOp: 'store'
-  //       }
-  //     ]
-  //   };
+    // Get the current texture from the canvas context and
+    // set it as the texture to render to.
+    const passDescriptor: GPURenderPassDescriptor = {
+      label: 'our basic canvas renderPass',
+      colorAttachments: [
+        {
+          view: arrayTexture.createView({
+            dimension: '2d-array',
+            baseArrayLayer: layerIndex,
+            arrayLayerCount: 1
+          }),
+          clearValue: [0, 0, 0, 1],
+          loadOp: 'clear',
+          storeOp: 'store'
+        }
+      ]
+    };
 
-  //   const encoder = this.device.createCommandEncoder({ label: 'render encoder' });
-  //   const pass = encoder.beginRenderPass(passDescriptor);
-  //   pass.setPipeline(this.pipeline);
-  //   pass.setBindGroup(0, this.bindGroup0);
-  //   pass.draw(6); // call our vertex shader 6 times
-  //   pass.end();
+    const encoder = this.device.createCommandEncoder({ label: 'render encoder' });
+    const pass = encoder.beginRenderPass(passDescriptor);
+    pass.setPipeline(this.pipeline);
+    pass.setBindGroup(0, this.bindGroup0);
+    pass.draw(6); // call our vertex shader 6 times
+    pass.end();
 
-  //   const commandBuffer = encoder.finish();
-  //   this.device.queue.submit([commandBuffer]);
-  // }
+    const commandBuffer = encoder.finish();
+    this.device.queue.submit([commandBuffer]);
+  }
 }

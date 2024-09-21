@@ -11,6 +11,13 @@ export class RenderTextureSegment {
 
   private bindGroup0: GPUBindGroup | null = null;
 
+  private useTextureArrayUniform: GPUBuffer;
+  private textureArrayIndexUniform: GPUBuffer;
+  private sampler: GPUSampler;
+
+  private default2Dtexture: GPUTexture;
+  private default2DArrayTexture: GPUTexture;
+
   constructor(context: GPUCanvasContext, presentationFormat: GPUTextureFormat) {
     this.context = context;
     let device = globals.device;
@@ -35,23 +42,68 @@ export class RenderTextureSegment {
         targets: [{ format: presentationFormat }]
       }
     });
-  }
 
-  setTexture(texture: GPUTexture) {
-    const sampler = this.device.createSampler({
+    this.useTextureArrayUniform = device.createBuffer({
+      size: 1 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    this.textureArrayIndexUniform = device.createBuffer({
+      size: 1 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    this.sampler = this.device.createSampler({
       addressModeU: 'repeat',
       addressModeV: 'repeat',
       magFilter: 'linear',
       minFilter: 'linear'
     });
 
+    this.default2Dtexture = this.device.createTexture({
+      size: [1, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING
+    });
+
+    this.default2DArrayTexture = this.device.createTexture({
+      size: [1, 1, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING
+    });
+  }
+
+  setTextureArray(texture: GPUTexture, index: number) {
+    this.device.queue.writeBuffer(this.useTextureArrayUniform, 0, new Uint32Array([1]));
+    this.device.queue.writeBuffer(this.textureArrayIndexUniform, 0, new Uint32Array([index]));
+
     // we need to re-create the bindgroup since workBuffer
     // is a new buffer
     this.bindGroup0 = this.device.createBindGroup({
       layout: this.pipeline.getBindGroupLayout(0),
       entries: [
-        { binding: 0, resource: sampler },
-        { binding: 1, resource: texture.createView() }
+        { binding: 0, resource: this.sampler },
+        { binding: 1, resource: this.default2Dtexture.createView() },
+        { binding: 2, resource: texture.createView({ dimension: '2d-array' }) },
+        { binding: 3, resource: { buffer: this.useTextureArrayUniform } },
+        { binding: 4, resource: { buffer: this.textureArrayIndexUniform } }
+      ]
+    });
+  }
+
+  setTexture(texture: GPUTexture) {
+    this.device.queue.writeBuffer(this.useTextureArrayUniform, 0, new Uint32Array([0]));
+
+    // we need to re-create the bindgroup since workBuffer
+    // is a new buffer
+    this.bindGroup0 = this.device.createBindGroup({
+      layout: this.pipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: this.sampler },
+        { binding: 1, resource: texture.createView() },
+        { binding: 2, resource: this.default2DArrayTexture.createView() },
+        { binding: 3, resource: { buffer: this.useTextureArrayUniform } },
+        { binding: 4, resource: { buffer: this.textureArrayIndexUniform } }
       ]
     });
   }
@@ -65,6 +117,8 @@ export class RenderTextureSegment {
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
     });
 
+    this.device.queue.writeBuffer(this.useTextureArrayUniform, 0, new Uint32Array([0]));
+
     this.device.queue.writeTexture(
       { texture },
       textureData,
@@ -72,20 +126,16 @@ export class RenderTextureSegment {
       { width: textureSize.x, height: textureSize.y }
     );
 
-    const sampler = this.device.createSampler({
-      addressModeU: 'repeat',
-      addressModeV: 'repeat',
-      magFilter: 'linear',
-      minFilter: 'linear'
-    });
-
     // we need to re-create the bindgroup since workBuffer
     // is a new buffer
     this.bindGroup0 = this.device.createBindGroup({
       layout: this.pipeline.getBindGroupLayout(0),
       entries: [
-        { binding: 0, resource: sampler },
-        { binding: 1, resource: texture.createView() }
+        { binding: 0, resource: this.sampler },
+        { binding: 1, resource: texture.createView() },
+        { binding: 2, resource: this.default2DArrayTexture.createView() },
+        { binding: 3, resource: { buffer: this.useTextureArrayUniform } },
+        { binding: 4, resource: { buffer: this.textureArrayIndexUniform } }
       ]
     });
   }

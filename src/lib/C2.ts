@@ -10,6 +10,7 @@ import { TileSequence } from './tile';
 import { RenderTextureSegment } from './segment/renderTextureSegment';
 import { PreviewSegment } from './segment/previewSegment';
 import { get } from 'svelte/store';
+import { TextureArraysSegment } from './segment/textureArraysSegment';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;

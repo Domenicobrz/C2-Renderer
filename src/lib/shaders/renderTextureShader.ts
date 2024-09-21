@@ -6,6 +6,9 @@ struct VSOutput {
 
 @group(0) @binding(0) var tSampler: sampler;
 @group(0) @binding(1) var texture: texture_2d<f32>;
+@group(0) @binding(2) var textureArray: texture_2d_array<f32>;
+@group(0) @binding(3) var<uniform> useTextureArray: u32;
+@group(0) @binding(4) var<uniform> textureArrayIndex: u32;
 
 @vertex fn vs(
   @builtin(vertex_index) vertexIndex : u32
@@ -31,6 +34,10 @@ struct VSOutput {
 }
 
 @fragment fn fs(fsInput: VSOutput) -> @location(0) vec4f {
-  return textureSample(texture, tSampler, fsInput.texcoord);
+  if (useTextureArray == 0) {
+    return textureSample(texture, tSampler, fsInput.texcoord);
+  } else {
+    return textureSample(textureArray, tSampler, fsInput.texcoord, textureArrayIndex);
+  }
 }
 `;

@@ -32,7 +32,7 @@ export class Sphere {
         let delta = b * b - a * c;
         
         if (delta < 0) {  // No solution
-          return IntersectionResult(false, 0, vec3f(0));
+          return IntersectionResult(false, 0, vec3f(0), vec2f(0));
         }
       
         // One or two solutions, take the closest (positive) intersection
@@ -43,7 +43,7 @@ export class Sphere {
         let tMax = (-b + sqrtDelta) / a;
       
         if (tMax < 0) {  // All intersection points are behind the origin of the ray
-          return IntersectionResult(false, 0, vec3f(0));
+          return IntersectionResult(false, 0, vec3f(0), vec2f(0));
         }
       
         // tMax >= 0
@@ -58,7 +58,7 @@ export class Sphere {
           ray.origin.z + t * ray.direction.z,
         );
         
-        return IntersectionResult(true, t, intersectionPoint);
+        return IntersectionResult(true, t, intersectionPoint, vec2f(0));
       }
     `;
   }

@@ -1,24 +1,39 @@
-import type { Color } from 'three';
+import { Color, Vector2 } from 'three';
 import { MATERIAL_TYPE, Material } from './material';
+import { intBitsToFloat } from '$lib/utils/intBitsToFloat';
 
 export class Diffuse extends Material {
   private color: Color;
 
-  constructor(color: Color) {
+  constructor(color: Color, map?: HTMLImageElement) {
     super();
     this.type = MATERIAL_TYPE.DIFFUSE;
     this.color = color;
-    this.offsetCount = 4;
+    this.offsetCount = 6;
+
+    this.texturesLocation.map = new Vector2(-1, -1);
+    if (map) {
+      this.textures.map = map;
+    }
   }
 
   getFloatsArray(): number[] {
-    return [this.type, this.color.r, this.color.g, this.color.b];
+    return [
+      this.type,
+      this.color.r,
+      this.color.g,
+      this.color.b,
+      // we'll store integers as floats and then bitcast them back into ints
+      intBitsToFloat(this.texturesLocation.map.x),
+      intBitsToFloat(this.texturesLocation.map.y)
+    ];
   }
 
   static shaderStruct(): string {
     return /* wgsl */ `
       struct Diffuse {
-        color: vec3f
+        color: vec3f,
+        mapLocation: vec2i
       }
     `;
   }
@@ -31,6 +46,10 @@ export class Diffuse extends Material {
           materialsData[offset + 1],
           materialsData[offset + 2],
           materialsData[offset + 3],
+        );
+        diffuse.mapLocation = vec2i(
+          bitcast<i32>(materialsData[offset + 4]),
+          bitcast<i32>(materialsData[offset + 5]),
         );
         return diffuse;
       } 
@@ -116,8 +135,35 @@ export class Diffuse extends Material {
         let hitPoint = ires.hitPoint;
         let material: Diffuse = createDiffuse(ires.triangle.materialOffset);
 
-        let color = material.color;
-    
+        var color = material.color;
+
+        if (material.mapLocation.x > -1) {
+          let resolution = material.mapLocation.x;
+          var texel: vec4f;
+          if (resolution == 0) {
+            let indices = vec2u(
+              u32(ires.uv.x * 128.0),
+              u32(ires.uv.y * 128.0),
+            );
+            texel = textureLoad(textures128, indices, material.mapLocation.y, 0);
+          }
+          if (resolution == 1) {
+            let indices = vec2u(
+              u32(ires.uv.x * 512.0),
+              u32(ires.uv.y * 512.0),
+            );
+            texel = textureLoad(textures512, indices, material.mapLocation.y, 0);
+          }
+          if (resolution == 2) {
+            let indices = vec2u(
+              u32(ires.uv.x * 1024),
+              u32(ires.uv.y * 1024),
+            );
+            texel = textureLoad(textures1024, indices, material.mapLocation.y, 0);
+          }
+          color *= texel.xyz;
+        }
+
         var N = ires.triangle.normal;
         if (dot(N, (*ray).direction) > 0) {
           N = -N;

@@ -1,3 +1,5 @@
+import { Vector2 } from 'three';
+
 export const MATERIAL_TYPE = {
   DIFFUSE: 0,
   EMISSIVE: 1,
@@ -8,6 +10,8 @@ export const MATERIAL_TYPE = {
 
 export class Material {
   public offsetCount: number;
+  public textures: Record<string, HTMLImageElement> = {};
+  public texturesLocation: Record<string, Vector2> = {};
 
   protected type: number;
 

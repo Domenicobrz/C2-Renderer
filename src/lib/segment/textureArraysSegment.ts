@@ -1,9 +1,10 @@
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
-import { TextureLoader, type Vector2 } from 'three';
+import { TextureLoader, Vector2 } from 'three';
 import { renderTextureShader } from '$lib/shaders/renderTextureShader';
 import { globals } from '$lib/C2';
 import { textureArraysSegmentShader } from '$lib/shaders/textureArraysShader';
 import type { C2Scene } from '$lib/createScene';
+import type { Material } from '$lib/materials/Material';
 
 export class TextureArraysSegment {
   // private fields
@@ -11,9 +12,13 @@ export class TextureArraysSegment {
   private context: GPUCanvasContext;
   private pipeline: GPURenderPipeline;
 
-  private sampler: GPUSampler;
+  private renderSampler: GPUSampler;
   private bindGroup0: GPUBindGroup | null = null;
-  public textures512: GPUTexture | null = null;
+
+  public sampler: GPUSampler;
+  public textures128: GPUTexture;
+  public textures512: GPUTexture;
+  public textures1024: GPUTexture;
 
   constructor() {
     this.context = globals.context;
@@ -37,37 +42,113 @@ export class TextureArraysSegment {
       }
     });
 
+    this.renderSampler = this.device.createSampler({
+      addressModeU: 'repeat',
+      addressModeV: 'repeat',
+      magFilter: 'linear',
+      minFilter: 'linear'
+    });
+
     this.sampler = this.device.createSampler({
       addressModeU: 'repeat',
       addressModeV: 'repeat',
       magFilter: 'linear',
       minFilter: 'linear'
     });
+
+    this.textures128 = this.device.createTexture({
+      label: 'dummy texture array segment 128 texture',
+      size: [1, 1, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING
+    });
+    this.textures512 = this.device.createTexture({
+      label: 'dummy texture array segment 512 texture',
+      size: [1, 1, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING
+    });
+    this.textures1024 = this.device.createTexture({
+      label: 'dummy texture array segment 1024 texture',
+      size: [1, 1, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING
+    });
   }
 
-  async updateScene(scene: C2Scene) {
-    let threeTextures = [
-      await new TextureLoader().loadAsync('test.png'),
-      await new TextureLoader().loadAsync('favicon.png')
-    ];
+  update(materials: Material[]) {
+    let textures128count = 0;
+    let images128 = [];
+    let textures512count = 0;
+    let images512 = [];
+    let textures1024count = 0;
+    let images1024 = [];
 
-    const textures512count = threeTextures.length;
+    for (let i = 0; i < materials.length; i++) {
+      let material = materials[i];
+      for (let tname in material.textures) {
+        let t = material.textures[tname];
+        let dim = Math.max(t.width, t.height);
 
-    this.textures512 = this.device.createTexture({
-      label: 'texture array segment 512 texture',
-      size: [512, 512, textures512count],
-      format: 'rgba8unorm',
-      usage:
-        GPUTextureUsage.RENDER_ATTACHMENT |
-        GPUTextureUsage.TEXTURE_BINDING |
-        GPUTextureUsage.COPY_DST
-    });
+        if (dim <= 128) {
+          material.texturesLocation[tname] = new Vector2(0, textures128count);
+          textures128count++;
+          images128.push(t);
+        } else if (dim <= 512) {
+          material.texturesLocation[tname] = new Vector2(1, textures512count);
+          textures512count++;
+          images512.push(t);
+        } else {
+          material.texturesLocation[tname] = new Vector2(2, textures1024count);
+          textures1024count++;
+          images1024.push(t);
+        }
+      }
+    }
 
-    for (let i = 0; i < textures512count; i++) {
-      let htmlImg = threeTextures[i].source.data as HTMLImageElement;
+    if (textures128count > 0) {
+      this.textures128 = this.device.createTexture({
+        label: 'texture array segment 128 texture',
+        size: [128, 128, textures128count],
+        format: 'rgba8unorm',
+        usage:
+          GPUTextureUsage.RENDER_ATTACHMENT |
+          GPUTextureUsage.TEXTURE_BINDING |
+          GPUTextureUsage.COPY_DST
+      });
+    }
 
+    if (textures512count > 0) {
+      this.textures512 = this.device.createTexture({
+        label: 'texture array segment 512 texture',
+        size: [512, 512, textures512count],
+        format: 'rgba8unorm',
+        usage:
+          GPUTextureUsage.RENDER_ATTACHMENT |
+          GPUTextureUsage.TEXTURE_BINDING |
+          GPUTextureUsage.COPY_DST
+      });
+    }
+
+    if (textures1024count > 0) {
+      this.textures1024 = this.device.createTexture({
+        label: 'texture array segment 1024 texture',
+        size: [1024, 1024, textures1024count],
+        format: 'rgba8unorm',
+        usage:
+          GPUTextureUsage.RENDER_ATTACHMENT |
+          GPUTextureUsage.TEXTURE_BINDING |
+          GPUTextureUsage.COPY_DST
+      });
+    }
+
+    const renderTextureInsideTextureArray = (
+      size: '128' | '512' | '1024',
+      arrayIndex: number,
+      image: HTMLImageElement
+    ) => {
       const texture = this.device.createTexture({
-        size: [htmlImg.width, htmlImg.height],
+        size: [image.width, image.height],
         format: 'rgba8unorm',
         usage:
           GPUTextureUsage.RENDER_ATTACHMENT |
@@ -76,34 +157,40 @@ export class TextureArraysSegment {
       });
 
       this.device.queue.copyExternalImageToTexture(
-        { source: htmlImg, flipY: false },
+        { source: image, flipY: false },
         { texture },
-        { width: htmlImg.width, height: htmlImg.height }
+        { width: image.width, height: image.height }
       );
 
       this.bindGroup0 = this.device.createBindGroup({
         layout: this.pipeline.getBindGroupLayout(0),
         entries: [
-          { binding: 0, resource: this.sampler },
+          { binding: 0, resource: this.renderSampler },
           { binding: 1, resource: texture.createView() }
         ]
       });
 
-      this.render(this.textures512, i);
-    }
-  }
+      let textureArray = this.textures128;
+      if (size == '512') {
+        textureArray = this.textures512;
+      }
+      if (size == '1024') {
+        textureArray = this.textures1024;
+      }
 
-  // setTexture(texture: GPUTexture) {
-  //   // we need to re-create the bindgroup since workBuffer
-  //   // is a new buffer
-  //   this.bindGroup0 = this.device.createBindGroup({
-  //     layout: this.pipeline.getBindGroupLayout(0),
-  //     entries: [
-  //       { binding: 0, resource: sampler },
-  //       { binding: 1, resource: texture.createView() }
-  //     ]
-  //   });
-  // }
+      this.render(textureArray, arrayIndex);
+    };
+
+    images128.forEach((image, index) => {
+      renderTextureInsideTextureArray('128', index, image);
+    });
+    images512.forEach((image, index) => {
+      renderTextureInsideTextureArray('512', index, image);
+    });
+    images1024.forEach((image, index) => {
+      renderTextureInsideTextureArray('1024', index, image);
+    });
+  }
 
   render(arrayTexture: GPUTexture, layerIndex: number) {
     if (!this.bindGroup0) {

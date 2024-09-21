@@ -157,6 +157,7 @@ export class Triangle {
         hit: bool,
         t: f32,
         hitPoint: vec3f,
+        uv: vec2f,
       }
 
       // this layout saves some bytes because of padding
@@ -206,11 +207,11 @@ export class Triangle {
       
         if (CULLING) {
           if (det < 0.000001) {
-            return IntersectionResult(false, 0, vec3f(0));
+            return IntersectionResult(false, 0, vec3f(0), vec2f(0));
           }
         } else {
           if (abs(det) < 0.000001) {
-            return IntersectionResult(false, 0, vec3f(0));
+            return IntersectionResult(false, 0, vec3f(0), vec2f(0));
           }
         }
       
@@ -219,25 +220,43 @@ export class Triangle {
         let u = dot(tvec, pvec) * invDet;
       
         if (u < 0 || u > 1) {
-          return IntersectionResult(false, 0, vec3f(0));
+          return IntersectionResult(false, 0, vec3f(0), vec2f(0));
         }
       
         let qvec = cross(tvec, v0v1);
         let v = dot(ray.direction, qvec) * invDet;
       
         if (v < 0 || u + v > 1) {
-          return IntersectionResult(false, 0, vec3f(0));
+          return IntersectionResult(false, 0, vec3f(0), vec2f(0));
         }
       
         let t = dot(v0v2, qvec) * invDet;
 
         if (t < 0) {
-          return IntersectionResult(false, 0, vec3f(0));
+          return IntersectionResult(false, 0, vec3f(0), vec2f(0));
         }
 
         let hitPoint = ray.origin + t * ray.direction;
+        
+        let w = 1.0 - u - v;
+        // let uv0 = triangle.uv0;
+        // let uv1 = triangle.uv1;
+        // let uv2 = triangle.uv2;
+        // let hitUV = uv0 * w + uv1 * u + uv2 * v;
 
-        return IntersectionResult(true, t, hitPoint);
+        let rot = camera.rotMatrix;
+        let trot = transpose(camera.rotMatrix);
+        let z0 = ((triangle.v0 - camera.position) * rot).z;
+        let z1 = ((triangle.v1 - camera.position) * rot).z;
+        let z2 = ((triangle.v2 - camera.position) * rot).z;
+        let uv0_corrected = triangle.uv0 / z0;
+        let uv1_corrected = triangle.uv1 / z1;
+        let uv2_corrected = triangle.uv2 / z2;
+        let hitUV_corrected = uv0_corrected * w + uv1_corrected * u + uv2_corrected * v;
+        let z_interpolated = 1.0 / (w / z0 + u / z1 + v / z2); // Interpolated depth
+        let hitUV = hitUV_corrected * z_interpolated;
+        
+        return IntersectionResult(true, t, hitPoint, hitUV);
       }
     `;
   }

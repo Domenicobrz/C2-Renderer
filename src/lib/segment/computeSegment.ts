@@ -11,6 +11,7 @@ import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
 import { globals } from '$lib/C2';
+import { TextureArraysSegment } from './textureArraysSegment';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -21,6 +22,8 @@ export class ComputeSegment {
   private bindGroupLayouts: GPUBindGroupLayout[];
   private layout: GPUPipelineLayout;
   private configManager = configManager;
+
+  private textureArraySegment: TextureArraysSegment = new TextureArraysSegment();
 
   private bindGroup0: GPUBindGroup | null = null;
   private bindGroup1: GPUBindGroup | null = null;
@@ -116,6 +119,32 @@ export class ComputeSegment {
             binding: 6,
             visibility: GPUShaderStage.COMPUTE,
             buffer: { type: 'uniform' }
+          },
+          {
+            binding: 7,
+            visibility: GPUShaderStage.COMPUTE,
+            sampler: {}
+          },
+          {
+            binding: 8,
+            visibility: GPUShaderStage.COMPUTE,
+            texture: {
+              viewDimension: '2d-array'
+            }
+          },
+          {
+            binding: 9,
+            visibility: GPUShaderStage.COMPUTE,
+            texture: {
+              viewDimension: '2d-array'
+            }
+          },
+          {
+            binding: 10,
+            visibility: GPUShaderStage.COMPUTE,
+            texture: {
+              viewDimension: '2d-array'
+            }
           }
         ]
       })
@@ -283,6 +312,11 @@ export class ComputeSegment {
     this.requestShaderCompilation = true;
     this.scene = scene;
 
+    // TODO: this function might take really long to complete,
+    // we may want to async this and do it over a set of frames
+    // rather than all at once
+    this.textureArraySegment.update(scene.materials);
+
     if (this.camera) {
       this.camera.dispose();
     }
@@ -371,7 +405,20 @@ export class ComputeSegment {
         { binding: 3, resource: { buffer: this.lightsCDFBuffer! } },
         { binding: 4, resource: { buffer: this.envmapPC2DBuffer! } },
         { binding: 5, resource: envmapTexture.createView() },
-        { binding: 6, resource: { buffer: this.envmapInfoBuffer } }
+        { binding: 6, resource: { buffer: this.envmapInfoBuffer } },
+        { binding: 7, resource: this.textureArraySegment.sampler },
+        {
+          binding: 8,
+          resource: this.textureArraySegment.textures128.createView({ dimension: '2d-array' })
+        },
+        {
+          binding: 9,
+          resource: this.textureArraySegment.textures512.createView({ dimension: '2d-array' })
+        },
+        {
+          binding: 10,
+          resource: this.textureArraySegment.textures1024.createView({ dimension: '2d-array' })
+        }
       ]
     });
   }

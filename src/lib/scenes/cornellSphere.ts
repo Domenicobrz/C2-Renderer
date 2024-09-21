@@ -103,7 +103,12 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 0);
 
-  triangles = [...triangles, ...meshToTriangles(mesh, 11)];
+  let image = (await new TextureLoader().loadAsync('scene-assets/textures/checker-map.png')).source
+    .data;
+  let mat = new Diffuse(new Color(0.95, 0.95, 0.95), image as HTMLImageElement);
+  materials.push(mat);
+
+  triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
 
   // create & set camera
   const camera = new Orbit();

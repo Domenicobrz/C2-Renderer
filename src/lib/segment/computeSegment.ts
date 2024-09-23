@@ -123,7 +123,9 @@ export class ComputeSegment {
           {
             binding: 7,
             visibility: GPUShaderStage.COMPUTE,
-            sampler: {}
+            texture: {
+              viewDimension: '2d-array'
+            }
           },
           {
             binding: 8,
@@ -134,13 +136,6 @@ export class ComputeSegment {
           },
           {
             binding: 9,
-            visibility: GPUShaderStage.COMPUTE,
-            texture: {
-              viewDimension: '2d-array'
-            }
-          },
-          {
-            binding: 10,
             visibility: GPUShaderStage.COMPUTE,
             texture: {
               viewDimension: '2d-array'
@@ -406,17 +401,16 @@ export class ComputeSegment {
         { binding: 4, resource: { buffer: this.envmapPC2DBuffer! } },
         { binding: 5, resource: envmapTexture.createView() },
         { binding: 6, resource: { buffer: this.envmapInfoBuffer } },
-        { binding: 7, resource: this.textureArraySegment.sampler },
         {
-          binding: 8,
+          binding: 7,
           resource: this.textureArraySegment.textures128.createView({ dimension: '2d-array' })
         },
         {
-          binding: 9,
+          binding: 8,
           resource: this.textureArraySegment.textures512.createView({ dimension: '2d-array' })
         },
         {
-          binding: 10,
+          binding: 9,
           resource: this.textureArraySegment.textures1024.createView({ dimension: '2d-array' })
         }
       ]

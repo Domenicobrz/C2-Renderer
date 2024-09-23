@@ -18,6 +18,7 @@ import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
 import { Plane } from '$lib/primitives/plane';
 import { misPart } from './parts/mis';
+import { texturePart } from './parts/texture';
 
 export function getComputeShader() {
   return /* wgsl */ `
@@ -29,6 +30,7 @@ ${randomPart}
 ${mathUtilsPart}
 ${pbrtMathUtilsPart}
 ${misPart}
+${texturePart}
 ${TileSequence.shaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
@@ -84,10 +86,9 @@ ${Plane.shaderMethods()}
 @group(3) @binding(4) var<storage> envmapPC2D: PC2D;
 @group(3) @binding(5) var envmapTexture: texture_2d<f32>;
 @group(3) @binding(6) var<uniform> envmapInfo: EnvmapInfo;
-@group(3) @binding(7) var tSampler: sampler;
-@group(3) @binding(8) var textures128: texture_2d_array<f32>;
-@group(3) @binding(9) var textures512: texture_2d_array<f32>;
-@group(3) @binding(10) var textures1024: texture_2d_array<f32>;
+@group(3) @binding(7) var textures128: texture_2d_array<f32>;
+@group(3) @binding(8) var textures512: texture_2d_array<f32>;
+@group(3) @binding(9) var textures1024: texture_2d_array<f32>;
 
 struct DebugInfo {
   tid: vec3u,

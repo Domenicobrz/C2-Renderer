@@ -136,32 +136,8 @@ export class Diffuse extends Material {
         let material: Diffuse = createDiffuse(ires.triangle.materialOffset);
 
         var color = material.color;
-
         if (material.mapLocation.x > -1) {
-          let resolution = material.mapLocation.x;
-          var texel: vec4f;
-          if (resolution == 0) {
-            let indices = vec2u(
-              u32(ires.uv.x * 128.0),
-              u32(ires.uv.y * 128.0),
-            );
-            texel = textureLoad(textures128, indices, material.mapLocation.y, 0);
-          }
-          if (resolution == 1) {
-            let indices = vec2u(
-              u32(ires.uv.x * 512.0),
-              u32(ires.uv.y * 512.0),
-            );
-            texel = textureLoad(textures512, indices, material.mapLocation.y, 0);
-          }
-          if (resolution == 2) {
-            let indices = vec2u(
-              u32(ires.uv.x * 1024),
-              u32(ires.uv.y * 1024),
-            );
-            texel = textureLoad(textures1024, indices, material.mapLocation.y, 0);
-          }
-          color *= texel.xyz;
+          color *= getTexelFromTextureArrays(material.mapLocation, ires.uv).xyz;
         }
 
         var N = ires.triangle.normal;

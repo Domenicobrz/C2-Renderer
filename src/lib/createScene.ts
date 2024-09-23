@@ -6,6 +6,7 @@ import { bokehTestScene } from './scenes/bokehTest';
 import { cornellSphereScene } from './scenes/cornellSphere';
 import { dofTestScene } from './scenes/dofTest';
 import { envmapHorseScene } from './scenes/envmapHorse';
+import { horseStatueScene } from './scenes/horseStatue';
 import { planeAndSphere } from './scenes/planeAndSphere';
 
 export type C2Scene = {

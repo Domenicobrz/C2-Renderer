@@ -1,34 +1,58 @@
-import type { Color } from 'three';
+import { Vector2, type Color } from 'three';
 import { MATERIAL_TYPE, Material } from './material';
+import { intBitsToFloat } from '$lib/utils/intBitsToFloat';
 
 // from: https://www.pbr-book.org/4ed/Reflection_Models/Roughness_Using_Microfacet_Theory
 export class Dielectric extends Material {
-  private color: Color;
+  private absorption: Color;
   private ax: number;
   private ay: number;
   private eta: number;
 
-  constructor(color: Color, ax: number, ay: number, eta: number) {
+  constructor(
+    absorption: Color,
+    ax: number,
+    ay: number,
+    eta: number,
+    absorptionMap?: HTMLImageElement
+  ) {
     super();
     this.type = MATERIAL_TYPE.DIELECTRIC;
-    this.color = color;
+    this.absorption = absorption;
     this.ax = ax;
     this.ay = ay;
     this.eta = eta;
-    this.offsetCount = 7;
+    this.offsetCount = 9;
+
+    this.texturesLocation.absorptionMap = new Vector2(-1, -1);
+    if (absorptionMap) {
+      this.textures.absorptionMap = absorptionMap;
+    }
   }
 
   getFloatsArray(): number[] {
-    return [this.type, this.color.r, this.color.g, this.color.b, this.ax, this.ay, this.eta];
+    return [
+      this.type,
+      this.absorption.r,
+      this.absorption.g,
+      this.absorption.b,
+      this.ax,
+      this.ay,
+      this.eta,
+      // we'll store integers as floats and then bitcast them back into ints
+      intBitsToFloat(this.texturesLocation.absorptionMap.x),
+      intBitsToFloat(this.texturesLocation.absorptionMap.y)
+    ];
   }
 
   static shaderStruct(): string {
     return /* wgsl */ `
       struct DIELECTRIC {
-        color: vec3f,
+        absorption: vec3f,
         ax: f32,
         ay: f32,
         eta: f32,
+        absorptionMapLocation: vec2i,
       }
     `;
   }
@@ -37,7 +61,7 @@ export class Dielectric extends Material {
     return /* wgsl */ `
       fn createDielectric(offset: u32) -> DIELECTRIC {
         var d: DIELECTRIC;
-        d.color = vec3f(
+        d.absorption = vec3f(
           materialsData[offset + 1],
           materialsData[offset + 2],
           materialsData[offset + 3],
@@ -45,6 +69,10 @@ export class Dielectric extends Material {
         d.ax = materialsData[offset + 4];
         d.ay = materialsData[offset + 5];
         d.eta = materialsData[offset + 6];
+        d.absorptionMapLocation = vec2i(
+          bitcast<i32>(materialsData[offset + 7]),
+          bitcast<i32>(materialsData[offset + 8]),
+        );
         return d;
       } 
     `;
@@ -126,7 +154,6 @@ export class Dielectric extends Material {
       fn Dielectric_Sample_f(
         wo:  vec3f,
         material: DIELECTRIC,
-        color: vec3f,
         rands: vec4f,
         wi:  ptr<function, vec3f>,
         pdf: ptr<function, f32>,
@@ -234,7 +261,7 @@ export class Dielectric extends Material {
         }
       }
 
-      fn Dielectric_f(wo: vec3f, wi: vec3f, material: DIELECTRIC, color: vec3f) -> vec3f {
+      fn Dielectric_f(wo: vec3f, wi: vec3f, material: DIELECTRIC) -> vec3f {
         if (material.eta == 1.0 || (material.ax < 0.0005 && material.ay < 0.0005)) {
           // TODO: use correct dirac-delta values for perfect specular BRDF
           return vec3f(1.0);
@@ -307,7 +334,7 @@ export class Dielectric extends Material {
         pdf: ptr<function, f32>,
         misWeight: ptr<function, f32>,
       ) {
-        Dielectric_Sample_f(wo, material, material.color, rands, wi, pdf, brdf);
+        Dielectric_Sample_f(wo, material, rands, wi, pdf, brdf);
         
         let newDir = normalize(TBN * *wi);
         let lightSamplePdf = getLightPDF(Ray((*worldSpaceRay).origin, newDir));
@@ -335,7 +362,7 @@ export class Dielectric extends Material {
         *wi = TBNinverse * lightSample.direction;
 
         var brdfSamplePdf = Dielectric_PDF(wo, *wi, material);
-        *brdf = Dielectric_f(wo, *wi, material, material.color);
+        *brdf = Dielectric_f(wo, *wi, material);
 
         if (
           brdfSamplePdf == 0.0 ||
@@ -364,7 +391,10 @@ export class Dielectric extends Material {
         let hitPoint = ires.hitPoint;
         let material: DIELECTRIC = createDielectric(ires.triangle.materialOffset);
 
-        let color = material.color;
+        var absorption = material.absorption;
+        if (material.absorptionMapLocation.x > -1) {
+          absorption *= getTexelFromTextureArrays(material.absorptionMapLocation, ires.uv).xyz;
+        }
 
         var N = ires.triangle.normal;     
         var isInsideMedium = dot(N, (*ray).direction) > 0;
@@ -372,9 +402,9 @@ export class Dielectric extends Material {
         // beer-lambert absorption 
         if (isInsideMedium) {
           *reflectance *= vec3f(
-            exp(-color.x * ires.t), 
-            exp(-color.y * ires.t), 
-            exp(-color.z * ires.t), 
+            exp(-absorption.x * ires.t), 
+            exp(-absorption.y * ires.t), 
+            exp(-absorption.z * ires.t), 
           );
         }
         

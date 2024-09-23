@@ -14,7 +14,8 @@ export class Dielectric extends Material {
     ax: number,
     ay: number,
     eta: number,
-    absorptionMap?: HTMLImageElement
+    absorptionMap?: HTMLImageElement,
+    roughnessMap?: HTMLImageElement
   ) {
     super();
     this.type = MATERIAL_TYPE.DIELECTRIC;
@@ -22,11 +23,15 @@ export class Dielectric extends Material {
     this.ax = ax;
     this.ay = ay;
     this.eta = eta;
-    this.offsetCount = 9;
+    this.offsetCount = 11;
 
     this.texturesLocation.absorptionMap = new Vector2(-1, -1);
+    this.texturesLocation.roughnessMap = new Vector2(-1, -1);
     if (absorptionMap) {
       this.textures.absorptionMap = absorptionMap;
+    }
+    if (roughnessMap) {
+      this.textures.roughnessMap = roughnessMap;
     }
   }
 
@@ -41,7 +46,9 @@ export class Dielectric extends Material {
       this.eta,
       // we'll store integers as floats and then bitcast them back into ints
       intBitsToFloat(this.texturesLocation.absorptionMap.x),
-      intBitsToFloat(this.texturesLocation.absorptionMap.y)
+      intBitsToFloat(this.texturesLocation.absorptionMap.y),
+      intBitsToFloat(this.texturesLocation.roughnessMap.x),
+      intBitsToFloat(this.texturesLocation.roughnessMap.y)
     ];
   }
 
@@ -53,6 +60,7 @@ export class Dielectric extends Material {
         ay: f32,
         eta: f32,
         absorptionMapLocation: vec2i,
+        roughnessMapLocation: vec2i,
       }
     `;
   }
@@ -72,6 +80,10 @@ export class Dielectric extends Material {
         d.absorptionMapLocation = vec2i(
           bitcast<i32>(materialsData[offset + 7]),
           bitcast<i32>(materialsData[offset + 8]),
+        );
+        d.roughnessMapLocation = vec2i(
+          bitcast<i32>(materialsData[offset + 9]),
+          bitcast<i32>(materialsData[offset + 10]),
         );
         return d;
       } 
@@ -389,13 +401,21 @@ export class Dielectric extends Material {
         i: i32
       ) {
         let hitPoint = ires.hitPoint;
-        let material: DIELECTRIC = createDielectric(ires.triangle.materialOffset);
+        var material: DIELECTRIC = createDielectric(ires.triangle.materialOffset);
 
         var absorption = material.absorption;
         // using a texture here is non-sensical from a PBR perspective,
         // however it can be desireable from an artistic point of view
         if (material.absorptionMapLocation.x > -1) {
           absorption *= getTexelFromTextureArrays(material.absorptionMapLocation, ires.uv).xyz;
+        }
+
+        if (material.roughnessMapLocation.x > -1) {
+          let roughness = getTexelFromTextureArrays(
+            material.roughnessMapLocation, ires.uv
+          ).xy;
+          material.ax *= max(roughness.x, 0.0001);
+          material.ay *= max(roughness.y, 0.0001);
         }
 
         var N = ires.triangle.normal;     

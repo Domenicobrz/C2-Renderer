@@ -108,7 +108,14 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   let roughnessImage = (
     await new TextureLoader().loadAsync('scene-assets/textures/roughness-map.png')
   ).source.data;
-  let mat = new Dielectric(new Color(1, 1, 1), 0.01, 0.01, 1.6, roughnessImage as HTMLImageElement);
+  let mat = new Dielectric(
+    new Color(0, 0, 0),
+    0.1,
+    0.1,
+    1.6
+    // roughnessImage as HTMLImageElement
+    // roughnessImage as HTMLImageElement
+  );
   materials.push(mat);
 
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];

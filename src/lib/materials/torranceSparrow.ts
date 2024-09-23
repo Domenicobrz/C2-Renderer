@@ -357,7 +357,7 @@ export class TorranceSparrow extends Material {
           );
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
-          *reflectance *= color * brdf * (1 / pdf) * max(dot(N, (*ray).direction), 0.0);
+          *reflectance *= brdf * (1 / pdf) * max(dot(N, (*ray).direction), 0.0);
         }
 
         if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
@@ -374,7 +374,7 @@ export class TorranceSparrow extends Material {
           }
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
-          *reflectance *= color * brdf * (misWeight / pdf) * max(dot(N, (*ray).direction), 0.0);
+          *reflectance *= brdf * (misWeight / pdf) * max(dot(N, (*ray).direction), 0.0);
         }
 
         if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
@@ -399,8 +399,8 @@ export class TorranceSparrow extends Material {
           lightSampleWi = normalize(TBN * lightSampleWi);
           // light contribution, we have to multiply by *reflectance to account for reduced reflectance
           // caused by previous light-bounces. You did miss this term when first implementing MIS here
-          *rad += color * *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * max(dot(N, lightSampleWi), 0.0);
-          *reflectance *= color * brdfSampleBrdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);
+          *rad += *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * max(dot(N, lightSampleWi), 0.0);
+          *reflectance *= brdfSampleBrdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);
         }
       } 
     `;

@@ -110,11 +110,11 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   ).source.data;
   // let mat = new Diffuse(new Color(0.95, 0.95, 0.95), image as HTMLImageElement);
   let mat = new TorranceSparrow(
-    new Color(0.975, 0.975, 0.975),
+    new Color(0.975, 0.075, 0.075),
     0.91,
-    0.91,
-    image as HTMLImageElement,
-    roughnessImage as HTMLImageElement
+    0.91
+    // image as HTMLImageElement,
+    // roughnessImage as HTMLImageElement
   );
   materials.push(mat);
 

@@ -392,6 +392,8 @@ export class Dielectric extends Material {
         let material: DIELECTRIC = createDielectric(ires.triangle.materialOffset);
 
         var absorption = material.absorption;
+        // using a texture here is non-sensical from a PBR perspective,
+        // however it can be desireable from an artistic point of view
         if (material.absorptionMapLocation.x > -1) {
           absorption *= getTexelFromTextureArrays(material.absorptionMapLocation, ires.uv).xyz;
         }

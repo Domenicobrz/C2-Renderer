@@ -105,7 +105,17 @@ export async function cornellSphereScene(): Promise<C2Scene> {
 
   let image = (await new TextureLoader().loadAsync('scene-assets/textures/checker-map.png')).source
     .data;
-  let mat = new Diffuse(new Color(0.95, 0.95, 0.95), image as HTMLImageElement);
+  let roughnessImage = (
+    await new TextureLoader().loadAsync('scene-assets/textures/roughness-map-2.png')
+  ).source.data;
+  // let mat = new Diffuse(new Color(0.95, 0.95, 0.95), image as HTMLImageElement);
+  let mat = new TorranceSparrow(
+    new Color(0.975, 0.975, 0.975),
+    0.91,
+    0.91,
+    image as HTMLImageElement,
+    roughnessImage as HTMLImageElement
+  );
   materials.push(mat);
 
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];

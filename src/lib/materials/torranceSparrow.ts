@@ -1,5 +1,6 @@
-import type { Color } from 'three';
+import { Vector2, type Color } from 'three';
 import { MATERIAL_TYPE, Material } from './material';
+import { intBitsToFloat } from '$lib/utils/intBitsToFloat';
 
 // from: https://www.pbr-book.org/4ed/Reflection_Models/Roughness_Using_Microfacet_Theory
 export class TorranceSparrow extends Material {
@@ -7,17 +8,44 @@ export class TorranceSparrow extends Material {
   private ax: number;
   private ay: number;
 
-  constructor(color: Color, ax: number, ay: number) {
+  constructor(
+    color: Color,
+    ax: number,
+    ay: number,
+    map?: HTMLImageElement,
+    roughnessMap?: HTMLImageElement
+  ) {
     super();
     this.type = MATERIAL_TYPE.TORRANCE_SPARROW;
     this.color = color;
     this.ax = ax;
     this.ay = ay;
-    this.offsetCount = 6;
+    this.offsetCount = 10;
+
+    this.texturesLocation.map = new Vector2(-1, -1);
+    this.texturesLocation.roughnessMap = new Vector2(-1, -1);
+    if (map) {
+      this.textures.map = map;
+    }
+    if (roughnessMap) {
+      this.textures.roughnessMap = roughnessMap;
+    }
   }
 
   getFloatsArray(): number[] {
-    return [this.type, this.color.r, this.color.g, this.color.b, this.ax, this.ay];
+    return [
+      this.type,
+      this.color.r,
+      this.color.g,
+      this.color.b,
+      this.ax,
+      this.ay,
+      // we'll store integers as floats and then bitcast them back into ints
+      intBitsToFloat(this.texturesLocation.map.x),
+      intBitsToFloat(this.texturesLocation.map.y),
+      intBitsToFloat(this.texturesLocation.roughnessMap.x),
+      intBitsToFloat(this.texturesLocation.roughnessMap.y)
+    ];
   }
 
   static shaderStruct(): string {
@@ -26,6 +54,8 @@ export class TorranceSparrow extends Material {
         color: vec3f,
         ax: f32,
         ay: f32,
+        mapLocation: vec2i,
+        roughnessMapLocation: vec2i,
       }
     `;
   }
@@ -41,6 +71,14 @@ export class TorranceSparrow extends Material {
         );
         ts.ax = materialsData[offset + 4];
         ts.ay = materialsData[offset + 5];
+        ts.mapLocation = vec2i(
+          bitcast<i32>(materialsData[offset + 6]),
+          bitcast<i32>(materialsData[offset + 7]),
+        );
+        ts.roughnessMapLocation = vec2i(
+          bitcast<i32>(materialsData[offset + 8]),
+          bitcast<i32>(materialsData[offset + 9]),
+        );
         return ts;
       } 
     `;
@@ -260,9 +298,17 @@ export class TorranceSparrow extends Material {
         i: i32
       ) {
         let hitPoint = ires.hitPoint;
-        let material: TORRANCE_SPARROW = createTorranceSparrow(ires.triangle.materialOffset);
+        var material: TORRANCE_SPARROW = createTorranceSparrow(ires.triangle.materialOffset);
 
-        let color = material.color;
+        var color = material.color;
+        if (material.mapLocation.x > -1) {
+          color *= getTexelFromTextureArrays(material.mapLocation, ires.uv).xyz;
+        }
+        if (material.roughnessMapLocation.x > -1) {
+          let roughness = getTexelFromTextureArrays(material.roughnessMapLocation, ires.uv).xy;
+          material.ax *= max(roughness.x, 0.0001);
+          material.ay *= max(roughness.y, 0.0001);
+        }
 
         var N = ires.triangle.normal;
         if (dot(N, (*ray).direction) > 0) {

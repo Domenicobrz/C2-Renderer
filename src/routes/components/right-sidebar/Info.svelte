@@ -10,6 +10,7 @@
     >{$samplesInfo.count == $samplesInfo.limit ? 0 : $samplesInfo.ms.toFixed(0)} ms</span
   >
 </p>
+<p>Click target: <span class="user-selectable">{$samplesInfo.clickTarget}</span></p>
 
 <style>
   p,
@@ -19,5 +20,9 @@
 
   p span {
     color: #aaa;
+  }
+
+  .user-selectable {
+    user-select: text;
   }
 </style>

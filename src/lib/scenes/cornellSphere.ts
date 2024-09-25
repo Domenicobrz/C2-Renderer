@@ -1,4 +1,4 @@
-import { Color, Mesh, SphereGeometry, TextureLoader, Vector2, Vector3 } from 'three';
+import { Color, Mesh, PlaneGeometry, SphereGeometry, TextureLoader, Vector2, Vector3 } from 'three';
 import { Diffuse } from '../materials/diffuse';
 import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';
@@ -17,7 +17,8 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     new Diffuse(new Color(0.95, 0.95, 0.95)),
     new Diffuse(new Color(1, 0.05, 0.05)),
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.125, 0.025),
-    new Emissive(new Color(1, 0.7, 0.5), 20),
+    // new Emissive(new Color(1, 0.7, 0.5), 20),
+    new Emissive(new Color(1, 1, 1), 10),
     new Diffuse(new Color(0.05, 1, 0.05)),
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.45, 0.45),
     new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.175, 0.175),
@@ -103,16 +104,19 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 0);
 
+  // let mesh = new Mesh(new PlaneGeometry(4, 4));
+  // mesh.position.set(0, 0, 2);
+  // // mesh.rotation.x = Math.PI * 0.2;
+  // // mesh.rotation.y = Math.PI;
+
   let image = (await new TextureLoader().loadAsync('scene-assets/textures/checker-map.png')).source
     .data;
-  let roughnessImage = (
-    await new TextureLoader().loadAsync('scene-assets/textures/roughness-map.png')
-  ).source.data;
-  let mat = new Dielectric(
-    new Color(0, 0, 0),
-    0.1,
-    0.1,
-    1.6
+  let bumpTest = (await new TextureLoader().loadAsync('scene-assets/textures/bump-test.png')).source
+    .data;
+  let mat = new Diffuse(
+    new Color(0.5, 0.5, 0.5),
+    undefined,
+    bumpTest
     // roughnessImage as HTMLImageElement
     // roughnessImage as HTMLImageElement
   );
@@ -125,8 +129,10 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   camera.set(new Vector3(0, 4, -10), new Vector3(0, 0, 0));
   camera.movementSpeed = 0.15;
 
-  camera.fov = 0.69;
-  camera.aperture = 0.25;
+  camera.fov = 0.4;
+  camera.aperture = 0;
+  // camera.fov = 0.69;
+  // camera.aperture = 0.25;
   camera.focusDistance = 9.53;
   camera.exposure = 1.85;
 

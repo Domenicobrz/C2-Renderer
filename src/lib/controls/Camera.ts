@@ -465,7 +465,10 @@ export class Camera {
           }
         }
 
+
         rd = normalize(camera.rotMatrix * normalize(focalPoint - originOffset));
+        deltaDirX = normalize(camera.rotMatrix * normalize(focalPoint - originOffset + vec3f(0.00001, 0.0, 0.0)));
+        deltaDirY = normalize(camera.rotMatrix * normalize(focalPoint - originOffset + vec3f(0.0, 0.00001, 0.0)));
       
         originOffset = camera.rotMatrix * originOffset;
         let ro = camera.position + originOffset;

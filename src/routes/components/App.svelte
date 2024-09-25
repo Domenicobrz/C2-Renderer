@@ -2,7 +2,7 @@
   import { Renderer } from '$lib/C2';
   import type { RendererInterface } from '$lib/C2';
   import { onMount } from 'svelte';
-  import { configOptions } from '../stores/main';
+  import { configOptions, samplesInfo } from '../stores/main';
   import Folder from './Folder.svelte';
   import LeftSidebar from './LeftSidebar.svelte';
   import Envmap from './right-sidebar/Envmap.svelte';
@@ -26,13 +26,22 @@
       console.error(error);
     }
   });
+
+  function onCanvasClick(e: MouseEvent & { currentTarget: EventTarget & HTMLCanvasElement }) {
+    $samplesInfo.clickTarget = `(${e.offsetX}, ${canvasHeight - e.offsetY})`;
+  }
 </script>
 
 <main>
   <LeftSidebar />
 
   <div class="canvas-container" bind:this={canvasContainerEl}>
-    <canvas width={canvasWidth || 1} height={canvasHeight || 1} bind:this={canvasRef} />
+    <canvas
+      width={canvasWidth || 1}
+      height={canvasHeight || 1}
+      bind:this={canvasRef}
+      on:click={onCanvasClick}
+    />
   </div>
 
   <div class="sidebar">

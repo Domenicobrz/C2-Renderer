@@ -1,4 +1,4 @@
-import { TextureLoader, Vector2 } from 'three';
+import { TextureLoader, Vector2, Vector3 } from 'three';
 import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
@@ -10,7 +10,6 @@ import { TileSequence } from './tile';
 import { RenderTextureSegment } from './segment/renderTextureSegment';
 import { PreviewSegment } from './segment/previewSegment';
 import { get } from 'svelte/store';
-import { TextureArraysSegment } from './segment/textureArraysSegment';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
@@ -67,7 +66,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   scene.camera.setCanvasContainer(canvas.parentElement as HTMLDivElement);
 
   computeSegment.updateScene(scene);
-  computeSegment.setDebugPixelTarget(400, 300);
+  computeSegment.setDebugPixelTarget(587, 390);
 
   renderSegment = new RenderSegment(context, presentationFormat);
   renderSegment.updateScene(scene);

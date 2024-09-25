@@ -19,6 +19,7 @@ import { Camera } from '$lib/controls/Camera';
 import { Plane } from '$lib/primitives/plane';
 import { misPart } from './parts/mis';
 import { texturePart } from './parts/texture';
+import { shadingNormalsPart } from './parts/shadingNormal';
 
 export function getComputeShader() {
   return /* wgsl */ `
@@ -31,6 +32,7 @@ ${mathUtilsPart}
 ${pbrtMathUtilsPart}
 ${misPart}
 ${texturePart}
+${shadingNormalsPart}
 ${TileSequence.shaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
@@ -110,6 +112,9 @@ fn debugLog(value: f32) {
 // maxBindingsPerBindGroup = 1000
 // maxSampledTexturesPerShaderStage = 16
 // maxTextureDimension3D = 2048
+
+var<private> deltaDirX = vec3f(0.0);
+var<private> deltaDirY = vec3f(0.0);
 
 @compute @workgroup_size(8, 8) fn computeSomething(
   @builtin(global_invocation_id) gid: vec3<u32>,

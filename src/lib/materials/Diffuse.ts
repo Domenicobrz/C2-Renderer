@@ -5,15 +5,19 @@ import { intBitsToFloat } from '$lib/utils/intBitsToFloat';
 export class Diffuse extends Material {
   private color: Color;
 
-  constructor(color: Color, map?: HTMLImageElement) {
+  constructor(color: Color, map?: HTMLImageElement, bumpMap?: HTMLImageElement) {
     super();
     this.type = MATERIAL_TYPE.DIFFUSE;
     this.color = color;
-    this.offsetCount = 6;
+    this.offsetCount = 8;
 
     this.texturesLocation.map = new Vector2(-1, -1);
+    this.texturesLocation.bumpMap = new Vector2(-1, -1);
     if (map) {
       this.textures.map = map;
+    }
+    if (bumpMap) {
+      this.textures.bumpMap = bumpMap;
     }
   }
 
@@ -25,7 +29,9 @@ export class Diffuse extends Material {
       this.color.b,
       // we'll store integers as floats and then bitcast them back into ints
       intBitsToFloat(this.texturesLocation.map.x),
-      intBitsToFloat(this.texturesLocation.map.y)
+      intBitsToFloat(this.texturesLocation.map.y),
+      intBitsToFloat(this.texturesLocation.bumpMap.x),
+      intBitsToFloat(this.texturesLocation.bumpMap.y)
     ];
   }
 
@@ -33,7 +39,8 @@ export class Diffuse extends Material {
     return /* wgsl */ `
       struct Diffuse {
         color: vec3f,
-        mapLocation: vec2i
+        mapLocation: vec2i,
+        bumpMapLocation: vec2i,
       }
     `;
   }
@@ -50,6 +57,10 @@ export class Diffuse extends Material {
         diffuse.mapLocation = vec2i(
           bitcast<i32>(materialsData[offset + 4]),
           bitcast<i32>(materialsData[offset + 5]),
+        );
+        diffuse.bumpMapLocation = vec2i(
+          bitcast<i32>(materialsData[offset + 6]),
+          bitcast<i32>(materialsData[offset + 7]),
         );
         return diffuse;
       } 
@@ -141,9 +152,16 @@ export class Diffuse extends Material {
         }
 
         var N = ires.triangle.normal;
+        if (material.bumpMapLocation.x > -1) {
+          N = getShadingNormal(
+            material.bumpMapLocation, 6.0, N, *ray, ires.hitPoint, ires.uv, ires.triangle
+          );
+        }
         if (dot(N, (*ray).direction) > 0) {
           N = -N;
         }
+
+
     
         // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
         (*ray).origin = ires.hitPoint;

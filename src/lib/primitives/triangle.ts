@@ -246,6 +246,63 @@ export class Triangle {
 
         return IntersectionResult(true, t, hitPoint, hitUV);
       }
+
+      fn intersectTriangleWithDerivativeRay(triangle: Triangle, ray: Ray) -> IntersectionResult {
+        let v0 = triangle.v0;
+        let v1 = triangle.v1;
+        let v2 = triangle.v2;
+      
+        let v0v1 = v1 - v0;
+        let v0v2 = v2 - v0;
+        let pvec = cross(ray.direction, v0v2);
+
+        let det = dot(v0v1, pvec);
+      
+        const CULLING = false;
+      
+        if (CULLING) {
+          if (det < 0.000001) {
+            return IntersectionResult(false, 0, vec3f(0), vec2f(0));
+          }
+        } else {
+          if (abs(det) < 0.000001) {
+            return IntersectionResult(false, 0, vec3f(0), vec2f(0));
+          }
+        }
+      
+        let invDet = 1.0 / det;
+        let tvec = ray.origin - v0;
+        let u = dot(tvec, pvec) * invDet;
+      
+        // for derivative rays, we'll skip the u and v checks
+        // if (u < 0 || u > 1) {
+        //   return IntersectionResult(false, 0, vec3f(0), vec2f(0));
+        // }
+      
+        let qvec = cross(tvec, v0v1);
+        let v = dot(ray.direction, qvec) * invDet;
+      
+        // for derivative rays, we'll skip the u and v checks
+        // if (v < 0 || u + v > 1) {
+        //   return IntersectionResult(false, 0, vec3f(0), vec2f(0));
+        // }
+      
+        let t = dot(v0v2, qvec) * invDet;
+
+        if (t < 0) {
+          return IntersectionResult(false, 0, vec3f(0), vec2f(0));
+        }
+
+        let hitPoint = ray.origin + t * ray.direction;
+        
+        let w = 1.0 - u - v;
+        let uv0 = triangle.uv0;
+        let uv1 = triangle.uv1;
+        let uv2 = triangle.uv2;
+        let hitUV = uv0 * w + uv1 * u + uv2 * v;
+
+        return IntersectionResult(true, t, hitPoint, hitUV);
+      }
     `;
   }
 }

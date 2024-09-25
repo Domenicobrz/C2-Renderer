@@ -14,13 +14,15 @@ type SamplesInfo = {
   count: number;
   ms: number;
   tileSize: string;
+  clickTarget: string;
 };
 export const samplesInfo = (function createSamplesInfoStore() {
   let store = writable<SamplesInfo>({
     limit: 8,
     count: 0,
     ms: 0,
-    tileSize: ''
+    tileSize: '',
+    clickTarget: '(0, 0)'
   });
 
   return {

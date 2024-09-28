@@ -151,20 +151,25 @@ export class Diffuse extends Material {
           color *= getTexelFromTextureArrays(material.mapLocation, ires.uv).xyz;
         }
 
-        var N = ires.triangle.normal;
+        var geometricNormal = ires.triangle.normal;
+        if (dot(geometricNormal, (*ray).direction) > 0) {
+          geometricNormal = -geometricNormal;
+        }
+        var N = geometricNormal;
+        var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
-            material.bumpMapLocation, 6.0, N, *ray, ires.hitPoint, ires.uv, ires.triangle
+            material.bumpMapLocation, 6.0, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
           );
         }
-        if (dot(N, (*ray).direction) > 0) {
-          N = -N;
-        }
-
-
     
         // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
         (*ray).origin = ires.hitPoint;
+        // in practice however, only for Dielectrics we need the exact origin, 
+        // for Diffuse we can apply the bump offset if necessary
+        if (bumpOffset > 0.0) {
+          (*ray).origin += geometricNormal * bumpOffset;
+        }
     
         // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xy is used for brdf samples

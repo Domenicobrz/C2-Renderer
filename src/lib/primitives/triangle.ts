@@ -2,6 +2,7 @@ import { AABB } from '$lib/bvh/aabb';
 import { Emissive } from '$lib/materials/emissive';
 import type { Material } from '$lib/materials/material';
 import { getLuminance } from '$lib/utils/getLuminance';
+import { vec3 } from '$lib/utils/math';
 import { Vector2, Vector3 } from 'three';
 
 export class Triangle {
@@ -51,6 +52,12 @@ export class Triangle {
     let v1v0 = this.v1.clone().sub(this.v0);
     let v2v0 = this.v2.clone().sub(this.v0);
     return v1v0.cross(v2v0).length() * 0.5;
+  }
+
+  getUvArea(): number {
+    let uv1uv0 = vec3(this.uv1.x - this.uv0.x, this.uv1.y - this.uv0.y, 0);
+    let uv2uv0 = vec3(this.uv2.x - this.uv0.x, this.uv2.y - this.uv0.y, 0);
+    return uv1uv0.cross(uv2uv0).length() * 0.5;
   }
 
   getCentroid(): Vector3 {
@@ -134,6 +141,7 @@ export class Triangle {
         uv1: new Float32Array(data, offs + 56, 2),
         uv2: new Float32Array(data, offs + 64, 2),
         area: new Float32Array(data, offs + 72, 1),
+        uvArea: new Float32Array(data, offs + 76, 1),
         normal: new Float32Array(data, offs + 80, 3),
         materialOffset: new Uint32Array(data, offs + 92, 1)
       };
@@ -144,6 +152,7 @@ export class Triangle {
       views.uv1.set([t.uv1.x, t.uv1.y]);
       views.uv2.set([t.uv2.x, t.uv2.y]);
       views.area.set([t.getArea()]);
+      views.uvArea.set([t.getUvArea()]);
       views.normal.set([t.normal.x, t.normal.y, t.normal.z]);
       views.materialOffset.set([materialOffsetsByIndex[t.materialIndex]]);
     });
@@ -170,6 +179,7 @@ export class Triangle {
         uv1: vec2f,
         uv2: vec2f,
         area: f32,
+        uvArea: f32,
         normal: vec3f,
         materialOffset: u32,
       }

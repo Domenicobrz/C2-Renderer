@@ -106,8 +106,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
 
   // let mesh = new Mesh(new PlaneGeometry(4, 4));
   // mesh.position.set(0, 0, 2);
-  // // mesh.rotation.x = Math.PI * 0.2;
-  // // mesh.rotation.y = Math.PI;
+  // mesh.rotation.x = Math.PI * -0.75;
 
   let image = (await new TextureLoader().loadAsync('scene-assets/textures/checker-map.png')).source
     .data;
@@ -126,12 +125,12 @@ export async function cornellSphereScene(): Promise<C2Scene> {
 
   // create & set camera
   const camera = new Orbit();
-  camera.set(new Vector3(0, 4, -10), new Vector3(0, 0, 0));
+  camera.set(new Vector3(0, 2, -10), new Vector3(0, 0, 0));
   camera.movementSpeed = 0.15;
 
-  camera.fov = 0.4;
   camera.aperture = 0;
   // camera.fov = 0.69;
+  camera.fov = 0.44;
   // camera.aperture = 0.25;
   camera.focusDistance = 9.53;
   camera.exposure = 1.85;

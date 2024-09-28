@@ -55,42 +55,17 @@ export const shadingNormalsPart = /* wgsl */ `
     let ty = vec3f(0.0, texelSideLength, t2 - t0);
     let sn = normalize(cross(tx, ty));
 
-    let tbn = getNormalMapTangentFrame(ray, hitP, uv, triangle, normal);
+    // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+    var tangent = vec3f(0.0);
+    var bitangent = vec3f(0.0);
+    getTangentFromTriangle(triangle, &tangent, &bitangent);
+    // negated bitangent to switch handedness
+    // I think bump / normal maps are authored with a right-handed system in mind
+    // where z points towards "us"
+    let tbn = mat3x3f(tangent, -bitangent, normal);
     let framedNormal = normalize( tbn * sn );
-
-    *rayOffset = t0;
-
-    return framedNormal;
-  }
-
-  fn getNormalMapTangentFrame(ray: Ray, hitP: vec3f, uv: vec2f, triangle: Triangle, normal: vec3f) -> mat3x3f {
-    let ires0 = intersectTriangleWithDerivativeRay(triangle, Ray(ray.origin, deltaDirX));
-    let ires1 = intersectTriangleWithDerivativeRay(triangle, Ray(ray.origin, deltaDirY));
     
-    let q0 = ires0.hitPoint - hitP;
-    let q1 = ires1.hitPoint - hitP;
-    let st0 = ires0.uv - uv;
-    let st1 = ires1.uv - uv;
-
-    let N = normal; 
-
-	  let q1perp = cross( q1, N );
-    // had to switch this one up to change the handedness of the computations
-    // let q0perp = cross( N, q0 );
-	  let q0perp = cross( q0, N );
-
-	  let T = q1perp * st0.x + q0perp * st1.x;
-	  let B = q1perp * st0.y + q0perp * st1.y;
-
-	  let det = max( dot( T, T ), dot( B, B ) );
-	  
-    var scale = inverseSqrt( det ); 
-    if ( det == 0.0 ) { scale = 0.0; }
-
-                // had to add -T to switch the handedness of the computations 
-                // (to be frank though, while I was experimenting I forgot to remove
-                // this minus sign, and it ended up producing the correct result
-                // ...if it looks good, it's correct!)
-	  return mat3x3f( -T * scale, B * scale, N );
+    *rayOffset = t0;
+    return framedNormal;
   }
 `;

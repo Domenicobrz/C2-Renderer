@@ -113,9 +113,6 @@ fn debugLog(value: f32) {
 // maxSampledTexturesPerShaderStage = 16
 // maxTextureDimension3D = 2048
 
-var<private> deltaDirX = vec3f(0.0);
-var<private> deltaDirY = vec3f(0.0);
-
 @compute @workgroup_size(8, 8) fn computeSomething(
   @builtin(global_invocation_id) gid: vec3<u32>,
   @builtin(local_invocation_id) lid: vec3<u32>,

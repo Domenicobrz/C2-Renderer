@@ -110,16 +110,18 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   //   color: new Color(0.99, 0.99, 0.99),
   //   ax: 0.7,
   //   ay: 0.017,
-  //   bumpMap: bumpTest
+  //   bumpMap: bumpTest,
+  //   bumpStrength: 0.5
   // });
   let mat = new Dielectric({
     absorption: new Color(0.01, 0.03, 0.06),
     ax: 0.001,
     ay: 0.001,
     eta: 1.6,
-    bumpMap: bumpTest
+    bumpMap: bumpTest,
+    bumpStrength: 5
   });
-  // let mat = new Diffuse(new Color(0.99, 0.99, 0.99), undefined, bumpTest);
+  // let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99), bumpMap: bumpTest, bumpStrength: 5 });
   materials.push(mat);
 
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];

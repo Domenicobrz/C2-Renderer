@@ -7,6 +7,7 @@ export class TorranceSparrow extends Material {
   private color: Color;
   private ax: number;
   private ay: number;
+  private bumpStrength: number;
 
   constructor({
     color,
@@ -14,7 +15,8 @@ export class TorranceSparrow extends Material {
     ay,
     map,
     roughnessMap,
-    bumpMap
+    bumpMap,
+    bumpStrength = 1
   }: {
     color: Color;
     ax: number;
@@ -22,13 +24,15 @@ export class TorranceSparrow extends Material {
     map?: HTMLImageElement;
     roughnessMap?: HTMLImageElement;
     bumpMap?: HTMLImageElement;
+    bumpStrength?: number;
   }) {
     super();
     this.type = MATERIAL_TYPE.TORRANCE_SPARROW;
     this.color = color;
     this.ax = ax;
     this.ay = ay;
-    this.offsetCount = 12;
+    this.bumpStrength = bumpStrength;
+    this.offsetCount = 13;
 
     this.texturesLocation.map = new Vector2(-1, -1);
     this.texturesLocation.roughnessMap = new Vector2(-1, -1);
@@ -52,6 +56,7 @@ export class TorranceSparrow extends Material {
       this.color.b,
       this.ax,
       this.ay,
+      this.bumpStrength,
       // we'll store integers as floats and then bitcast them back into ints
       intBitsToFloat(this.texturesLocation.map.x),
       intBitsToFloat(this.texturesLocation.map.y),
@@ -68,6 +73,7 @@ export class TorranceSparrow extends Material {
         color: vec3f,
         ax: f32,
         ay: f32,
+        bumpStrength: f32,
         mapLocation: vec2i,
         roughnessMapLocation: vec2i,
         bumpMapLocation: vec2i,
@@ -86,17 +92,18 @@ export class TorranceSparrow extends Material {
         );
         ts.ax = materialsData[offset + 4];
         ts.ay = materialsData[offset + 5];
+        ts.bumpStrength = materialsData[offset + 6];
         ts.mapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 6]),
           bitcast<i32>(materialsData[offset + 7]),
+          bitcast<i32>(materialsData[offset + 8]),
         );
         ts.roughnessMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 8]),
           bitcast<i32>(materialsData[offset + 9]),
+          bitcast<i32>(materialsData[offset + 10]),
         );
         ts.bumpMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 10]),
           bitcast<i32>(materialsData[offset + 11]),
+          bitcast<i32>(materialsData[offset + 12]),
         );
         return ts;
       } 
@@ -337,7 +344,7 @@ export class TorranceSparrow extends Material {
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
-            material.bumpMapLocation, 3.0, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
+            material.bumpMapLocation, material.bumpStrength, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
           );
         }
 

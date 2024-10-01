@@ -8,6 +8,7 @@ export class Dielectric extends Material {
   private ax: number;
   private ay: number;
   private eta: number;
+  private bumpStrength: number;
 
   constructor({
     absorption,
@@ -16,7 +17,8 @@ export class Dielectric extends Material {
     eta,
     absorptionMap,
     roughnessMap,
-    bumpMap
+    bumpMap,
+    bumpStrength = 1
   }: {
     absorption: Color;
     ax: number;
@@ -25,6 +27,7 @@ export class Dielectric extends Material {
     absorptionMap?: HTMLImageElement;
     roughnessMap?: HTMLImageElement;
     bumpMap?: HTMLImageElement;
+    bumpStrength?: number;
   }) {
     super();
     this.type = MATERIAL_TYPE.DIELECTRIC;
@@ -32,7 +35,8 @@ export class Dielectric extends Material {
     this.ax = ax;
     this.ay = ay;
     this.eta = eta;
-    this.offsetCount = 13;
+    this.bumpStrength = bumpStrength;
+    this.offsetCount = 14;
 
     this.texturesLocation.absorptionMap = new Vector2(-1, -1);
     this.texturesLocation.roughnessMap = new Vector2(-1, -1);
@@ -57,6 +61,7 @@ export class Dielectric extends Material {
       this.ax,
       this.ay,
       this.eta,
+      this.bumpStrength,
       // we'll store integers as floats and then bitcast them back into ints
       intBitsToFloat(this.texturesLocation.absorptionMap.x),
       intBitsToFloat(this.texturesLocation.absorptionMap.y),
@@ -74,6 +79,7 @@ export class Dielectric extends Material {
         ax: f32,
         ay: f32,
         eta: f32,
+        bumpStrength: f32,
         absorptionMapLocation: vec2i,
         roughnessMapLocation: vec2i,
         bumpMapLocation: vec2i,
@@ -93,17 +99,18 @@ export class Dielectric extends Material {
         d.ax = materialsData[offset + 4];
         d.ay = materialsData[offset + 5];
         d.eta = materialsData[offset + 6];
+        d.bumpStrength = materialsData[offset + 7];
         d.absorptionMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 7]),
           bitcast<i32>(materialsData[offset + 8]),
+          bitcast<i32>(materialsData[offset + 9]),
         );
         d.roughnessMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 9]),
           bitcast<i32>(materialsData[offset + 10]),
+          bitcast<i32>(materialsData[offset + 11]),
         );
         d.bumpMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 11]),
           bitcast<i32>(materialsData[offset + 12]),
+          bitcast<i32>(materialsData[offset + 13]),
         );
         return d;
       } 
@@ -444,7 +451,7 @@ export class Dielectric extends Material {
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
-            material.bumpMapLocation, 5.0, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
+            material.bumpMapLocation, material.bumpStrength, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
           );
         }
 

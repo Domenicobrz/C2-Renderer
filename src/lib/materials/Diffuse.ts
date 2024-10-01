@@ -4,20 +4,24 @@ import { intBitsToFloat } from '$lib/utils/intBitsToFloat';
 
 export class Diffuse extends Material {
   private color: Color;
+  private bumpStrength: number;
 
   constructor({
     color,
     map,
-    bumpMap
+    bumpMap,
+    bumpStrength = 1
   }: {
     color: Color;
     map?: HTMLImageElement;
     bumpMap?: HTMLImageElement;
+    bumpStrength?: number;
   }) {
     super();
     this.type = MATERIAL_TYPE.DIFFUSE;
     this.color = color;
-    this.offsetCount = 8;
+    this.bumpStrength = bumpStrength;
+    this.offsetCount = 9;
 
     this.texturesLocation.map = new Vector2(-1, -1);
     this.texturesLocation.bumpMap = new Vector2(-1, -1);
@@ -35,6 +39,7 @@ export class Diffuse extends Material {
       this.color.r,
       this.color.g,
       this.color.b,
+      this.bumpStrength,
       // we'll store integers as floats and then bitcast them back into ints
       intBitsToFloat(this.texturesLocation.map.x),
       intBitsToFloat(this.texturesLocation.map.y),
@@ -47,6 +52,7 @@ export class Diffuse extends Material {
     return /* wgsl */ `
       struct Diffuse {
         color: vec3f,
+        bumpStrength: f32,
         mapLocation: vec2i,
         bumpMapLocation: vec2i,
       }
@@ -62,13 +68,14 @@ export class Diffuse extends Material {
           materialsData[offset + 2],
           materialsData[offset + 3],
         );
+        diffuse.bumpStrength = materialsData[offset + 4];
         diffuse.mapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 4]),
           bitcast<i32>(materialsData[offset + 5]),
+          bitcast<i32>(materialsData[offset + 6]),
         );
         diffuse.bumpMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 6]),
           bitcast<i32>(materialsData[offset + 7]),
+          bitcast<i32>(materialsData[offset + 8]),
         );
         return diffuse;
       } 
@@ -167,7 +174,7 @@ export class Diffuse extends Material {
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
-            material.bumpMapLocation, 3.0, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
+            material.bumpMapLocation, material.bumpStrength, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
           );
         }
     

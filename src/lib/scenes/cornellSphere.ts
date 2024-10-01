@@ -20,7 +20,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     new Emissive({ color: new Color(1, 1, 1), intensity: 10 }),
     new Diffuse({ color: new Color(0.05, 1, 0.05) }),
     new CookTorrance(new Color(0.95, 0.95, 0.95), 0.725),
-    new Dielectric(new Color(0.095, 0.195, 0.295), 0.05, 0.05, 1.5)
+    new Dielectric({ absorption: new Color(0.095, 0.195, 0.295), ax: 0.05, ay: 0.05, eta: 1.5 })
   ];
 
   for (let i = 0; i < 5; i++) {
@@ -106,10 +106,17 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     .data;
   let bumpTest = (await new TextureLoader().loadAsync('scene-assets/textures/bump-test.png')).source
     .data;
-  let mat = new TorranceSparrow({
-    color: new Color(0.99, 0.99, 0.99),
-    ax: 0.7,
-    ay: 0.017,
+  // let mat = new TorranceSparrow({
+  //   color: new Color(0.99, 0.99, 0.99),
+  //   ax: 0.7,
+  //   ay: 0.017,
+  //   bumpMap: bumpTest
+  // });
+  let mat = new Dielectric({
+    absorption: new Color(0.01, 0.03, 0.06),
+    ax: 0.001,
+    ay: 0.001,
+    eta: 1.6,
     bumpMap: bumpTest
   });
   // let mat = new Diffuse(new Color(0.99, 0.99, 0.99), undefined, bumpTest);

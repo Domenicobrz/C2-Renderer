@@ -9,29 +9,42 @@ export class Dielectric extends Material {
   private ay: number;
   private eta: number;
 
-  constructor(
-    absorption: Color,
-    ax: number,
-    ay: number,
-    eta: number,
-    absorptionMap?: HTMLImageElement,
-    roughnessMap?: HTMLImageElement
-  ) {
+  constructor({
+    absorption,
+    ax,
+    ay,
+    eta,
+    absorptionMap,
+    roughnessMap,
+    bumpMap
+  }: {
+    absorption: Color;
+    ax: number;
+    ay: number;
+    eta: number;
+    absorptionMap?: HTMLImageElement;
+    roughnessMap?: HTMLImageElement;
+    bumpMap?: HTMLImageElement;
+  }) {
     super();
     this.type = MATERIAL_TYPE.DIELECTRIC;
     this.absorption = absorption;
     this.ax = ax;
     this.ay = ay;
     this.eta = eta;
-    this.offsetCount = 11;
+    this.offsetCount = 13;
 
     this.texturesLocation.absorptionMap = new Vector2(-1, -1);
     this.texturesLocation.roughnessMap = new Vector2(-1, -1);
+    this.texturesLocation.bumpMap = new Vector2(-1, -1);
     if (absorptionMap) {
       this.textures.absorptionMap = absorptionMap;
     }
     if (roughnessMap) {
       this.textures.roughnessMap = roughnessMap;
+    }
+    if (bumpMap) {
+      this.textures.bumpMap = bumpMap;
     }
   }
 
@@ -48,7 +61,9 @@ export class Dielectric extends Material {
       intBitsToFloat(this.texturesLocation.absorptionMap.x),
       intBitsToFloat(this.texturesLocation.absorptionMap.y),
       intBitsToFloat(this.texturesLocation.roughnessMap.x),
-      intBitsToFloat(this.texturesLocation.roughnessMap.y)
+      intBitsToFloat(this.texturesLocation.roughnessMap.y),
+      intBitsToFloat(this.texturesLocation.bumpMap.x),
+      intBitsToFloat(this.texturesLocation.bumpMap.y)
     ];
   }
 
@@ -61,6 +76,7 @@ export class Dielectric extends Material {
         eta: f32,
         absorptionMapLocation: vec2i,
         roughnessMapLocation: vec2i,
+        bumpMapLocation: vec2i,
       }
     `;
   }
@@ -84,6 +100,10 @@ export class Dielectric extends Material {
         d.roughnessMapLocation = vec2i(
           bitcast<i32>(materialsData[offset + 9]),
           bitcast<i32>(materialsData[offset + 10]),
+        );
+        d.bumpMapLocation = vec2i(
+          bitcast<i32>(materialsData[offset + 11]),
+          bitcast<i32>(materialsData[offset + 12]),
         );
         return d;
       } 
@@ -418,7 +438,16 @@ export class Dielectric extends Material {
           material.ay *= max(roughness.y, 0.0001);
         }
 
-        var N = ires.triangle.normal;     
+        // var N = ires.triangle.normal;     
+        var geometricNormal = ires.triangle.normal;
+        var N = geometricNormal;
+        var bumpOffset: f32 = 0.0;
+        if (material.bumpMapLocation.x > -1) {
+          N = getShadingNormal(
+            material.bumpMapLocation, 5.0, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
+          );
+        }
+
         var isInsideMedium = dot(N, (*ray).direction) > 0;
         
         // beer-lambert absorption 
@@ -452,6 +481,13 @@ export class Dielectric extends Material {
         var bitangent = vec3f(0.0);
         getTangentFromTriangle(ires.triangle, &tangent, &bitangent);
         
+        // the tangents above are calculated with the geometric normal (picked from ires.triangle)
+        // and have to be adjusted to use the shading normal
+        if (material.bumpMapLocation.x > -1) {
+          tangent = normalize(cross(N, bitangent));
+          bitangent = normalize(cross(tangent, N));
+        }
+
         // var tangent = vec3f(1.0, 0.0, 0.0);
         // var bitangent = vec3f(0.0, 1.0, 0.0);
 

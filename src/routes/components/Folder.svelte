@@ -85,6 +85,7 @@
     border: none;
     color: #ddd;
     width: 20px;
+    cursor: pointer;
   }
   header p {
     text-align: center;

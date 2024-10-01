@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Vector2 } from 'three';
+  import type { Vector3 } from 'three';
   import { cameraInfoStore, cameraMovementInfoStore } from '../../stores/main';
   import IronSightIcon from '../icons/IronSightIcon.svelte';
   import Spacer from '../Spacer.svelte';
@@ -67,6 +68,9 @@
       $cameraInfoStore.tiltShift = new Vector2(parseFloat(tiltShiftX), value);
     }
   }
+  function vec3ToString(vec: Vector3) {
+    return `(${vec.x.toFixed(1)}, ${vec.y.toFixed(1)}, ${vec.z.toFixed(1)})`;
+  }
 </script>
 
 <span
@@ -133,6 +137,17 @@
 </div>
 
 <Folder name="Camera movement" roundBox expanded={false}>
+  <p class="darken-span">
+    Position: <span>{vec3ToString($cameraMovementInfoStore.position)}</span>
+  </p>
+  <Spacer vertical={3} />
+  <p class="darken-span">
+    Target: <span>{vec3ToString($cameraMovementInfoStore.target)}</span>
+  </p>
+  <Spacer vertical={10} />
+
+  <Separator />
+
   <p>
     Use <span class="kbtn">w</span><span class="kbtn">a</span><span class="kbtn">s</span><span
       class="kbtn">d</span
@@ -247,5 +262,9 @@
   .ce-options.disabled {
     opacity: 0.35;
     pointer-events: none;
+  }
+
+  p.darken-span span {
+    color: #aaa;
   }
 </style>

@@ -1,6 +1,6 @@
 import type { ConfigOptions } from '$lib/config';
 import { get, writable } from 'svelte/store';
-import { Vector2 } from 'three';
+import { Vector2, Vector3 } from 'three';
 
 type BVHInfo = {
   nodesCount: number;
@@ -79,6 +79,8 @@ type CameraInfo = {
 type CameraMovementInfo = {
   movementSpeed: number;
   rotationSpeed: number;
+  position: Vector3;
+  target: Vector3;
 };
 export const cameraInfoStore = writable<CameraInfo>({
   exposure: 1,
@@ -93,7 +95,9 @@ export const cameraInfoStore = writable<CameraInfo>({
 
 export const cameraMovementInfoStore = writable<CameraMovementInfo>({
   movementSpeed: 1,
-  rotationSpeed: 1
+  rotationSpeed: 1,
+  position: new Vector3(0, 0, 0),
+  target: new Vector3(0, 0, 0)
 });
 
 export const configOptions = createConfigStore({

@@ -2,7 +2,7 @@ import { BVH } from '$lib/bvh/bvh';
 import { getComputeShader } from '$lib/shaders/computeShader';
 import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { Matrix4, Vector2, Vector3 } from 'three';
-import { configOptions, samplesInfo } from '../../routes/stores/main';
+import { cameraMovementInfoStore, configOptions, samplesInfo } from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
 import type { TileSequence, Tile } from '$lib/tile';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
@@ -12,6 +12,7 @@ import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
 import { globals } from '$lib/C2';
 import { TextureArraysSegment } from './textureArraysSegment';
+import { Orbit } from '$lib/controls/Orbit';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -229,6 +230,14 @@ export class ComputeSegment {
   onUpdateCamera() {
     if (!this.camera) return;
     this.resetSamplesAndTile();
+
+    cameraMovementInfoStore.update((v) => {
+      v.position = this.camera.position.clone();
+      if (this.camera instanceof Orbit) {
+        v.target = this.camera.target.clone();
+      }
+      return v;
+    });
   }
 
   updateConfig() {

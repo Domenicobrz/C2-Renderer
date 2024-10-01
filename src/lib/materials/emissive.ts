@@ -5,7 +5,7 @@ export class Emissive extends Material {
   public color: Color;
   public intensity: number;
 
-  constructor(color: Color, intensity: number = 1) {
+  constructor({ color, intensity = 1 }: { color: Color; intensity: number }) {
     super();
     this.type = MATERIAL_TYPE.EMISSIVE;
     this.color = color;

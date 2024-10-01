@@ -8,27 +8,39 @@ export class TorranceSparrow extends Material {
   private ax: number;
   private ay: number;
 
-  constructor(
-    color: Color,
-    ax: number,
-    ay: number,
-    map?: HTMLImageElement,
-    roughnessMap?: HTMLImageElement
-  ) {
+  constructor({
+    color,
+    ax,
+    ay,
+    map,
+    roughnessMap,
+    bumpMap
+  }: {
+    color: Color;
+    ax: number;
+    ay: number;
+    map?: HTMLImageElement;
+    roughnessMap?: HTMLImageElement;
+    bumpMap?: HTMLImageElement;
+  }) {
     super();
     this.type = MATERIAL_TYPE.TORRANCE_SPARROW;
     this.color = color;
     this.ax = ax;
     this.ay = ay;
-    this.offsetCount = 10;
+    this.offsetCount = 12;
 
     this.texturesLocation.map = new Vector2(-1, -1);
     this.texturesLocation.roughnessMap = new Vector2(-1, -1);
+    this.texturesLocation.bumpMap = new Vector2(-1, -1);
     if (map) {
       this.textures.map = map;
     }
     if (roughnessMap) {
       this.textures.roughnessMap = roughnessMap;
+    }
+    if (bumpMap) {
+      this.textures.bumpMap = bumpMap;
     }
   }
 
@@ -44,7 +56,9 @@ export class TorranceSparrow extends Material {
       intBitsToFloat(this.texturesLocation.map.x),
       intBitsToFloat(this.texturesLocation.map.y),
       intBitsToFloat(this.texturesLocation.roughnessMap.x),
-      intBitsToFloat(this.texturesLocation.roughnessMap.y)
+      intBitsToFloat(this.texturesLocation.roughnessMap.y),
+      intBitsToFloat(this.texturesLocation.bumpMap.x),
+      intBitsToFloat(this.texturesLocation.bumpMap.y)
     ];
   }
 
@@ -56,6 +70,7 @@ export class TorranceSparrow extends Material {
         ay: f32,
         mapLocation: vec2i,
         roughnessMapLocation: vec2i,
+        bumpMapLocation: vec2i,
       }
     `;
   }
@@ -78,6 +93,10 @@ export class TorranceSparrow extends Material {
         ts.roughnessMapLocation = vec2i(
           bitcast<i32>(materialsData[offset + 8]),
           bitcast<i32>(materialsData[offset + 9]),
+        );
+        ts.bumpMapLocation = vec2i(
+          bitcast<i32>(materialsData[offset + 10]),
+          bitcast<i32>(materialsData[offset + 11]),
         );
         return ts;
       } 
@@ -310,14 +329,26 @@ export class TorranceSparrow extends Material {
           material.ay *= max(roughness.y, 0.0001);
         }
 
-        var N = ires.triangle.normal;
-        if (dot(N, (*ray).direction) > 0) {
-          N = -N;
+        var geometricNormal = ires.triangle.normal;
+        if (dot(geometricNormal, (*ray).direction) > 0) {
+          geometricNormal = -geometricNormal;
         }
-        
+        var N = geometricNormal;
+        var bumpOffset: f32 = 0.0;
+        if (material.bumpMapLocation.x > -1) {
+          N = getShadingNormal(
+            material.bumpMapLocation, 3.0, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
+          );
+        }
+
         // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
         (*ray).origin = ires.hitPoint;
-    
+        // in practice however, only for Dielectrics we need the exact origin, 
+        // for TorranceSparrow we can apply the bump offset if necessary
+        if (bumpOffset > 0.0) {
+          (*ray).origin += geometricNormal * bumpOffset;
+        }
+
         // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xy is used for brdf samples
         // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
@@ -337,8 +368,13 @@ export class TorranceSparrow extends Material {
         var bitangent = vec3f(0.0);
         getTangentFromTriangle(ires.triangle, &tangent, &bitangent);
 
-        // normal could be flipped at some point, should we also flip TB?
-        // normal could be flipped at some point, should we also flip TB?
+        // the tangents above are calculated with the geometric normal (picked from ires.triangle)
+        // and have to be adjusted to use the shading normal
+        if (material.bumpMapLocation.x > -1) {
+          tangent = normalize(cross(N, bitangent));
+          bitangent = normalize(cross(tangent, N));
+        }
+
         // normal could be flipped at some point, should we also flip TB?
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
         let TBN = mat3x3f(tangent, bitangent, N);
@@ -356,7 +392,7 @@ export class TorranceSparrow extends Material {
             rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &w
           );
           (*ray).direction = normalize(TBN * wi);
-          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
+          (*ray).origin += (*ray).direction * 0.001;
           *reflectance *= brdf * (1 / pdf) * max(dot(N, (*ray).direction), 0.0);
         }
 
@@ -373,7 +409,7 @@ export class TorranceSparrow extends Material {
             );
           }
           (*ray).direction = normalize(TBN * wi);
-          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
+          (*ray).origin += (*ray).direction * 0.001;
           *reflectance *= brdf * (misWeight / pdf) * max(dot(N, (*ray).direction), 0.0);
         }
 
@@ -394,7 +430,7 @@ export class TorranceSparrow extends Material {
           );
 
           (*ray).direction = normalize(TBN * wi);
-          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
+          (*ray).origin += (*ray).direction * 0.001;
           // from tangent space to world space
           lightSampleWi = normalize(TBN * lightSampleWi);
           // light contribution, we have to multiply by *reflectance to account for reduced reflectance

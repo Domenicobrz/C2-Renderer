@@ -14,17 +14,11 @@ import { Orbit } from '$lib/controls/Orbit';
 export async function cornellSphereScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
   let materials: Material[] = [
-    new Diffuse(new Color(0.95, 0.95, 0.95)),
-    new Diffuse(new Color(1, 0.05, 0.05)),
-    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.125, 0.025),
-    // new Emissive(new Color(1, 0.7, 0.5), 20),
-    new Emissive(new Color(1, 1, 1), 10),
-    new Diffuse(new Color(0.05, 1, 0.05)),
-    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.45, 0.45),
-    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.175, 0.175),
-    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.025, 0.025),
-    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.25, 0.025),
-    new TorranceSparrow(new Color(0.95, 0.95, 0.95), 0.725, 0.025),
+    new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
+    new Diffuse({ color: new Color(1, 0.05, 0.05) }),
+    new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), ax: 0.125, ay: 0.025 }),
+    new Emissive({ color: new Color(1, 1, 1), intensity: 10 }),
+    new Diffuse({ color: new Color(0.05, 1, 0.05) }),
     new CookTorrance(new Color(0.95, 0.95, 0.95), 0.725),
     new Dielectric(new Color(0.095, 0.195, 0.295), 0.05, 0.05, 1.5)
   ];
@@ -112,13 +106,13 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     .data;
   let bumpTest = (await new TextureLoader().loadAsync('scene-assets/textures/bump-test.png')).source
     .data;
-  let mat = new Diffuse(
-    new Color(0.5, 0.5, 0.5),
-    undefined,
-    bumpTest
-    // roughnessImage as HTMLImageElement
-    // roughnessImage as HTMLImageElement
-  );
+  let mat = new TorranceSparrow({
+    color: new Color(0.99, 0.99, 0.99),
+    ax: 0.7,
+    ay: 0.017,
+    bumpMap: bumpTest
+  });
+  // let mat = new Diffuse(new Color(0.99, 0.99, 0.99), undefined, bumpTest);
   materials.push(mat);
 
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];

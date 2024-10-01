@@ -5,7 +5,15 @@ import { intBitsToFloat } from '$lib/utils/intBitsToFloat';
 export class Diffuse extends Material {
   private color: Color;
 
-  constructor(color: Color, map?: HTMLImageElement, bumpMap?: HTMLImageElement) {
+  constructor({
+    color,
+    map,
+    bumpMap
+  }: {
+    color: Color;
+    map?: HTMLImageElement;
+    bumpMap?: HTMLImageElement;
+  }) {
     super();
     this.type = MATERIAL_TYPE.DIFFUSE;
     this.color = color;
@@ -159,7 +167,7 @@ export class Diffuse extends Material {
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
-            material.bumpMapLocation, 6.0, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
+            material.bumpMapLocation, 3.0, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
           );
         }
     
@@ -190,7 +198,7 @@ export class Diffuse extends Material {
         if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32;
           shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &w);
-          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
+          (*ray).origin += (*ray).direction * 0.001;
           *reflectance *= brdf * (1 / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
 
@@ -202,7 +210,7 @@ export class Diffuse extends Material {
           } else {
             shadeDiffuseSampleLight(rands2, N, ray, &pdf, &misWeight, &ls);          
           }
-          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
+          (*ray).origin += (*ray).direction * 0.001;
           *reflectance *= brdf * (misWeight / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
 
@@ -215,7 +223,7 @@ export class Diffuse extends Material {
           shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight);
           shadeDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
 
-          (*ray).origin = rayBrdf.origin + rayBrdf.direction * 0.001;
+          (*ray).origin += rayBrdf.direction * 0.001;
           (*ray).direction = rayBrdf.direction;
 
           // light contribution

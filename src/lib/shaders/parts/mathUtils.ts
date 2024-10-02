@@ -63,6 +63,7 @@ fn getTangentFromTriangle(
 ) {
 
   let t = triangle;
+  var malconstructedUvs = false;
 
   // check if uvs exist, if they do let's use uv-based tangents
   if (t.uv0.x > -1) {
@@ -71,7 +72,12 @@ fn getTangentFromTriangle(
     let deltaUV1 = t.uv1 - t.uv0;
     let deltaUV2 = t.uv2 - t.uv0;  
   
-    let f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+    let div = (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+    let f = 1.0 / div;
+    if (div == 0.0) {
+      malconstructedUvs = true;
+    }
+
     *tangent = normalize(vec3f(
       f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x),
       f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y),
@@ -86,7 +92,9 @@ fn getTangentFromTriangle(
     // ));
   
     *bitangent = normalize(cross(*tangent, t.normal));
-  } else {
+  } 
+  
+  if (t.uv0.x < -0.9 || malconstructedUvs) {
     // otherwise default to auto geometry-based tangents
     *tangent = normalize(t.v1 - t.v0);
     *bitangent = normalize(cross(*tangent, t.normal));

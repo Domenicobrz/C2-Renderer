@@ -326,9 +326,8 @@ export class TorranceSparrow extends Material {
         let hitPoint = ires.hitPoint;
         var material: TORRANCE_SPARROW = createTorranceSparrow(ires.triangle.materialOffset);
 
-        var color = material.color;
         if (material.mapLocation.x > -1) {
-          color *= getTexelFromTextureArrays(material.mapLocation, ires.uv).xyz;
+          material.color *= getTexelFromTextureArrays(material.mapLocation, ires.uv).xyz;
         }
         if (material.roughnessMapLocation.x > -1) {
           let roughness = getTexelFromTextureArrays(material.roughnessMapLocation, ires.uv).xy;

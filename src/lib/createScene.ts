@@ -3,6 +3,7 @@ import { Envmap } from './envmap/envmap';
 import type { Material } from './materials/material';
 import type { Triangle } from './primitives/triangle';
 import { bokehTestScene } from './scenes/bokehTest';
+import { c2FeaturesScene } from './scenes/c2features';
 import { cornellSphereScene } from './scenes/cornellSphere';
 import { dofTestScene } from './scenes/dofTest';
 import { envmapHorseScene } from './scenes/envmapHorse';
@@ -18,7 +19,8 @@ export type C2Scene = {
 
 export async function createScene(): Promise<C2Scene> {
   // return horseStatueScene();
-  return cornellSphereScene();
+  // return cornellSphereScene();
+  return c2FeaturesScene();
   // return planeAndSphere();
   // return envmapHorseScene();
   // return dofTestScene();

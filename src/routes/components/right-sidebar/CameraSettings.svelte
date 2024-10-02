@@ -266,5 +266,6 @@
 
   p.darken-span span {
     color: #aaa;
+    user-select: text;
   }
 </style>

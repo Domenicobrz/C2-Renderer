@@ -423,7 +423,7 @@ export class Envmap {
         let z = abs(d.z);
 
         // Compute the radius r
-        let r = sqrt(1.0 - z);  // r = sqrt(1-|z|)
+        let r = SafeSqrt(1.0 - z);  // r = sqrt(1-|z|)
 
         // Compute the argument to atan (detect a=0 to avoid div-by-zero)
         let a = max(x, y);

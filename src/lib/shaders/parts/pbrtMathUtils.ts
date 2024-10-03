@@ -35,6 +35,9 @@ fn AbsCosTheta(w: vec3f) -> f32 {
 fn Sqr(v: f32) -> f32 {
   return v * v;
 }
+fn SafeSqrt(v: f32) -> f32 {
+  return sqrt(max(v, 0.0));
+}
 fn Cos2Theta(w: vec3f) -> f32 { 
   return Sqr(w.z); 
 }

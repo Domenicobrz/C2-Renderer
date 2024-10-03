@@ -5,23 +5,31 @@ import { intBitsToFloat } from '$lib/utils/intBitsToFloat';
 export class Diffuse extends Material {
   private color: Color;
   private bumpStrength: number;
+  private uvRepeat: Vector2;
+  private mapUvRepeat: Vector2;
 
   constructor({
     color,
     map,
     bumpMap,
-    bumpStrength = 1
+    bumpStrength = 1,
+    uvRepeat = new Vector2(1, 1),
+    mapUvRepeat = new Vector2(1, 1)
   }: {
     color: Color;
     map?: HTMLImageElement;
     bumpMap?: HTMLImageElement;
     bumpStrength?: number;
+    uvRepeat?: Vector2;
+    mapUvRepeat?: Vector2;
   }) {
     super();
     this.type = MATERIAL_TYPE.DIFFUSE;
     this.color = color;
     this.bumpStrength = bumpStrength;
-    this.offsetCount = 9;
+    this.uvRepeat = uvRepeat;
+    this.mapUvRepeat = mapUvRepeat;
+    this.offsetCount = 13;
 
     this.texturesLocation.map = new Vector2(-1, -1);
     this.texturesLocation.bumpMap = new Vector2(-1, -1);
@@ -40,6 +48,10 @@ export class Diffuse extends Material {
       this.color.g,
       this.color.b,
       this.bumpStrength,
+      this.uvRepeat.x,
+      this.uvRepeat.y,
+      this.mapUvRepeat.x,
+      this.mapUvRepeat.y,
       // we'll store integers as floats and then bitcast them back into ints
       intBitsToFloat(this.texturesLocation.map.x),
       intBitsToFloat(this.texturesLocation.map.y),
@@ -53,6 +65,8 @@ export class Diffuse extends Material {
       struct Diffuse {
         color: vec3f,
         bumpStrength: f32,
+        uvRepeat: vec2f,
+        mapUvRepeat: vec2f,
         mapLocation: vec2i,
         bumpMapLocation: vec2i,
       }
@@ -69,13 +83,17 @@ export class Diffuse extends Material {
           materialsData[offset + 3],
         );
         diffuse.bumpStrength = materialsData[offset + 4];
+        diffuse.uvRepeat.x = materialsData[offset + 5];
+        diffuse.uvRepeat.y = materialsData[offset + 6];
+        diffuse.mapUvRepeat.x = materialsData[offset + 7];
+        diffuse.mapUvRepeat.y = materialsData[offset + 8];
         diffuse.mapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 5]),
-          bitcast<i32>(materialsData[offset + 6]),
+          bitcast<i32>(materialsData[offset + 9]),
+          bitcast<i32>(materialsData[offset + 10]),
         );
         diffuse.bumpMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 7]),
-          bitcast<i32>(materialsData[offset + 8]),
+          bitcast<i32>(materialsData[offset + 11]),
+          bitcast<i32>(materialsData[offset + 12]),
         );
         return diffuse;
       } 
@@ -163,7 +181,7 @@ export class Diffuse extends Material {
 
         var color = material.color;
         if (material.mapLocation.x > -1) {
-          color *= getTexelFromTextureArrays(material.mapLocation, ires.uv).xyz;
+          color *= getTexelFromTextureArrays(material.mapLocation, ires.uv, material.mapUvRepeat).xyz;
         }
 
         var geometricNormal = ires.triangle.normal;
@@ -174,7 +192,8 @@ export class Diffuse extends Material {
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
-            material.bumpMapLocation, material.bumpStrength, N, *ray, ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
+            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
+            ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
           );
         }
     

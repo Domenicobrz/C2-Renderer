@@ -407,7 +407,6 @@ export class BVH {
           var lightSamplePdf = pc2d_pdf / (4 * PI);
           lightSamplePdf *= cdfEntry.pdf;
 
-
           let ires = bvhIntersect(Ray(rayOrigin + sampleDirection * 0.001, sampleDirection));
           if (ires.hit) {
             return LightSample(false, false, 0, vec3f(0), vec3f(0));

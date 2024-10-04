@@ -3,21 +3,22 @@ import { Vector2 } from 'three';
 export const MATERIAL_TYPE = {
   DIFFUSE: 0,
   EMISSIVE: 1,
-  COOK_TORRANCE: 2,
-  TORRANCE_SPARROW: 3,
-  DIELECTRIC: 4
+  TORRANCE_SPARROW: 2,
+  DIELECTRIC: 3
 };
 
 export class Material {
   public offsetCount: number;
   public textures: Record<string, HTMLImageElement> = {};
   public texturesLocation: Record<string, Vector2> = {};
+  public flipTextureY: boolean = false;
 
   protected type: number;
 
-  constructor() {
+  constructor({ flipTextureY }: { flipTextureY: boolean }) {
     this.type = -1;
     this.offsetCount = 0;
+    this.flipTextureY = flipTextureY;
   }
 
   getFloatsArray(): number[] {
@@ -51,10 +52,6 @@ export class Material {
 
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
           shadeEmissive(ires, ray, reflectance, rad, tid, i);
-        }
-
-        if (materialType == ${MATERIAL_TYPE.COOK_TORRANCE}) {
-          shadeCookTorrance(ires, ray, reflectance, rad, tid, i);
         }
 
         if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {

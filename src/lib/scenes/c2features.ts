@@ -14,7 +14,6 @@ import type { Material } from './../materials/material';
 import { Triangle } from './../primitives/triangle';
 import { TorranceSparrow } from './../materials/torranceSparrow';
 import random, { RNG } from 'random';
-import { CookTorrance } from '$lib/materials/cookTorrance';
 import { Dielectric } from '$lib/materials/dielectric';
 import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 import type { C2Scene } from '$lib/createScene';
@@ -102,19 +101,21 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
       let map = obj.material.map?.source?.data;
       let roughnessMap = obj.material.roughnessMap?.source?.data;
       let color = obj.material.color || new Color(1, 1, 1);
-      materials.push(
-        new Dielectric({
-          absorption: new Color(0.15, 0.35, 0.75).multiplyScalar(10),
-          // absorptionMap: map,
-          ax: 0.075,
-          ay: 0.075,
-          eta: 1.6,
-          roughnessMap
-        })
-      );
-      // materials.push(new TorranceSparrow({ color, ax: 1, ay: 1, map, roughnessMap }));
-      // materials.push(new Diffuse({ color, map }));
-      triangles = [...triangles, ...meshToTriangles(obj, materials.length - 1, true, true)];
+      // materials.push(
+      //   new Dielectric({
+      //     absorption: new Color(0.15, 0.35, 0.75).multiplyScalar(10),
+      //     // absorptionMap: map,
+      //     ax: 0.075,
+      //     ay: 0.075,
+      //     eta: 1.6,
+      //     roughnessMap,
+      //     flipTextureY: true
+      //   })
+      // );
+
+      // materials.push(new TorranceSparrow({ color, ax: 0.1, ay: 0.1, map, roughnessMap }));
+      materials.push(new Diffuse({ color, map, flipTextureY: true }));
+      triangles = [...triangles, ...meshToTriangles(obj, materials.length - 1, true)];
     }
   });
   // create & set camera

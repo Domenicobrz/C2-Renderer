@@ -6,8 +6,7 @@ import { geometryToTriangles } from './geometryToTriangles';
 export function meshToTriangles(
   parentMesh: Object3D,
   materialIndex: number,
-  noTraversal: boolean = false,
-  flipYuv: boolean = false
+  noTraversal: boolean = false
 ) {
   let triangles: Triangle[] = [];
 
@@ -17,7 +16,7 @@ export function meshToTriangles(
     if (parentMesh instanceof Mesh) {
       triangles = [
         ...triangles,
-        ...geometryToTriangles(parentMesh.geometry, materialIndex, parentMesh.matrixWorld, flipYuv)
+        ...geometryToTriangles(parentMesh.geometry, materialIndex, parentMesh.matrixWorld)
       ];
       return triangles;
     }
@@ -31,10 +30,7 @@ export function meshToTriangles(
       let mesh = obj;
       let geometry = mesh.geometry;
 
-      triangles = [
-        ...triangles,
-        ...geometryToTriangles(geometry, materialIndex, mesh.matrixWorld, flipYuv)
-      ];
+      triangles = [...triangles, ...geometryToTriangles(geometry, materialIndex, mesh.matrixWorld)];
     }
   });
 

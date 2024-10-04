@@ -18,7 +18,8 @@ export class TorranceSparrow extends Material {
     roughnessMap,
     bumpMap,
     bumpStrength = 1,
-    uvRepeat = new Vector2(1, 1)
+    uvRepeat = new Vector2(1, 1),
+    flipTextureY = false
   }: {
     color: Color;
     ax: number;
@@ -28,8 +29,9 @@ export class TorranceSparrow extends Material {
     bumpMap?: HTMLImageElement;
     bumpStrength?: number;
     uvRepeat?: Vector2;
+    flipTextureY?: boolean;
   }) {
-    super();
+    super({ flipTextureY });
     this.type = MATERIAL_TYPE.TORRANCE_SPARROW;
     this.color = color;
     this.ax = ax;

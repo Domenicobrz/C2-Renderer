@@ -5,8 +5,7 @@ import { Triangle } from '$lib/primitives/triangle';
 export function geometryToTriangles(
   geometry: BufferGeometry,
   materialIndex: number,
-  matrix?: Matrix4,
-  flipYuv: boolean = false
+  matrix?: Matrix4
 ) {
   let triangles: Triangle[] = [];
 
@@ -48,12 +47,6 @@ export function geometryToTriangles(
     let n2y = normArray[(i + 2) * 3 + 1];
     let n2z = normArray[(i + 2) * 3 + 2];
     let uv2 = vec2(uvArray[(i + 2) * 2 + 0], uvArray[(i + 2) * 2 + 1]);
-
-    if (flipYuv) {
-      uv0.y = 1 - uv0.y;
-      uv1.y = 1 - uv1.y;
-      uv2.y = 1 - uv2.y;
-    }
 
     triangles.push(
       new Triangle(

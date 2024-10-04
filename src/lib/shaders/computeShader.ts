@@ -10,7 +10,6 @@ import { TileSequence } from '$lib/tile';
 import { mathUtilsPart } from './parts/mathUtils';
 import { pbrtMathUtilsPart } from './parts/pbrtMathUtils';
 import { randomPart } from './parts/random';
-import { CookTorrance } from '$lib/materials/cookTorrance';
 import { Dielectric } from '$lib/materials/dielectric';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import { PC1D } from '$lib/samplers/PiecewiseConstant1D';
@@ -43,9 +42,6 @@ ${Diffuse.shaderShadeDiffuse()}
 ${TorranceSparrow.shaderStruct()}
 ${TorranceSparrow.shaderCreateStruct()}
 ${TorranceSparrow.shaderShadeTorranceSparrow()}
-${CookTorrance.shaderStruct()}
-${CookTorrance.shaderCreateStruct()}
-${CookTorrance.shaderShadeCookTorrance()}
 ${Dielectric.shaderStruct()}
 ${Dielectric.shaderCreateStruct()}
 ${Dielectric.shaderShadeDielectric()}

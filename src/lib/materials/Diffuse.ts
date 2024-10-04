@@ -14,7 +14,8 @@ export class Diffuse extends Material {
     bumpMap,
     bumpStrength = 1,
     uvRepeat = new Vector2(1, 1),
-    mapUvRepeat = new Vector2(1, 1)
+    mapUvRepeat = new Vector2(1, 1),
+    flipTextureY = false
   }: {
     color: Color;
     map?: HTMLImageElement;
@@ -22,8 +23,9 @@ export class Diffuse extends Material {
     bumpStrength?: number;
     uvRepeat?: Vector2;
     mapUvRepeat?: Vector2;
+    flipTextureY?: boolean;
   }) {
-    super();
+    super({ flipTextureY });
     this.type = MATERIAL_TYPE.DIFFUSE;
     this.color = color;
     this.bumpStrength = bumpStrength;

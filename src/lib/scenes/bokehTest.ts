@@ -14,7 +14,6 @@ import type { Material } from './../materials/material';
 import { Triangle } from './../primitives/triangle';
 import { TorranceSparrow } from './../materials/torranceSparrow';
 import random, { RNG } from 'random';
-import { CookTorrance } from '$lib/materials/cookTorrance';
 import { Dielectric } from '$lib/materials/dielectric';
 import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';

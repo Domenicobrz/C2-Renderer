@@ -6,6 +6,11 @@ import { textureArraysSegmentShader } from '$lib/shaders/textureArraysShader';
 import type { C2Scene } from '$lib/createScene';
 import type { Material } from '$lib/materials/Material';
 
+type ImageInfo = {
+  image: HTMLImageElement;
+  flipY: boolean;
+};
+
 export class TextureArraysSegment {
   // private fields
   private device: GPUDevice;
@@ -78,11 +83,11 @@ export class TextureArraysSegment {
 
   update(materials: Material[]) {
     let textures128count = 0;
-    let images128 = [];
+    let images128: ImageInfo[] = [];
     let textures512count = 0;
-    let images512 = [];
+    let images512: ImageInfo[] = [];
     let textures1024count = 0;
-    let images1024 = [];
+    let images1024: ImageInfo[] = [];
 
     for (let i = 0; i < materials.length; i++) {
       let material = materials[i];
@@ -93,15 +98,15 @@ export class TextureArraysSegment {
         if (dim <= 128) {
           material.texturesLocation[tname] = new Vector2(0, textures128count);
           textures128count++;
-          images128.push(t);
+          images128.push({ image: t, flipY: material.flipTextureY });
         } else if (dim <= 512) {
           material.texturesLocation[tname] = new Vector2(1, textures512count);
           textures512count++;
-          images512.push(t);
+          images512.push({ image: t, flipY: material.flipTextureY });
         } else {
           material.texturesLocation[tname] = new Vector2(2, textures1024count);
           textures1024count++;
-          images1024.push(t);
+          images1024.push({ image: t, flipY: material.flipTextureY });
         }
       }
     }
@@ -145,10 +150,10 @@ export class TextureArraysSegment {
     const renderTextureInsideTextureArray = (
       size: '128' | '512' | '1024',
       arrayIndex: number,
-      image: HTMLImageElement
+      imgInfo: ImageInfo
     ) => {
       const texture = this.device.createTexture({
-        size: [image.width, image.height],
+        size: [imgInfo.image.width, imgInfo.image.height],
         format: 'rgba8unorm',
         usage:
           GPUTextureUsage.RENDER_ATTACHMENT |
@@ -157,9 +162,9 @@ export class TextureArraysSegment {
       });
 
       this.device.queue.copyExternalImageToTexture(
-        { source: image, flipY: false },
+        { source: imgInfo.image, flipY: imgInfo.flipY },
         { texture },
-        { width: image.width, height: image.height }
+        { width: imgInfo.image.width, height: imgInfo.image.height }
       );
 
       this.bindGroup0 = this.device.createBindGroup({

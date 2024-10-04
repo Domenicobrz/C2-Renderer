@@ -5,7 +5,6 @@ import type { Material } from './../materials/material';
 import { Triangle } from './../primitives/triangle';
 import { TorranceSparrow } from './../materials/torranceSparrow';
 import random, { RNG } from 'random';
-import { CookTorrance } from '$lib/materials/cookTorrance';
 import { Dielectric } from '$lib/materials/dielectric';
 import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 import type { C2Scene } from '$lib/createScene';
@@ -19,7 +18,6 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), ax: 0.125, ay: 0.025 }),
     new Emissive({ color: new Color(1, 1, 1), intensity: 10 }),
     new Diffuse({ color: new Color(0.05, 1, 0.05) }),
-    new CookTorrance(new Color(0.95, 0.95, 0.95), 0.725),
     new Dielectric({ absorption: new Color(0.095, 0.195, 0.295), ax: 0.05, ay: 0.05, eta: 1.5 })
   ];
 

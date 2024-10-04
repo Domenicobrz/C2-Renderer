@@ -10,6 +10,7 @@ export class Dielectric extends Material {
   private eta: number;
   private bumpStrength: number;
   private uvRepeat: Vector2;
+  private mapUvRepeat: Vector2;
 
   constructor({
     absorption,
@@ -21,6 +22,7 @@ export class Dielectric extends Material {
     bumpMap,
     bumpStrength = 1,
     uvRepeat = new Vector2(1, 1),
+    mapUvRepeat = new Vector2(1, 1),
     flipTextureY = false
   }: {
     absorption: Color;
@@ -33,6 +35,7 @@ export class Dielectric extends Material {
     bumpStrength?: number;
     uvRepeat?: Vector2;
     flipTextureY?: boolean;
+    mapUvRepeat?: Vector2;
   }) {
     super({ flipTextureY });
     this.type = MATERIAL_TYPE.DIELECTRIC;
@@ -42,7 +45,8 @@ export class Dielectric extends Material {
     this.eta = eta;
     this.bumpStrength = bumpStrength;
     this.uvRepeat = uvRepeat;
-    this.offsetCount = 16;
+    this.mapUvRepeat = mapUvRepeat;
+    this.offsetCount = 18;
 
     this.texturesLocation.absorptionMap = new Vector2(-1, -1);
     this.texturesLocation.roughnessMap = new Vector2(-1, -1);
@@ -70,6 +74,8 @@ export class Dielectric extends Material {
       this.bumpStrength,
       this.uvRepeat.x,
       this.uvRepeat.y,
+      this.mapUvRepeat.x,
+      this.mapUvRepeat.y,
       // we'll store integers as floats and then bitcast them back into ints
       intBitsToFloat(this.texturesLocation.absorptionMap.x),
       intBitsToFloat(this.texturesLocation.absorptionMap.y),
@@ -89,6 +95,7 @@ export class Dielectric extends Material {
         eta: f32,
         bumpStrength: f32,
         uvRepeat: vec2f,
+        mapUvRepeat: vec2f,
         absorptionMapLocation: vec2i,
         roughnessMapLocation: vec2i,
         bumpMapLocation: vec2i,
@@ -111,17 +118,19 @@ export class Dielectric extends Material {
         d.bumpStrength = materialsData[offset + 7];
         d.uvRepeat.x = materialsData[offset + 8];
         d.uvRepeat.y = materialsData[offset + 9];
+        d.mapUvRepeat.x = materialsData[offset + 10];
+        d.mapUvRepeat.y = materialsData[offset + 11];
         d.absorptionMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 10]),
-          bitcast<i32>(materialsData[offset + 11]),
-        );
-        d.roughnessMapLocation = vec2i(
           bitcast<i32>(materialsData[offset + 12]),
           bitcast<i32>(materialsData[offset + 13]),
         );
-        d.bumpMapLocation = vec2i(
+        d.roughnessMapLocation = vec2i(
           bitcast<i32>(materialsData[offset + 14]),
           bitcast<i32>(materialsData[offset + 15]),
+        );
+        d.bumpMapLocation = vec2i(
+          bitcast<i32>(materialsData[offset + 16]),
+          bitcast<i32>(materialsData[offset + 17]),
         );
         return d;
       } 
@@ -446,7 +455,7 @@ export class Dielectric extends Material {
         // however it can be desireable from an artistic point of view
         if (material.absorptionMapLocation.x > -1) {
           absorption *= getTexelFromTextureArrays(
-            material.absorptionMapLocation, ires.uv, material.uvRepeat
+            material.absorptionMapLocation, ires.uv, material.mapUvRepeat
           ).xyz;
         }
 

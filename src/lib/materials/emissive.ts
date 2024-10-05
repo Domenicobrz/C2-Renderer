@@ -76,7 +76,7 @@ export class Emissive extends Material {
         let albedo = vec3f(1,1,1);
         let emissive = material.color * material.intensity;
 
-        var N = ires.normal;
+        var N = ires.triangle.geometricNormal;
         if (dot(N, (*ray).direction) > 0) {
           N = -N;
         } else {

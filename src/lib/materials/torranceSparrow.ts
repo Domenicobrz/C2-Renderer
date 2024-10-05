@@ -360,7 +360,7 @@ export class TorranceSparrow extends Material {
         }
 
         var vertexNormal = ires.normal;
-        if (dot(vertexNormal, (*ray).direction) > 0) {
+        if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
           vertexNormal = -vertexNormal;
         }
         var N = vertexNormal;

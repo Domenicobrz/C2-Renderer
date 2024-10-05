@@ -92,7 +92,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     )
   );
 
-  let mesh = new Mesh(new SphereGeometry(1, 200, 200));
+  let mesh = new Mesh(new SphereGeometry(1, 20, 20));
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 0);
 
@@ -104,23 +104,23 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     .data;
   let bumpTest = (await new TextureLoader().loadAsync('scene-assets/textures/bump-test.png')).source
     .data;
+
+  let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99), bumpMap: bumpTest, bumpStrength: 5 });
   // let mat = new TorranceSparrow({
   //   color: new Color(0.99, 0.99, 0.99),
-  //   ax: 0.7,
-  //   ay: 0.017,
+  //   ax: 0.21,
+  //   ay: 0.21,
   //   bumpMap: bumpTest,
-  //   bumpStrength: 0.5
+  //   bumpStrength: 2.5
   // });
   // let mat = new Dielectric({
-  //   absorption: new Color(0.01, 0.03, 0.06),
-  //   ax: 0.001,
-  //   ay: 0.001,
+  //   absorption: new Color(0, 0, 0),
+  //   ax: 0.01,
+  //   ay: 0.01,
   //   eta: 1.6,
   //   bumpMap: bumpTest,
   //   bumpStrength: 5
   // });
-  // let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99), bumpMap: bumpTest, bumpStrength: 5 });
-  let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
   materials.push(mat);
 
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];

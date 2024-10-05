@@ -12,7 +12,7 @@ export function geometryToTriangles(
   geometry = geometry.toNonIndexed();
   // the geometry is now non-indexed, so "compute vertex normals"
   // in reality computes face normals since vertices are disconnected
-  geometry.computeVertexNormals();
+  // geometry.computeVertexNormals();
   if (matrix) {
     geometry.applyMatrix4(matrix);
   }

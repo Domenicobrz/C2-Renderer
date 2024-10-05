@@ -191,7 +191,9 @@ export class Diffuse extends Material {
         }
 
         var vertexNormal = ires.normal;
-        if (dot(vertexNormal, (*ray).direction) > 0) {
+        // the normal flip is calculated using the geometric normal to avoid
+        // black edges on meshes displaying strong smooth-shading via vertex normals
+        if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
           vertexNormal = -vertexNormal;
         }
         var N = vertexNormal;
@@ -202,7 +204,7 @@ export class Diffuse extends Material {
             ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
           );
         }
-    
+
         // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
         (*ray).origin = ires.hitPoint;
         // in practice however, only for Dielectrics we need the exact origin, 
@@ -211,15 +213,6 @@ export class Diffuse extends Material {
           (*ray).origin += vertexNormal * bumpOffset;
         }
     
-        // if (debugInfo.bounce == 1 && (vertexNormal.x < -0.95 || vertexNormal.y < -0.95)) {
-        if (debugInfo.bounce == 1 && (vertexNormal.y < -0.95)) {
-          firstBounceType = 1;
-        }
-
-        // if (debugInfo.bounce == 2 && length((*ray).origin) < 2.15 && firstBounceType == 1) {
-        //   *reflectance = vec3f(0.0);
-        // }
-
         // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xy is used for brdf samples
         // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)

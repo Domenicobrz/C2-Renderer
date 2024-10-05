@@ -110,6 +110,7 @@ export class Diffuse extends Material {
         ray: ptr<function, Ray>, 
         pdf: ptr<function, f32>,
         misWeight: ptr<function, f32>,
+        triangle: Triangle
       ) {
         // why am I using uniform sampling? cosine weighted is better.
         // if you switch to another brdf pdf, remember to also update the light sample brdf's pdf
@@ -124,13 +125,16 @@ export class Diffuse extends Material {
 
         var brdfSamplePdf = 1 / (2 * PI);
 
-        var Nt = vec3f(0,0,0);
-        var Nb = vec3f(0,0,0);
-        getCoordinateSystem(N, &Nt, &Nb);
-    
-        // back to world space
-        (*ray).direction = normalize(Nt * newDir.x + N * newDir.y + Nb * newDir.z);
-        
+        var tangent = vec3f(0.0);
+        var bitangent = vec3f(0.0);
+        getTangentFromTriangle(triangle, N, &tangent, &bitangent);
+      
+        // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+        let TBN = mat3x3f(tangent, bitangent, N);
+        // from tangent space to world space
+        (*ray).direction = normalize(TBN * newDir.xzy);
+
+
         *pdf = brdfSamplePdf;
         let lightSamplePdf = getLightPDF(*ray);
         *misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
@@ -207,6 +211,15 @@ export class Diffuse extends Material {
           (*ray).origin += vertexNormal * bumpOffset;
         }
     
+        // if (debugInfo.bounce == 1 && (vertexNormal.x < -0.95 || vertexNormal.y < -0.95)) {
+        if (debugInfo.bounce == 1 && (vertexNormal.y < -0.95)) {
+          firstBounceType = 1;
+        }
+
+        // if (debugInfo.bounce == 2 && length((*ray).origin) < 2.15 && firstBounceType == 1) {
+        //   *reflectance = vec3f(0.0);
+        // }
+
         // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xy is used for brdf samples
         // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
@@ -225,7 +238,7 @@ export class Diffuse extends Material {
 
         if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32;
-          shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &w);
+          shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &w, ires.triangle);
           (*ray).origin += (*ray).direction * 0.001;
           *reflectance *= brdf * (1 / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
@@ -234,7 +247,7 @@ export class Diffuse extends Material {
           var pdf: f32; var misWeight: f32; var ls: vec3f;
           let isBrdfSample = rands1.w < 0.5;
           if (isBrdfSample) {
-            shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &misWeight);
+            shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &misWeight, ires.triangle);
           } else {
             shadeDiffuseSampleLight(rands2, N, ray, &pdf, &misWeight, &ls);          
           }
@@ -248,7 +261,7 @@ export class Diffuse extends Material {
           var rayBrdf = Ray((*ray).origin, (*ray).direction);
           var rayLight = Ray((*ray).origin, (*ray).direction);
 
-          shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight);
+          shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight, ires.triangle);
           shadeDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
 
           (*ray).origin += rayBrdf.direction * 0.001;

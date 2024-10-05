@@ -102,6 +102,8 @@ fn debugLog(value: f32) {
   debugInfo.debugLogIndex++;
 }
 
+var<private> firstBounceType: i32 = 0;
+
 // ***** Things to remember:  (https://webgpureport.org/)
 // maxStorageBuffersPerShaderStage = 8
 // maxUniformBuffersPerShaderStage = 12 (maxUniformBuffersPerShaderStage)

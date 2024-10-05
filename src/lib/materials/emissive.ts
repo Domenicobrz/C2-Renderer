@@ -12,7 +12,7 @@ export class Emissive extends Material {
   }: {
     color: Color;
     intensity: number;
-    flipTextureY: boolean;
+    flipTextureY?: boolean;
   }) {
     super({ flipTextureY });
     this.type = MATERIAL_TYPE.EMISSIVE;
@@ -98,12 +98,17 @@ export class Emissive extends Material {
           cos(r1),
           cos(r0) * sin(r1),
         ));
+
     
-        var Nt = vec3f(0,0,0);
-        var Nb = vec3f(0,0,0);
-        getCoordinateSystem(N, &Nt, &Nb);
-    
-        (*ray).direction = normalize(Nt * nd.x + N * nd.y + Nb * nd.z);
+        var tangent = vec3f(0.0);
+        var bitangent = vec3f(0.0);
+        getTangentFromTriangle(ires.triangle, N, &tangent, &bitangent);
+      
+        // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+        let TBN = mat3x3f(tangent, bitangent, N);
+        // from tangent space to world space
+        (*ray).direction = normalize(TBN * nd.xzy);
+
         *reflectance *= albedo * max(dot(N, (*ray).direction), 0.0) * (1 / PI) * (2 * PI);
       } 
     `;

@@ -6,17 +6,22 @@ fn squaredLength(v: vec3f) -> f32 {
   return dot(v, v);
 }
 
-fn getCoordinateSystem(N: vec3f, Nt: ptr<function, vec3f>, Nb: ptr<function, vec3f>) {
-  if (abs(N.x) > abs(N.y)) {
-    *Nt = vec3f(N.z, 0, -N.x) / sqrt(N.x * N.x + N.z * N.z);
-  }  else {
-    *Nt = vec3f(0, -N.z, N.y) / sqrt(N.y * N.y + N.z * N.z);
-  }
+// this function did not really work, it caused issues at the abs(x) > abs(y) boundaries
+// when trying to create a TBN matrix to use for diffuse directions
+// the issue was visible in a cornell-sphere scene with only 3 bounces.
+// strangely up to 2 bounces the result was okay, but at the third bounce 
+// problems where visible if the third (index = 2) bounce hit the sphere
+// fn getCoordinateSystem(N: vec3f, Nt: ptr<function, vec3f>, Nb: ptr<function, vec3f>) {
+//   if (abs(N.x) > abs(N.y)) {
+//     *Nt = normalize(vec3f(N.z, 0, -N.x) / sqrt(N.x * N.x + N.z * N.z));
+//   }  else {
+//     *Nt = normalize(vec3f(0, -N.z, N.y) / sqrt(N.y * N.y + N.z * N.z));
+//   }
   
-  // I'm setting - cross to convert it to a left-handed coordinate system
-  // to be consistent with the rest of the app
-  *Nb = -cross(N, *Nt);
-}
+//   // I'm setting - cross to convert it to a left-handed coordinate system
+//   // to be consistent with the rest of the app
+//   *Nb = normalize(-cross(N, *Nt));
+// }
 
 fn sphericalToCartesian(theta: f32, phi: f32) -> vec3f {
   return vec3f(

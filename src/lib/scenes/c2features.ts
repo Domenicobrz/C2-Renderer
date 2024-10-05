@@ -91,7 +91,7 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/ducati_monster_1200.glb');
   // let ducati = gltf.scene.children[0];
   // ducati.scale.set(-3, 3, 3);
-  // ducati.position.set(0, 0, 0);
+  // ducati.position.set(-1, 0, -1);
   // // ducati.rotation.set(Math.PI * 0.5, Math.PI, Math.PI * 0.5);
   // ducati.traverse((obj) => {
   //   obj.updateMatrix();
@@ -121,8 +121,27 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   //   }
   // });
 
+  let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue-uv.glb');
+  let group = gltf.scene.children[0];
+  group.scale.set(-2.15, 2.15, 2.15);
+  group.position.set(-0.5, 0, -1.5);
+  group.rotation.z = -1.4;
+  materials.push(
+    new Dielectric({
+      // absorption: new Color(0.35, 0.68, 0.99).multiplyScalar(2.85),
+      absorption: new Color(0.25, 0.58, 0.99).multiplyScalar(4.5),
+      // absorptionMap: graffitiTexture,
+      ax: 0.15,
+      ay: 0.01,
+      eta: 1.6
+      // mapUvRepeat: new Vector2(0.1, 0.1)
+    })
+  );
+  triangles = [...triangles, ...meshToTriangles(group, materials.length - 1)];
+
   let sphereGeo = new SphereGeometry(2, 50, 50);
-  sphereGeo.translate(0, 2, 0);
+  // sphereGeo.translate(0, 2, 0);
+  sphereGeo.translate(2, 2, 1);
   materials.push(
     new TorranceSparrow({
       // new Dielectric({

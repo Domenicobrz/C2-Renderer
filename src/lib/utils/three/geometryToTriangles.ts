@@ -55,6 +55,8 @@ export function geometryToTriangles(
         vec3(v2x, v2y, v2z),
         materialIndex,
         vec3(n0x, n0y, n0z),
+        vec3(n1x, n1y, n1z),
+        vec3(n2x, n2y, n2z),
         hasUvs ? uv0 : undefined,
         hasUvs ? uv1 : undefined,
         hasUvs ? uv2 : undefined

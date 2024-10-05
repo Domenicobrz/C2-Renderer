@@ -59,7 +59,7 @@ fn isFloatNaN(value: f32) -> bool {
 
 // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
 fn getTangentFromTriangle(
-  triangle: Triangle, tangent: ptr<function, vec3f>, bitangent: ptr<function, vec3f>
+  triangle: Triangle, shadingNormal: vec3f, tangent: ptr<function, vec3f>, bitangent: ptr<function, vec3f>
 ) {
 
   let t = triangle;
@@ -91,14 +91,19 @@ fn getTangentFromTriangle(
     //   f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z)
     // ));
   
-    *bitangent = normalize(cross(*tangent, t.normal));
+    *bitangent = normalize(cross(*tangent, t.geometricNormal));
   } 
   
   if (t.uv0.x < -0.9 || malconstructedUvs) {
     // otherwise default to auto geometry-based tangents
     *tangent = normalize(t.v1 - t.v0);
-    *bitangent = normalize(cross(*tangent, t.normal));
+    *bitangent = normalize(cross(*tangent, t.geometricNormal));
   }
+
+  // the tangents above are calculated with the geometric normal (picked from ires.triangle)
+  // and have to be adjusted to use the vertex/shading normal
+  *tangent = normalize(cross(shadingNormal, *bitangent));
+  *bitangent = normalize(cross(*tangent, shadingNormal));
 }
 
 fn copysign(mag: f32, sign: f32) -> f32 {

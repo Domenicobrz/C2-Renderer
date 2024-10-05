@@ -92,7 +92,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     )
   );
 
-  let mesh = new Mesh(new SphereGeometry(1, 120, 120));
+  let mesh = new Mesh(new SphereGeometry(1, 200, 200));
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 0);
 
@@ -119,14 +119,15 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   //   bumpMap: bumpTest,
   //   bumpStrength: 5
   // });
-  let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99), bumpMap: bumpTest, bumpStrength: 5 });
+  // let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99), bumpMap: bumpTest, bumpStrength: 5 });
+  let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
   materials.push(mat);
 
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
 
   // create & set camera
   const camera = new Orbit();
-  camera.set(new Vector3(0, 2, -10), new Vector3(0, 0, 0));
+  camera.set(new Vector3(0, 0, -10), new Vector3(0, 0, 0));
   camera.movementSpeed = 0.15;
 
   camera.aperture = 0;

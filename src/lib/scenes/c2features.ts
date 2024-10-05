@@ -128,6 +128,12 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   group.rotation.z = -1.4;
   materials.push(
     new Dielectric({
+      // new TorranceSparrow({
+      //   // new Diffuse({
+      //   color: new Color(0.875, 0.875, 0.875),
+      //   map: graffitiTexture,
+      //   ax: 0.1,
+      //   ay: 0.1
       // absorption: new Color(0.35, 0.68, 0.99).multiplyScalar(2.85),
       absorption: new Color(0.25, 0.58, 0.99).multiplyScalar(4.5),
       // absorptionMap: graffitiTexture,

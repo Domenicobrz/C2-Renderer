@@ -5,8 +5,16 @@ export class Emissive extends Material {
   public color: Color;
   public intensity: number;
 
-  constructor({ color, intensity = 1 }: { color: Color; intensity: number }) {
-    super();
+  constructor({
+    color,
+    intensity = 1,
+    flipTextureY = false
+  }: {
+    color: Color;
+    intensity: number;
+    flipTextureY: boolean;
+  }) {
+    super({ flipTextureY });
     this.type = MATERIAL_TYPE.EMISSIVE;
     this.color = color;
     this.intensity = intensity;
@@ -68,7 +76,7 @@ export class Emissive extends Material {
         let albedo = vec3f(1,1,1);
         let emissive = material.color * material.intensity;
 
-        var N = ires.triangle.normal;
+        var N = ires.normal;
         if (dot(N, (*ray).direction) > 0) {
           N = -N;
         } else {

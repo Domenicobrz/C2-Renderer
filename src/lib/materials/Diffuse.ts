@@ -110,6 +110,7 @@ export class Diffuse extends Material {
         ray: ptr<function, Ray>, 
         pdf: ptr<function, f32>,
         misWeight: ptr<function, f32>,
+        triangle: Triangle
       ) {
         // why am I using uniform sampling? cosine weighted is better.
         // if you switch to another brdf pdf, remember to also update the light sample brdf's pdf
@@ -124,13 +125,16 @@ export class Diffuse extends Material {
 
         var brdfSamplePdf = 1 / (2 * PI);
 
-        var Nt = vec3f(0,0,0);
-        var Nb = vec3f(0,0,0);
-        getCoordinateSystem(N, &Nt, &Nb);
-    
-        // back to world space
-        (*ray).direction = normalize(Nt * newDir.x + N * newDir.y + Nb * newDir.z);
-        
+        var tangent = vec3f(0.0);
+        var bitangent = vec3f(0.0);
+        getTangentFromTriangle(triangle, N, &tangent, &bitangent);
+      
+        // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+        let TBN = mat3x3f(tangent, bitangent, N);
+        // from tangent space to world space
+        (*ray).direction = normalize(TBN * newDir.xzy);
+
+
         *pdf = brdfSamplePdf;
         let lightSamplePdf = getLightPDF(*ray);
         *misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
@@ -186,11 +190,13 @@ export class Diffuse extends Material {
           color *= getTexelFromTextureArrays(material.mapLocation, ires.uv, material.mapUvRepeat).xyz;
         }
 
-        var geometricNormal = ires.triangle.normal;
-        if (dot(geometricNormal, (*ray).direction) > 0) {
-          geometricNormal = -geometricNormal;
+        var vertexNormal = ires.normal;
+        // the normal flip is calculated using the geometric normal to avoid
+        // black edges on meshes displaying strong smooth-shading via vertex normals
+        if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
+          vertexNormal = -vertexNormal;
         }
-        var N = geometricNormal;
+        var N = vertexNormal;
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
@@ -198,13 +204,13 @@ export class Diffuse extends Material {
             ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
           );
         }
-    
+
         // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
         (*ray).origin = ires.hitPoint;
         // in practice however, only for Dielectrics we need the exact origin, 
         // for Diffuse we can apply the bump offset if necessary
         if (bumpOffset > 0.0) {
-          (*ray).origin += geometricNormal * bumpOffset;
+          (*ray).origin += vertexNormal * bumpOffset;
         }
     
         // rands1.w is used for ONE_SAMPLE_MODEL
@@ -225,7 +231,7 @@ export class Diffuse extends Material {
 
         if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32;
-          shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &w);
+          shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &w, ires.triangle);
           (*ray).origin += (*ray).direction * 0.001;
           *reflectance *= brdf * (1 / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
@@ -234,7 +240,7 @@ export class Diffuse extends Material {
           var pdf: f32; var misWeight: f32; var ls: vec3f;
           let isBrdfSample = rands1.w < 0.5;
           if (isBrdfSample) {
-            shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &misWeight);
+            shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &misWeight, ires.triangle);
           } else {
             shadeDiffuseSampleLight(rands2, N, ray, &pdf, &misWeight, &ls);          
           }
@@ -248,7 +254,7 @@ export class Diffuse extends Material {
           var rayBrdf = Ray((*ray).origin, (*ray).direction);
           var rayLight = Ray((*ray).origin, (*ray).direction);
 
-          shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight);
+          shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight, ires.triangle);
           shadeDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
 
           (*ray).origin += rayBrdf.direction * 0.001;

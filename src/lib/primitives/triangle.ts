@@ -7,7 +7,10 @@ import { Vector2, Vector3 } from 'three';
 
 export class Triangle {
   public idxRef: number = -1;
-  public normal: Vector3;
+  public norm0: Vector3;
+  public norm1: Vector3;
+  public norm2: Vector3;
+  public geometricNormal: Vector3;
   public uv0: Vector2 = new Vector2(-1, -1);
   public uv1: Vector2 = new Vector2(-1, -1);
   public uv2: Vector2 = new Vector2(-1, -1);
@@ -17,17 +20,25 @@ export class Triangle {
     public v1: Vector3,
     public v2: Vector3,
     public materialIndex: number,
-    normal?: Vector3,
+    norm0?: Vector3,
+    norm1?: Vector3,
+    norm2?: Vector3,
     uv0?: Vector2,
     uv1?: Vector2,
     uv2?: Vector2
   ) {
-    if (normal) {
-      this.normal = normal;
+    let v1v0 = v1.clone().sub(v0);
+    let v2v0 = v2.clone().sub(v0);
+    this.geometricNormal = v1v0.cross(v2v0).normalize();
+
+    if (norm0 && norm1 && norm2) {
+      this.norm0 = norm0;
+      this.norm1 = norm1;
+      this.norm2 = norm2;
     } else {
-      let v1v0 = v1.clone().sub(v0);
-      let v2v0 = v2.clone().sub(v0);
-      this.normal = v1v0.cross(v2v0).normalize();
+      this.norm0 = this.geometricNormal;
+      this.norm1 = this.geometricNormal;
+      this.norm2 = this.geometricNormal;
     }
 
     if (uv0) this.uv0 = uv0;
@@ -120,7 +131,7 @@ export class Triangle {
   }
 
   static getBufferData(triangles: Triangle[], materialOffsetsByIndex: number[]) {
-    const STRUCT_SIZE = 96; /* determined with offset computer */
+    const STRUCT_SIZE = 144; /* determined with offset computer */
     const trianglesCount = triangles.length;
     const data = new ArrayBuffer(STRUCT_SIZE * trianglesCount);
 
@@ -135,8 +146,11 @@ export class Triangle {
         uv1: new Float32Array(data, offs + 56, 2),
         uv2: new Float32Array(data, offs + 64, 2),
         area: new Float32Array(data, offs + 72, 1),
-        normal: new Float32Array(data, offs + 80, 3),
-        materialOffset: new Uint32Array(data, offs + 92, 1)
+        norm0: new Float32Array(data, offs + 80, 3),
+        norm1: new Float32Array(data, offs + 96, 3),
+        norm2: new Float32Array(data, offs + 112, 3),
+        geometricNormal: new Float32Array(data, offs + 128, 3),
+        materialOffset: new Uint32Array(data, offs + 140, 1)
       };
       views.v0.set([t.v0.x, t.v0.y, t.v0.z]);
       views.v1.set([t.v1.x, t.v1.y, t.v1.z]);
@@ -145,7 +159,10 @@ export class Triangle {
       views.uv1.set([t.uv1.x, t.uv1.y]);
       views.uv2.set([t.uv2.x, t.uv2.y]);
       views.area.set([t.getArea()]);
-      views.normal.set([t.normal.x, t.normal.y, t.normal.z]);
+      views.norm0.set([t.norm0.x, t.norm0.y, t.norm0.z]);
+      views.norm1.set([t.norm1.x, t.norm1.y, t.norm1.z]);
+      views.norm2.set([t.norm2.x, t.norm2.y, t.norm2.z]);
+      views.geometricNormal.set([t.geometricNormal.x, t.geometricNormal.y, t.geometricNormal.z]);
       views.materialOffset.set([materialOffsetsByIndex[t.materialIndex]]);
     });
 
@@ -159,6 +176,7 @@ export class Triangle {
         t: f32,
         hitPoint: vec3f,
         uv: vec2f,
+        normal: vec3f
       }
 
       // this layout saves some bytes because of padding
@@ -171,8 +189,10 @@ export class Triangle {
         uv1: vec2f,
         uv2: vec2f,
         area: f32,
-        uvArea: f32,
-        normal: vec3f,
+        norm0: vec3f,
+        norm1: vec3f,
+        norm2: vec3f,
+        geometricNormal: vec3f,
         materialOffset: u32,
       }
     `;
@@ -209,11 +229,11 @@ export class Triangle {
       
         if (CULLING) {
           if (det < 0.000001) {
-            return IntersectionResult(false, 0, vec3f(0), vec2f(0));
+            return IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0));
           }
         } else {
           if (abs(det) < 0.000001) {
-            return IntersectionResult(false, 0, vec3f(0), vec2f(0));
+            return IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0));
           }
         }
       
@@ -222,20 +242,20 @@ export class Triangle {
         let u = dot(tvec, pvec) * invDet;
       
         if (u < 0 || u > 1) {
-          return IntersectionResult(false, 0, vec3f(0), vec2f(0));
+          return IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0));
         }
       
         let qvec = cross(tvec, v0v1);
         let v = dot(ray.direction, qvec) * invDet;
       
         if (v < 0 || u + v > 1) {
-          return IntersectionResult(false, 0, vec3f(0), vec2f(0));
+          return IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0));
         }
       
         let t = dot(v0v2, qvec) * invDet;
 
         if (t < 0) {
-          return IntersectionResult(false, 0, vec3f(0), vec2f(0));
+          return IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0));
         }
 
         let hitPoint = ray.origin + t * ray.direction;
@@ -245,8 +265,13 @@ export class Triangle {
         let uv1 = triangle.uv1;
         let uv2 = triangle.uv2;
         let hitUV = uv0 * w + uv1 * u + uv2 * v;
+        
+        let norm0 = triangle.norm0;
+        let norm1 = triangle.norm1;
+        let norm2 = triangle.norm2;
+        let hitNormal = normalize(norm0 * w + norm1 * u + norm2 * v);
 
-        return IntersectionResult(true, t, hitPoint, hitUV);
+        return IntersectionResult(true, t, hitPoint, hitUV, hitNormal);
       }
     `;
   }

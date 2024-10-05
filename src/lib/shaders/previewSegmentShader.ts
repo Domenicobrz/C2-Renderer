@@ -51,7 +51,7 @@ struct Vertex {
   // let col = abs(dot(wo, normal));
   let col = dot(wo, normal);
 
-  var coloredVSNormal = fsInput.viewSpaceNorm * vec3f(1,1,-1) * 0.5 + 0.5;
+  var coloredVSNormal = normalize(fsInput.viewSpaceNorm) * vec3f(1,1,-1) * 0.5 + 0.5;
   if (dot(wo, normal) < 0.0) {
     coloredVSNormal *= 0.0;
   }

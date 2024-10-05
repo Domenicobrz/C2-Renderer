@@ -359,11 +359,11 @@ export class TorranceSparrow extends Material {
           material.ay *= max(roughness.y, 0.0001);
         }
 
-        var geometricNormal = ires.triangle.normal;
-        if (dot(geometricNormal, (*ray).direction) > 0) {
-          geometricNormal = -geometricNormal;
+        var vertexNormal = ires.normal;
+        if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
+          vertexNormal = -vertexNormal;
         }
-        var N = geometricNormal;
+        var N = vertexNormal;
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
@@ -377,7 +377,7 @@ export class TorranceSparrow extends Material {
         // in practice however, only for Dielectrics we need the exact origin, 
         // for TorranceSparrow we can apply the bump offset if necessary
         if (bumpOffset > 0.0) {
-          (*ray).origin += geometricNormal * bumpOffset;
+          (*ray).origin += vertexNormal * bumpOffset;
         }
 
         // rands1.w is used for ONE_SAMPLE_MODEL
@@ -397,14 +397,7 @@ export class TorranceSparrow extends Material {
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires.triangle, &tangent, &bitangent);
-
-        // the tangents above are calculated with the geometric normal (picked from ires.triangle)
-        // and have to be adjusted to use the shading normal
-        if (material.bumpMapLocation.x > -1) {
-          tangent = normalize(cross(N, bitangent));
-          bitangent = normalize(cross(tangent, N));
-        }
+        getTangentFromTriangle(ires.triangle, N, &tangent, &bitangent);
 
         // normal could be flipped at some point, should we also flip TB?
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping

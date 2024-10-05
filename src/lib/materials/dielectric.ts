@@ -467,9 +467,8 @@ export class Dielectric extends Material {
           material.ay *= max(roughness.y, 0.0001);
         }
 
-        // var N = ires.triangle.normal;     
-        var geometricNormal = ires.triangle.normal;
-        var N = geometricNormal;
+        var vertexNormal = ires.normal;
+        var N = vertexNormal;
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
@@ -509,17 +508,8 @@ export class Dielectric extends Material {
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires.triangle, &tangent, &bitangent);
-        
-        // the tangents above are calculated with the geometric normal (picked from ires.triangle)
-        // and have to be adjusted to use the shading normal
-        if (material.bumpMapLocation.x > -1) {
-          tangent = normalize(cross(N, bitangent));
-          bitangent = normalize(cross(tangent, N));
-        }
-
-        // var tangent = vec3f(1.0, 0.0, 0.0);
-        // var bitangent = vec3f(0.0, 1.0, 0.0);
+        getTangentFromTriangle(ires.triangle, N, &tangent, &bitangent);
+       
 
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
         let TBN = mat3x3f(tangent, bitangent, N);

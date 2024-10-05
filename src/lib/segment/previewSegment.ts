@@ -123,9 +123,9 @@ export class PreviewSegment {
         vertexData[(i * 3 + j) * 6 + 0] = vs[j].x;
         vertexData[(i * 3 + j) * 6 + 1] = vs[j].y;
         vertexData[(i * 3 + j) * 6 + 2] = vs[j].z;
-        vertexData[(i * 3 + j) * 6 + 3] = triangle.normal.x;
-        vertexData[(i * 3 + j) * 6 + 4] = triangle.normal.y;
-        vertexData[(i * 3 + j) * 6 + 5] = triangle.normal.z;
+        vertexData[(i * 3 + j) * 6 + 3] = (triangle as any)['norm' + j].x;
+        vertexData[(i * 3 + j) * 6 + 4] = (triangle as any)['norm' + j].y;
+        vertexData[(i * 3 + j) * 6 + 5] = (triangle as any)['norm' + j].z;
       }
     }
 

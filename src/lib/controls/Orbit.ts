@@ -169,6 +169,10 @@ export class Orbit extends Camera {
     this.position = position;
     this.target = target;
 
+    let dir = this.position.clone().sub(this.target).normalize();
+    this.theta = Math.acos(dir.y);
+    this.phi = -Math.atan2(dir.z, dir.x) - Math.PI * 0.5;
+
     this.calculateMatrix();
     this.e.fireEvent('change');
   }

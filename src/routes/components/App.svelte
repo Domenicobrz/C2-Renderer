@@ -2,7 +2,12 @@
   import { Renderer } from '$lib/C2';
   import type { RendererInterface } from '$lib/C2';
   import { onMount } from 'svelte';
-  import { centralStatusMessage, configOptions, samplesInfo } from '../stores/main';
+  import {
+    centralErrorStatusMessage,
+    centralStatusMessage,
+    configOptions,
+    samplesInfo
+  } from '../stores/main';
   import Folder from './Folder.svelte';
   import LeftSidebar from './LeftSidebar.svelte';
   import Envmap from './right-sidebar/Envmap.svelte';
@@ -48,6 +53,12 @@
     {#if $centralStatusMessage}
       <p class="csm">
         <span class="csm-icon-container"><StopWatch /></span>{$centralStatusMessage}
+      </p>
+    {/if}
+
+    {#if $centralErrorStatusMessage}
+      <p class="csm csm-error">
+        {$centralErrorStatusMessage}
       </p>
     {/if}
   </div>
@@ -130,6 +141,10 @@
     left: 50%;
     transform: translate(-50%, -50%);
     color: #ddd;
+  }
+
+  .csm-error {
+    color: rgb(171, 0, 0);
   }
 
   .csm-icon-container {

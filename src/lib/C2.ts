@@ -11,6 +11,7 @@ import { RenderTextureSegment } from './segment/renderTextureSegment';
 import { PreviewSegment } from './segment/previewSegment';
 import { get } from 'svelte/store';
 import { tick } from './utils/tick';
+import { getDeviceAndContext } from './webgpu-utils/getDeviceAndContext';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
@@ -37,16 +38,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   // WebGPU typescript types are loaded from an external library:
   // https://github.com/gpuweb/types
   // apparently the standard installation didn't include WebGPU types
-  const adapter = await navigator.gpu?.requestAdapter();
-  const canTimestamp = adapter?.features.has('timestamp-query');
-  const device = await (adapter as any)?.requestDevice({
-    requiredFeatures: [...(canTimestamp ? ['timestamp-query'] : []), 'float32-filterable']
-  });
-  const context = canvas.getContext('webgpu');
-
-  if (!device || !context) {
-    throw new Error('need a browser that supports WebGPU');
-  }
+  const { device, context } = await getDeviceAndContext(canvas);
 
   const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
   context.configure({

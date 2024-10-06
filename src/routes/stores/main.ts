@@ -9,6 +9,7 @@ export const bvhInfo = writable<BVHInfo>({ nodesCount: 0 });
 
 export const renderView = writable<'preview' | 'realtime' | 'compute'>('compute');
 
+export const centralErrorStatusMessage = writable<string>('');
 export const centralStatusMessage = writable<string>('');
 
 type SamplesInfo = {

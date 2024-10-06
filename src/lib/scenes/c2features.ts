@@ -9,11 +9,9 @@ import {
   Vector3
 } from 'three';
 import { Diffuse } from '../materials/diffuse';
-import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';
 import { Triangle } from './../primitives/triangle';
 import { TorranceSparrow } from './../materials/torranceSparrow';
-import random, { RNG } from 'random';
 import { Dielectric } from '$lib/materials/dielectric';
 import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 import type { C2Scene } from '$lib/createScene';
@@ -25,13 +23,6 @@ import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
 export async function c2FeaturesScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
   let materials: Material[] = [];
-
-  // let light = new Mesh(new PlaneGeometry(1, 1));
-  // light.scale.set(5, 5, 1);
-  // light.position.set(0, 5, 0);
-  // light.rotation.x = Math.PI * 0.5;
-  // materials.push(new Emissive({ color: new Color(0.99, 0.99, 0.99), intensity: 3 }));
-  // triangles = [...triangles, ...meshToTriangles(light, materials.length - 1)];
 
   let plane = new Mesh(new PlaneGeometry(100, 100));
   plane.position.set(0, 0, 0);
@@ -46,7 +37,6 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   materials.push(
     new TorranceSparrow({
       color: new Color(0.5, 0.5, 0.5),
-      // color: new Color(0.57, 0.5, 0.41),
       ax: 0.151,
       ay: 0.151,
       map: gcDiff,
@@ -57,16 +47,6 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
       mapUvRepeat: new Vector2(20, 20)
     })
   );
-  // materials.push(
-  //   new Diffuse({
-  //     color: new Color(0.1, 0.1, 0.1),
-  //     map: gcDiff,
-  //     // roughnessMap: gcRough,
-  //     bumpMap: gcBump,
-  //     bumpStrength: 30,
-  //     uvRepeat: new Vector2(18, 18)
-  //   })
-  // );
   triangles = [...triangles, ...meshToTriangles(plane, materials.length - 1)];
 
   let graffiti = new Mesh(new PlaneGeometry(35, 15));
@@ -130,40 +110,22 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   group.rotation.z = -1.4;
   materials.push(
     new Dielectric({
-      // new TorranceSparrow({
-      //   // new Diffuse({
-      //   color: new Color(0.875, 0.875, 0.875),
-      //   map: graffitiTexture,
-      //   ax: 0.1,
-      //   ay: 0.1
-      // absorption: new Color(0.35, 0.68, 0.99).multiplyScalar(2.85),
       absorption: new Color(0.25, 0.58, 0.99).multiplyScalar(4.5),
-      // absorption: new Color(0.22, 0.53, 0.99).multiplyScalar(3),
-      // absorptionMap: graffitiTexture,
-      // ax: 0.15,
       ax: 0.01,
       ay: 0.01,
       eta: 1.6
-      // mapUvRepeat: new Vector2(0.1, 0.1)
     })
   );
   triangles = [...triangles, ...meshToTriangles(group, materials.length - 1)];
 
   let sphereGeo = new SphereGeometry(2, 75, 75);
-  // sphereGeo.translate(0, 2, 0);
   sphereGeo.translate(2, 2, 1);
   materials.push(
     new TorranceSparrow({
-      // new Dielectric({
       color: new Color(1, 1, 1),
       map: graffitiTexture,
       ax: 0.1,
       ay: 0.01
-      // mapUvRepeat: new Vector2(4, 2),
-      // eta: 1.6,
-      // absorptionMap: graffitiTexture,
-      // absorption: new Color(1, 1, 1).multiplyScalar(4),
-      // mapUvRepeat: new Vector2(3, 3)
     })
   );
   triangles = [
@@ -171,18 +133,14 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
     ...geometryToTriangles(sphereGeo, materials.length - 1, new Matrix4().identity())
   ];
 
-  // create & set camera
   const camera = new Orbit();
-  // camera.set(new Vector3(-18.6, 6.6, 8.6), new Vector3(-9.2, 3.9, 4.4));
-  // camera.set(new Vector3(-11.8, 2.2, 5.3), new Vector3(-2.0, 1.8, 1.2));
   camera.set(new Vector3(-12.3, 5.4, 5.3), new Vector3(-2.8, 2.6, 1.3));
 
   camera.movementSpeed = 0.15;
 
-  camera.aperture = 0;
-  // camera.fov = 0.27;
+  camera.aperture = 0.17;
   camera.fov = 0.53;
-  camera.focusDistance = 9.53;
+  camera.focusDistance = 13.246386264701139;
   camera.exposure = 1.85;
 
   let envmap = new Envmap();
@@ -190,7 +148,6 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   await envmap.fromEquirect('scene-assets/envmaps/lebombo_1k.hdr');
   // await envmap.fromEquirect('scene-assets/envmaps/large_corridor_1k.hdr');
   envmap.scale = 1;
-  // envmap.rotX = 0.3;
   envmap.rotX = 5.5;
   envmap.rotY = 1.7;
 

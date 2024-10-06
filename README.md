@@ -1,13 +1,11 @@
 # C2-Renderer
 
----
-
 A simple webgpu renderer implemented with javascript and svelte
 
 ### Main features
 
-1. Torrance-Sparrow BRDFs for conductor and dielectrics
-2. Dielectrics with beer-lambert volume absorption
+1. Anisotropic Torrance-Sparrow BRDFs for both conductor and dielectrics
+2. Beer-lambert volume absorption for dielectric materials
 3. Simple Lambertian BRDF
 4. Multiple importance sampling with either one-sample model (OSM) or next-event estimation (NEE)
 5. Support for bump maps, albedo and roughness textures

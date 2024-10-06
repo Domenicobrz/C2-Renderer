@@ -1,8 +1,10 @@
 <script lang="ts">
   import { renderView } from '../stores/main';
+  import Github from './icons/Github.svelte';
   import ShadingSphere1 from './icons/ShadingSphere1.svelte';
   import ShadingSphere2 from './icons/ShadingSphere2.svelte';
   import ShadingSphere3 from './icons/ShadingSphere3.svelte';
+  import Separator from './Separator.svelte';
 </script>
 
 <div class="left-sidebar">
@@ -15,6 +17,14 @@
   <button on:click={() => ($renderView = 'compute')} class:active={$renderView == 'compute'}>
     <ShadingSphere3 />
   </button>
+
+  <Separator />
+
+  <a href="https://github.com/Domenicobrz/C2-Renderer" target="_blank">
+    <button class="active">
+      <Github />
+    </button>
+  </a>
 </div>
 
 <style>
@@ -35,6 +45,7 @@
     border: none;
     padding: 0px;
     margin: 0 0 8px 0;
+    cursor: pointer;
   }
   :global(button > svg) {
     fill: #666;

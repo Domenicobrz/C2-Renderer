@@ -12,12 +12,14 @@ export class PreviewSegment {
   private bindGroup0!: GPUBindGroup;
 
   private vertexBuffer!: GPUBuffer;
+  private renderModeBuffer: GPUBuffer;
 
   private depthStencilAttachment: GPURenderPassDepthStencilAttachment | null = null;
 
   private scene!: C2Scene;
   private sceneUpdateRequired: boolean = false;
   private vertexCount: number = 0;
+  private renderMode: 'normal' | 'camera-light' = 'normal';
 
   constructor(context: GPUCanvasContext, presentationFormat: GPUTextureFormat) {
     this.context = context;
@@ -67,6 +69,12 @@ export class PreviewSegment {
         cullMode: 'none'
       }
     });
+
+    // create a typedarray to hold the values for the uniforms in JavaScript
+    this.renderModeBuffer = device.createBuffer({
+      size: 1 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
   }
 
   createDepthBufferResources(canvasSize: Vector2) {
@@ -106,7 +114,8 @@ export class PreviewSegment {
       entries: [
         { binding: 0, resource: { buffer: this.scene.camera.cameraMatrixUniformBuffer } },
         { binding: 1, resource: { buffer: this.scene.camera.projectionMatrixUniformBuffer } },
-        { binding: 2, resource: { buffer: this.scene.camera.cameraPositionUniformBuffer } }
+        { binding: 2, resource: { buffer: this.scene.camera.cameraPositionUniformBuffer } },
+        { binding: 3, resource: { buffer: this.renderModeBuffer } }
       ]
     });
   }
@@ -137,6 +146,17 @@ export class PreviewSegment {
     this.device.queue.writeBuffer(this.vertexBuffer, 0, vertexData);
 
     this.sceneUpdateRequired = false;
+  }
+
+  setMode(mode: 'normal' | 'camera-light') {
+    if (mode == this.renderMode) return;
+    this.renderMode = mode;
+
+    this.device.queue.writeBuffer(
+      this.renderModeBuffer,
+      0,
+      new Float32Array([this.renderMode == 'normal' ? 0 : 1])
+    );
   }
 
   render() {

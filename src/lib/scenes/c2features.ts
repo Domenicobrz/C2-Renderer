@@ -123,31 +123,31 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   //   }
   // });
 
-  // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue-uv.glb');
-  // let group = gltf.scene.children[0];
-  // group.scale.set(-2.15, 2.15, 2.15);
-  // group.position.set(-0.5, 0, -1.5);
-  // group.rotation.z = -1.4;
-  // materials.push(
-  //   new Dielectric({
-  //     // new TorranceSparrow({
-  //     //   // new Diffuse({
-  //     //   color: new Color(0.875, 0.875, 0.875),
-  //     //   map: graffitiTexture,
-  //     //   ax: 0.1,
-  //     //   ay: 0.1
-  //     // absorption: new Color(0.35, 0.68, 0.99).multiplyScalar(2.85),
-  //     absorption: new Color(0.25, 0.58, 0.99).multiplyScalar(4.5),
-  //     // absorption: new Color(0.22, 0.53, 0.99).multiplyScalar(3),
-  //     // absorptionMap: graffitiTexture,
-  //     // ax: 0.15,
-  //     ax: 0.01,
-  //     ay: 0.01,
-  //     eta: 1.6
-  //     // mapUvRepeat: new Vector2(0.1, 0.1)
-  //   })
-  // );
-  // triangles = [...triangles, ...meshToTriangles(group, materials.length - 1)];
+  let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue-uv.glb');
+  let group = gltf.scene.children[0];
+  group.scale.set(-2.15, 2.15, 2.15);
+  group.position.set(-0.5, 0, -1.5);
+  group.rotation.z = -1.4;
+  materials.push(
+    new Dielectric({
+      // new TorranceSparrow({
+      //   // new Diffuse({
+      //   color: new Color(0.875, 0.875, 0.875),
+      //   map: graffitiTexture,
+      //   ax: 0.1,
+      //   ay: 0.1
+      // absorption: new Color(0.35, 0.68, 0.99).multiplyScalar(2.85),
+      absorption: new Color(0.25, 0.58, 0.99).multiplyScalar(4.5),
+      // absorption: new Color(0.22, 0.53, 0.99).multiplyScalar(3),
+      // absorptionMap: graffitiTexture,
+      // ax: 0.15,
+      ax: 0.01,
+      ay: 0.01,
+      eta: 1.6
+      // mapUvRepeat: new Vector2(0.1, 0.1)
+    })
+  );
+  triangles = [...triangles, ...meshToTriangles(group, materials.length - 1)];
 
   let sphereGeo = new SphereGeometry(2, 75, 75);
   // sphereGeo.translate(0, 2, 0);

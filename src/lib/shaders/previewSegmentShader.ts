@@ -2,6 +2,7 @@ export const previewSegmentShader = /* wgsl */ `
 @group(0) @binding(0) var<uniform> viewMatrix: mat4x4f;
 @group(0) @binding(1) var<uniform> projectionMatrix: mat4x4f;
 @group(0) @binding(2) var<uniform> cameraPos: vec3f;
+@group(0) @binding(3) var<uniform> renderMode: f32;
 
 struct VSOutput {
   @builtin(position) position: vec4f,
@@ -46,15 +47,17 @@ struct Vertex {
   let viewDir = normalize(fragPos - cameraPos);
   let wo = -viewDir;
 
-  // by using abs(..) instead of max(.., 0.0)
-  // I'm correcting for flipped normals
-  // let col = abs(dot(wo, normal));
-  let col = dot(wo, normal);
-
   var coloredVSNormal = normalize(fsInput.viewSpaceNorm) * vec3f(1,1,-1) * 0.5 + 0.5;
   if (dot(wo, normal) < 0.0) {
     coloredVSNormal *= 0.0;
   }
-  return vec4f(coloredVSNormal, 1.0);
+
+  let colorFromCameraLight = vec3f(max(dot(wo, normal), 0.0));
+
+  if (renderMode < 0.5) {
+    return vec4f(coloredVSNormal, 1.0);
+  } else {
+    return vec4f(colorFromCameraLight, 1.0);
+  }
 }
 `;

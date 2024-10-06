@@ -3,13 +3,14 @@ import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
 import { onKey } from './utils/keys';
-import { renderView, samplesInfo } from '../routes/stores/main';
+import { centralStatusMessage, renderView, samplesInfo } from '../routes/stores/main';
 import { createScene } from './createScene';
 import type { C2Scene } from './createScene';
 import { TileSequence } from './tile';
 import { RenderTextureSegment } from './segment/renderTextureSegment';
 import { PreviewSegment } from './segment/previewSegment';
 import { get } from 'svelte/store';
+import { tick } from './utils/tick';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
@@ -61,10 +62,13 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   const tileSequence = new TileSequence();
   computeSegment = new ComputeSegment(tileSequence);
 
+  centralStatusMessage.set('creating scene');
   // passed down to both compute and render segment
   scene = await createScene();
   scene.camera.setCanvasContainer(canvas.parentElement as HTMLDivElement);
 
+  centralStatusMessage.set('processing bvh and materials');
+  await tick(); // will give us the chance of showing the message above
   computeSegment.updateScene(scene);
   computeSegment.setDebugPixelTarget(141, 346);
 
@@ -82,7 +86,11 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   onCanvasResize(canvas, device, scene, computeSegment, renderSegment, previewSegment);
 
   onKey('l', () => computeSegment.logDebugResult());
+
+  centralStatusMessage.set('compiling shaders');
+  await tick(); // will give us the chance of showing the message above
   renderLoop();
+  centralStatusMessage.set('');
 
   return {
     getFocusDistanceFromScreenPoint:
@@ -152,10 +160,14 @@ async function renderLoop() {
 }
 
 function previewRenderLoop() {
+  previewSegment.setMode('normal');
   previewSegment.render();
 }
 
-function realtimeRenderLoop() {}
+function realtimeRenderLoop() {
+  previewSegment.setMode('camera-light');
+  previewSegment.render();
+}
 
 function computeRenderLoop() {
   if (samplesInfo.count >= samplesInfo.limit) {

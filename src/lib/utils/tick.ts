@@ -2,6 +2,6 @@
 // await tick();
 export function tick() {
   return new Promise((res) => {
-    setTimeout(res, 1);
+    setTimeout(res, 10);
   });
 }

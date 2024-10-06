@@ -72,8 +72,6 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   }
 
   const ls = 0.75;
-  // const ls = 0.05;
-  // const ls = 4.05;
   const lt = new Vector3(0, 3.9, 0);
   triangles.push(
     new Triangle(
@@ -92,48 +90,26 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     )
   );
 
-  let mesh = new Mesh(new SphereGeometry(1, 20, 20));
+  let mesh = new Mesh(new SphereGeometry(1, 40, 40));
   mesh.scale.set(2, 2, 2);
-  mesh.position.set(0, 0, 0);
+  mesh.position.set(0, 0, 2);
 
-  // let mesh = new Mesh(new PlaneGeometry(4, 4));
-  // mesh.position.set(0, 0, 2);
-  // mesh.rotation.x = Math.PI * -0.75;
-
-  let image = (await new TextureLoader().loadAsync('scene-assets/textures/checker-map.png')).source
-    .data;
-  let bumpTest = (await new TextureLoader().loadAsync('scene-assets/textures/bump-test.png')).source
-    .data;
-
-  let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99), bumpMap: bumpTest, bumpStrength: 5 });
-  // let mat = new TorranceSparrow({
-  //   color: new Color(0.99, 0.99, 0.99),
-  //   ax: 0.21,
-  //   ay: 0.21,
-  //   bumpMap: bumpTest,
-  //   bumpStrength: 2.5
-  // });
-  // let mat = new Dielectric({
-  //   absorption: new Color(0, 0, 0),
-  //   ax: 0.01,
-  //   ay: 0.01,
-  //   eta: 1.6,
-  //   bumpMap: bumpTest,
-  //   bumpStrength: 5
-  // });
+  // let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
+  let mat = new TorranceSparrow({
+    color: new Color(0.99, 0.99, 0.99),
+    ax: 0.15,
+    ay: 0.15
+  });
   materials.push(mat);
-
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
 
   // create & set camera
   const camera = new Orbit();
-  camera.set(new Vector3(0, 0, -10), new Vector3(0, 0, 0));
+  camera.set(new Vector3(0, 2, -10), new Vector3(0, 0, 0));
   camera.movementSpeed = 0.15;
 
   camera.aperture = 0;
-  // camera.fov = 0.69;
-  camera.fov = 0.44;
-  // camera.aperture = 0.25;
+  camera.fov = 0.69;
   camera.focusDistance = 9.53;
   camera.exposure = 1.85;
 

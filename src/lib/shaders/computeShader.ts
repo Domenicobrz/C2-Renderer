@@ -81,12 +81,19 @@ ${Plane.shaderMethods()}
 @group(3) @binding(1) var<storage> materialsData: array<f32>;
 @group(3) @binding(2) var<storage> bvhData: array<BVHNode>;
 @group(3) @binding(3) var<storage> lightsCDFData: array<LightCDFEntry>;
-@group(3) @binding(4) var<storage> envmapPC2D: PC2D;
-@group(3) @binding(5) var envmapTexture: texture_2d<f32>;
-@group(3) @binding(6) var<uniform> envmapInfo: EnvmapInfo;
-@group(3) @binding(7) var textures128: texture_2d_array<f32>;
-@group(3) @binding(8) var textures512: texture_2d_array<f32>;
-@group(3) @binding(9) var textures1024: texture_2d_array<f32>;
+// envmapPC2Darray will contain:
+// pConditionalV: PC1D[];
+// pMarginal: PC1D;
+// - - - - - - - -  
+// PC1D will be held in memory with this layout:
+// min, max, funcInt, func[], absFunc[], cdf[]
+@group(3) @binding(4) var<storage> envmapPC2Darray: array<f32>;
+@group(3) @binding(5) var<uniform> envmapPC2D: PC2D;
+@group(3) @binding(6) var envmapTexture: texture_2d<f32>;
+@group(3) @binding(7) var<uniform> envmapInfo: EnvmapInfo;
+@group(3) @binding(8) var textures128: texture_2d_array<f32>;
+@group(3) @binding(9) var textures512: texture_2d_array<f32>;
+@group(3) @binding(10) var textures1024: texture_2d_array<f32>;
 
 struct DebugInfo {
   tid: vec3u,

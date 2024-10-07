@@ -394,9 +394,8 @@ export class BVH {
         if (cdfEntry.triangleIndex == -2) {
           // envmap sampling
           let sample = samplePC2D(
-            &envmapPC2D.data, 
             envmapPC2D.size, 
-            envmapPC2D.domain, 
+            AABB(envmapPC2D.domainmin, envmapPC2D.domainmax), 
             rands.xy,
           );
 
@@ -445,10 +444,9 @@ export class BVH {
           let dir = envmapInfo.transform * ray.direction;
           let uv = envEqualAreaSphereToSquare(dir);
           var pdf = getPC2Dpdf( 
-            &envmapPC2D.data, 
             envmapPC2D.size, 
             uv, 
-            envmapPC2D.domain,
+            AABB(envmapPC2D.domainmin, envmapPC2D.domainmax),
           );
 
           return pdf / (4 * PI);

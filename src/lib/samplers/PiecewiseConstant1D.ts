@@ -223,14 +223,14 @@ export class PC1D {
       // ******** another important point ********
       // I think the algo could fail if u=1.0, I had to clamp my rands to 0.9999999
       // I'm not entirely sure wheter that's a problem or not, it would be worth testing
-      fn PC1D_FindCDFIndex(data: ptr<storage, array<f32>>, offset: i32, sz: i32, u: f32) -> i32 {
+      fn PC1D_FindCDFIndex(offset: i32, sz: i32, u: f32) -> i32 {
         var size = sz - 2; 
         var first = offset + 1;
 
         while (size > 0) {
           let half = size >> 1; 
       	  let middle = first + half;
-          let predResult = data[middle] <= u;
+          let predResult = envmapPC2Darray[middle] <= u;
 
           if (predResult) {
             first = middle + 1;
@@ -246,32 +246,32 @@ export class PC1D {
       }
 
       fn samplePC1D(
-        data: ptr<storage, array<f32>>, offset: i32, size: i32, u: f32
+        offset: i32, size: i32, u: f32
       ) -> PC1DSample {
         // this function is unfortunately somewhat complicated given that "data"
         // contains an entire structure with multiple arrays, the CPU version 
         // that is much easier to read is contained inside PiecewiseConstant1D.ts
 
-        let min = data[offset + 0];
-        let max = data[offset + 1];
-        let funcInt = data[offset + 2];
+        let min = envmapPC2Darray[offset + 0];
+        let max = envmapPC2Darray[offset + 1];
+        let funcInt = envmapPC2Darray[offset + 2];
 
         let func_data_idx = offset + 3;
         let absFunc_data_idx = offset + 3 + size;
         let cdf_data_idx = offset + 3 + size * 2;
 
-        let cdf_o = PC1D_FindCDFIndex(data, cdf_data_idx, size, u);
+        let cdf_o = PC1D_FindCDFIndex(cdf_data_idx, size, u);
         let relative_o = cdf_o - cdf_data_idx;
 
         // // e.g. u == 0.7 and cdf[o] == 0.68
-        var du = u - data[cdf_o];
-        if (data[cdf_o + 1] - data[cdf_o] > 0) {
+        var du = u - envmapPC2Darray[cdf_o];
+        if (envmapPC2Darray[cdf_o + 1] - envmapPC2Darray[cdf_o] > 0) {
           // after that du will be in range [0...1]
-          du /= data[cdf_o + 1] - data[cdf_o];
+          du /= envmapPC2Darray[cdf_o + 1] - envmapPC2Darray[cdf_o];
         }
 
-        let funcValueAtO = data[func_data_idx + relative_o];
-        let absFuncValueAtO = data[absFunc_data_idx + relative_o];
+        let funcValueAtO = envmapPC2Darray[func_data_idx + relative_o];
+        let absFuncValueAtO = envmapPC2Darray[absFunc_data_idx + relative_o];
     
         let offs = relative_o;
         var pdf: f32 = 0;

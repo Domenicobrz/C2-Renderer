@@ -114,19 +114,17 @@ export class ComputeSegment {
           {
             binding: 5,
             visibility: GPUShaderStage.COMPUTE,
-            texture: {}
+            buffer: { type: 'uniform' }
           },
           {
             binding: 6,
             visibility: GPUShaderStage.COMPUTE,
-            buffer: { type: 'uniform' }
+            texture: {}
           },
           {
             binding: 7,
             visibility: GPUShaderStage.COMPUTE,
-            texture: {
-              viewDimension: '2d-array'
-            }
+            buffer: { type: 'uniform' }
           },
           {
             binding: 8,
@@ -137,6 +135,13 @@ export class ComputeSegment {
           },
           {
             binding: 9,
+            visibility: GPUShaderStage.COMPUTE,
+            texture: {
+              viewDimension: '2d-array'
+            }
+          },
+          {
+            binding: 10,
             visibility: GPUShaderStage.COMPUTE,
             texture: {
               viewDimension: '2d-array'
@@ -363,6 +368,10 @@ export class ComputeSegment {
     let envmapDistributionBuffer = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
       ? envmap.compensatedDistribution.getBufferData()
       : envmap.distribution.getBufferData();
+
+    let envmapDistributionArrayBuffer = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
+      ? envmap.compensatedDistribution.getArrayData()
+      : envmap.distribution.getArrayData();
     let { texture: envmapTexture } = envmap.getTexture(this.device);
 
     this.trianglesBuffer = this.device.createBuffer({
@@ -387,6 +396,11 @@ export class ComputeSegment {
 
     this.envmapPC2DBuffer = this.device.createBuffer({
       size: envmapDistributionBuffer.byteLength,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    let envmapPC2DArrayBuffer = this.device.createBuffer({
+      size: envmapDistributionArrayBuffer.byteLength,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
@@ -397,6 +411,7 @@ export class ComputeSegment {
     this.device.queue.writeBuffer(this.bvhBuffer, 0, BVHBufferData);
     this.device.queue.writeBuffer(this.lightsCDFBuffer, 0, LightsCDFBufferData);
     this.device.queue.writeBuffer(this.envmapPC2DBuffer, 0, envmapDistributionBuffer);
+    this.device.queue.writeBuffer(envmapPC2DArrayBuffer, 0, envmapDistributionArrayBuffer);
 
     // we need to re-create the bindgroup
     this.bindGroup3 = this.device.createBindGroup({
@@ -407,19 +422,20 @@ export class ComputeSegment {
         { binding: 1, resource: { buffer: this.materialsBuffer! } },
         { binding: 2, resource: { buffer: this.bvhBuffer! } },
         { binding: 3, resource: { buffer: this.lightsCDFBuffer! } },
-        { binding: 4, resource: { buffer: this.envmapPC2DBuffer! } },
-        { binding: 5, resource: envmapTexture.createView() },
-        { binding: 6, resource: { buffer: this.envmapInfoBuffer } },
+        { binding: 4, resource: { buffer: envmapPC2DArrayBuffer } },
+        { binding: 5, resource: { buffer: this.envmapPC2DBuffer! } },
+        { binding: 6, resource: envmapTexture.createView() },
+        { binding: 7, resource: { buffer: this.envmapInfoBuffer } },
         {
-          binding: 7,
+          binding: 8,
           resource: this.textureArraySegment.textures128.createView({ dimension: '2d-array' })
         },
         {
-          binding: 8,
+          binding: 9,
           resource: this.textureArraySegment.textures512.createView({ dimension: '2d-array' })
         },
         {
-          binding: 9,
+          binding: 10,
           resource: this.textureArraySegment.textures1024.createView({ dimension: '2d-array' })
         }
       ]

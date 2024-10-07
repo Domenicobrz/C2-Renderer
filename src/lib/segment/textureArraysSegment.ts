@@ -147,11 +147,21 @@ export class TextureArraysSegment {
       });
     }
 
-    const renderTextureInsideTextureArray = (
+    const renderTextureInsideTextureArray = async (
       size: '128' | '512' | '1024',
       arrayIndex: number,
       imgInfo: ImageInfo
     ) => {
+      // this workaround of transforming first the image to
+      // an image bitmap is required for macos where copyExternalImageToTexture
+      // doesn't work otherwise
+      const canvas = document.createElement('canvas');
+      canvas.width = imgInfo.image.width;
+      canvas.height = imgInfo.image.height;
+      const ctx = canvas.getContext('2d');
+      ctx!.drawImage(imgInfo.image, 0, 0);
+      const bitmap = await createImageBitmap(canvas);
+
       const texture = this.device.createTexture({
         size: [imgInfo.image.width, imgInfo.image.height],
         format: 'rgba8unorm',
@@ -162,7 +172,7 @@ export class TextureArraysSegment {
       });
 
       this.device.queue.copyExternalImageToTexture(
-        { source: imgInfo.image, flipY: imgInfo.flipY },
+        { source: bitmap, flipY: imgInfo.flipY },
         { texture },
         { width: imgInfo.image.width, height: imgInfo.image.height }
       );

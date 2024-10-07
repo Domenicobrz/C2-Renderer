@@ -113,7 +113,7 @@ export class PC2D {
     );
   }
 
-  getBufferData(): ArrayBuffer {
+  getArrayData(): ArrayBuffer {
     // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001003101000000000000003d888b0237284d3025f2381bcb2887abe1236818644f249d16ed6665cfb955d23da18f40361a9e1d6ae3abfa5c43c12bc70f6bedab5ce52ffedd28fbcbaca3cbbfd5fae5aac907fa22e4a51bb43c003a15c31f3d39f5b8d5995a5022db6de4969eefbf1f24b4ddeba4c5fc4cb41d477965ff14ec9bc8b80909b9967623dcf52cc800d8525d2a2c331bad2d7aef1aedb977e9815de36c57021ff9c2d12d
     // (3 + this.sizeX * 3 + 1) === min,max,funcint + func[] + absFunc[] + cdf[] --- the +1 at the end
     // is the cdf being one element larger than the other arrays
@@ -123,21 +123,12 @@ export class PC2D {
     let pc1dElementsBytesCount = pc1dElementsCount * 4;
 
     // 2 * 4 is the padding
-    let totalByteSize = 40 + pc1dElementsBytesCount + 2 * 4;
+    let totalByteSize = pc1dElementsBytesCount + 2 * 4;
 
     const PC2DValues = new ArrayBuffer(totalByteSize);
     const PC2DViews = {
-      domain: {
-        min: new Float32Array(PC2DValues, 0, 3),
-        max: new Float32Array(PC2DValues, 16, 3)
-      },
-      size: new Int32Array(PC2DValues, 32, 2),
-      data: new Float32Array(PC2DValues, 40, pc1dElementsCount + 2)
+      data: new Float32Array(PC2DValues, 0, pc1dElementsCount + 2)
     };
-
-    PC2DViews.domain.min.set([this.domain.min.x, this.domain.min.y, 0]);
-    PC2DViews.domain.max.set([this.domain.max.x, this.domain.max.y, 0]);
-    PC2DViews.size.set([this.sizeX, this.sizeY]);
 
     this.pConditionalV.forEach((pc1d, i) => {
       let buffer = pc1d.getBufferData();
@@ -154,18 +145,31 @@ export class PC2D {
     return PC2DValues;
   }
 
+  getBufferData(): ArrayBuffer {
+    // 2 * 4 is the padding
+    let totalByteSize = 48;
+
+    const PC2DValues = new ArrayBuffer(totalByteSize);
+    const PC2DViews = {
+      domainmin: new Float32Array(PC2DValues, 0, 3),
+      domainmax: new Float32Array(PC2DValues, 16, 3),
+      size: new Int32Array(PC2DValues, 32, 2)
+    };
+
+    PC2DViews.domainmin.set([this.domain.min.x, this.domain.min.y, 0]);
+    PC2DViews.domainmax.set([this.domain.max.x, this.domain.max.y, 0]);
+    PC2DViews.size.set([this.sizeX, this.sizeY]);
+    return PC2DValues;
+  }
+
   static shaderStruct(): string {
     return /* wgsl */ `
       struct PC2D {
-        domain: AABB,
+        // I tried using:
+        // domain: AABB, but it wasn't working on macos
+        domainmin: vec3f,
+        domainmax: vec3f,
         size: vec2i,
-        // data will contain:
-        // pConditionalV: PC1D[];
-        // pMarginal: PC1D;
-        // - - - - - - - -  
-        // PC1D will be held in memory with this layout:
-        // min, max, funcInt, func[], absFunc[], cdf[]
-        data: array<f32>,
       }
 
       struct PC2DSample {
@@ -179,7 +183,7 @@ export class PC2D {
   static shaderMethods(): string {
     return /* wgsl */ `
       fn samplePC2D(
-        data: ptr<storage, array<f32>>, size: vec2i, domain: AABB, uv: vec2f
+        size: vec2i, domain: AABB, uv: vec2f
       ) -> PC2DSample {
         // 3 struct elements, min max & funcInt, then size.x * 3 for the arrays, but remember, 
         // cdf has an additional element, so we add +1
@@ -188,14 +192,14 @@ export class PC2D {
         let pMarginalSize = size.y;
 
         var offset = vec2i(-1, -1);
-        let pMarginalSample = samplePC1D(data, pMarginalDataOffset, pMarginalSize, uv.y);
+        let pMarginalSample = samplePC1D(pMarginalDataOffset, pMarginalSize, uv.y);
         offset.y = pMarginalSample.offset;
         
         let pConditionalVDataOffset = (3 + size.x * 3 + 1) * offset.y;
         let pConditionalSize = size.x;
-        let pConditionalVSample = samplePC1D(data, pConditionalVDataOffset, pConditionalSize, uv.x);
+        let pConditionalVSample = samplePC1D(pConditionalVDataOffset, pConditionalSize, uv.x);
         offset.x = pConditionalVSample.offset;
-
+      
         return PC2DSample(
           offset,
           pMarginalSample.pdf * pConditionalVSample.pdf,
@@ -203,7 +207,7 @@ export class PC2D {
         );
       }
 
-      fn getPC2Dpdf(data: ptr<storage, array<f32>>, size: vec2i, floatOffset: vec2f, domain: AABB) -> f32 {
+      fn getPC2Dpdf(size: vec2i, floatOffset: vec2f, domain: AABB) -> f32 {
         let p = boundsOffset2D(domain, floatOffset);
 
         let iu: i32 = clamp(
@@ -218,10 +222,10 @@ export class PC2D {
         );
 
         let pMarginalDataOffset = (3 + size.x * 3 + 1) * size.y;
-        let pMarginalFuncInt = data[pMarginalDataOffset + 2];
+        let pMarginalFuncInt = envmapPC2Darray[pMarginalDataOffset + 2];
 
         let pConditionalVDataOffset = (3 + size.x * 3 + 1) * iv;
-        let pConditionalV_func_iu_value = data[
+        let pConditionalV_func_iu_value = envmapPC2Darray[
           pConditionalVDataOffset + 3 + iu
         ];
         

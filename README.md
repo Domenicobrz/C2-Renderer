@@ -2,6 +2,8 @@
 
 A simple webgpu renderer implemented with javascript and svelte
 
+[Web demo](https://domenicobrz.github.io/webgl/projects/c2-renderer/)
+
 ### Main features
 
 1. Anisotropic Torrance-Sparrow BRDFs for both conductor and dielectrics

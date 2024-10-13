@@ -1,4 +1,3 @@
-import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { TextureLoader, Vector2 } from 'three';
 import { renderTextureShader } from '$lib/shaders/renderTextureShader';
 import { globals } from '$lib/C2';

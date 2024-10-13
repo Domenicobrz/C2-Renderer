@@ -1,7 +1,7 @@
 import { vec2 } from '$lib/utils/math';
-import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import type { Vector2 } from 'three';
 import { resetShader } from '$lib/shaders/resetShader';
+import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 
 export class ResetSegment {
   // private fields
@@ -22,13 +22,7 @@ export class ResetSegment {
     });
 
     const pipelineLayout = device.createPipelineLayout({
-      bindGroupLayouts: [
-        getBindGroupLayout(device, [
-          { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
-          { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
-          { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
-        ])
-      ]
+      bindGroupLayouts: [getComputeBindGroupLayout(device, ['storage', 'storage', 'uniform'])]
     });
 
     this.pipeline = device.createComputePipeline({

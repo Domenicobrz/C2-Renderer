@@ -1,6 +1,5 @@
 import { BVH } from '$lib/bvh/bvh';
 import { getComputeShader } from '$lib/shaders/computeShader';
-import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { Matrix4, Vector2, Vector3 } from 'three';
 import { cameraMovementInfoStore, configOptions, samplesInfo } from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
@@ -13,6 +12,7 @@ import { Camera } from '$lib/controls/Camera';
 import { globals } from '$lib/C2';
 import { TextureArraysSegment } from './textureArraysSegment';
 import { Orbit } from '$lib/controls/Orbit';
+import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -69,86 +69,22 @@ export class ComputeSegment {
     this.passPerformance = new ComputePassPerformance(device);
 
     this.bindGroupLayouts = [
-      getBindGroupLayout(device, [
-        { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
-        { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
-        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
-      ]),
-      getBindGroupLayout(device, [
-        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
-        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
-        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' },
-        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
-      ]),
-      getBindGroupLayout(device, [
-        { visibility: GPUShaderStage.COMPUTE, type: 'storage' },
-        { visibility: GPUShaderStage.COMPUTE, type: 'uniform' }
-      ]),
-      device.createBindGroupLayout({
-        entries: [
-          {
-            binding: 0,
-            visibility: GPUShaderStage.COMPUTE,
-            buffer: { type: 'read-only-storage' }
-          },
-          {
-            binding: 1,
-            visibility: GPUShaderStage.COMPUTE,
-            buffer: { type: 'read-only-storage' }
-          },
-          {
-            binding: 2,
-            visibility: GPUShaderStage.COMPUTE,
-            buffer: { type: 'read-only-storage' }
-          },
-          {
-            binding: 3,
-            visibility: GPUShaderStage.COMPUTE,
-            buffer: { type: 'read-only-storage' }
-          },
-          {
-            binding: 4,
-            visibility: GPUShaderStage.COMPUTE,
-            buffer: { type: 'read-only-storage' }
-          },
-          {
-            binding: 5,
-            visibility: GPUShaderStage.COMPUTE,
-            buffer: { type: 'uniform' }
-          },
-          {
-            binding: 6,
-            visibility: GPUShaderStage.COMPUTE,
-            texture: {}
-          },
-          {
-            binding: 7,
-            visibility: GPUShaderStage.COMPUTE,
-            buffer: { type: 'uniform' }
-          },
-          {
-            binding: 8,
-            visibility: GPUShaderStage.COMPUTE,
-            texture: {
-              viewDimension: '2d-array'
-            }
-          },
-          {
-            binding: 9,
-            visibility: GPUShaderStage.COMPUTE,
-            texture: {
-              viewDimension: '2d-array'
-            }
-          },
-          {
-            binding: 10,
-            visibility: GPUShaderStage.COMPUTE,
-            texture: {
-              viewDimension: '2d-array'
-            }
-          }
-        ]
-      })
+      getComputeBindGroupLayout(device, ['storage', 'storage', 'uniform']),
+      getComputeBindGroupLayout(device, ['uniform', 'uniform', 'uniform', 'uniform']),
+      getComputeBindGroupLayout(device, ['storage', 'uniform']),
+      getComputeBindGroupLayout(device, [
+        'read-only-storage',
+        'read-only-storage',
+        'read-only-storage',
+        'read-only-storage',
+        'read-only-storage',
+        'uniform',
+        'texture',
+        'uniform',
+        '2d-array',
+        '2d-array',
+        '2d-array'
+      ])
     ];
     this.layout = device.createPipelineLayout({
       bindGroupLayouts: this.bindGroupLayouts

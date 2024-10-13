@@ -2,7 +2,7 @@ import { globals } from '$lib/C2';
 import { Camera } from '$lib/controls/Camera';
 import type { C2Scene } from '$lib/createScene';
 import { renderShader } from '$lib/shaders/renderShader';
-import { getBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
+import { getFragmentBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import type { Vector2 } from 'three';
 
 export class RenderSegment {
@@ -35,11 +35,11 @@ export class RenderSegment {
 
     const pipelineLayout = device.createPipelineLayout({
       bindGroupLayouts: [
-        getBindGroupLayout(device, [
-          { visibility: GPUShaderStage.FRAGMENT, type: 'read-only-storage' },
-          { visibility: GPUShaderStage.FRAGMENT, type: 'read-only-storage' },
-          { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' },
-          { visibility: GPUShaderStage.FRAGMENT, type: 'uniform' }
+        getFragmentBindGroupLayout(device, [
+          'read-only-storage',
+          'read-only-storage',
+          'uniform',
+          'uniform'
         ])
       ]
     });

@@ -63,7 +63,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   centralStatusMessage.set('processing bvh and materials');
   await tick(); // will give us the chance of showing the message above
   computeSegment.updateScene(scene);
-  computeSegment.setDebugPixelTarget(141, 346);
+  computeSegment.setDebugPixelTarget(394, 325);
 
   renderSegment = new RenderSegment(context, presentationFormat);
   renderSegment.updateScene(scene);
@@ -82,13 +82,13 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
 
   centralStatusMessage.set('compiling shaders');
   await tick(); // will give us the chance of showing the message above
-  // renderLoop();
+  renderLoop();
   centralStatusMessage.set('');
 
-  let msls = new MultiScatterLUTSegment();
-  msls.setSize(new Vector2(32, 32));
-  await msls.compute();
-  await msls.readBuffer();
+  // let msls = new MultiScatterLUTSegment();
+  // msls.setSize(new Vector2(32, 32));
+  // await msls.compute();
+  // await msls.readBuffer();
 
   return {
     getFocusDistanceFromScreenPoint:

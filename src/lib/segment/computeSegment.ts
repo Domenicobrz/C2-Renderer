@@ -443,7 +443,7 @@ export class ComputeSegment {
       layout: this.layout,
       compute: {
         module: computeModule,
-        entryPoint: 'computeSomething'
+        entryPoint: 'compute'
       }
     });
   }

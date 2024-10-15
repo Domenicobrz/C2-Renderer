@@ -121,4 +121,12 @@ fn copysign(mag: f32, sign: f32) -> f32 {
 
   return mag * s;
 }
+
+// from openPBR:
+// https://academysoftwarefoundation.github.io/OpenPBR/#model/microfacetmodel
+fn anisotropyRemap(roughness: f32, anisotropy: f32) -> vec2f {
+  let at = (roughness * roughness) * sqrt(2.0 / (1.0 + (1.0 - anisotropy) * (1.0 - anisotropy)));
+  let ab = (1.0 - anisotropy) * at;
+  return vec2f(at, ab);
+} 
 `;

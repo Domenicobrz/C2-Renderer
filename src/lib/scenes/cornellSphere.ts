@@ -97,8 +97,8 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   // let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
   let mat = new TorranceSparrow({
     color: new Color(0.99, 0.99, 0.99),
-    ax: 0.15,
-    ay: 0.15
+    roughness: 1,
+    anisotropy: 1
   });
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];

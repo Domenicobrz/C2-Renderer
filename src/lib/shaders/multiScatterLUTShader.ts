@@ -37,7 +37,6 @@ fn integrateE_withImportance(dotVN: f32, roughness: f32, samples: u32, gid: vec2
     // https://academysoftwarefoundation.github.io/OpenPBR/#model/microfacetmodel
     // https://academysoftwarefoundation.github.io/OpenPBR/#model/microfacetmodel
     // https://academysoftwarefoundation.github.io/OpenPBR/#model/microfacetmodel
-    // blabla throw error
 
     let ax = roughness;
     let ay = roughness;

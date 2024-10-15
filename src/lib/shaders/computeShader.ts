@@ -117,7 +117,7 @@ fn debugLog(value: f32) {
 // maxSampledTexturesPerShaderStage = 16
 // maxTextureDimension3D = 2048
 
-@compute @workgroup_size(8, 8) fn computeSomething(
+@compute @workgroup_size(8, 8) fn compute(
   @builtin(global_invocation_id) gid: vec3<u32>,
   @builtin(local_invocation_id) lid: vec3<u32>,
 ) {

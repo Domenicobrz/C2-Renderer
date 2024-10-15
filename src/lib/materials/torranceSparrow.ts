@@ -1,20 +1,21 @@
 import { Vector2, type Color } from 'three';
 import { MATERIAL_TYPE, Material } from './material';
 import { intBitsToFloat } from '$lib/utils/intBitsToFloat';
+import { clamp } from '$lib/utils/math';
 
 // from: https://www.pbr-book.org/4ed/Reflection_Models/Roughness_Using_Microfacet_Theory
 export class TorranceSparrow extends Material {
   private color: Color;
-  private ax: number;
-  private ay: number;
+  private roughness: number;
+  private anisotropy: number;
   private bumpStrength: number;
   private uvRepeat: Vector2;
   private mapUvRepeat: Vector2;
 
   constructor({
     color,
-    ax,
-    ay,
+    roughness,
+    anisotropy,
     map,
     roughnessMap,
     bumpMap,
@@ -24,8 +25,8 @@ export class TorranceSparrow extends Material {
     flipTextureY = false
   }: {
     color: Color;
-    ax: number;
-    ay: number;
+    roughness: number;
+    anisotropy: number;
     map?: HTMLImageElement;
     roughnessMap?: HTMLImageElement;
     bumpMap?: HTMLImageElement;
@@ -37,8 +38,14 @@ export class TorranceSparrow extends Material {
     super({ flipTextureY });
     this.type = MATERIAL_TYPE.TORRANCE_SPARROW;
     this.color = color;
-    this.ax = ax;
-    this.ay = ay;
+    // roughness will be squared while doing the ax,ay remapping
+    // thus setting 0.0707 as the minimum will result in 0.005 being the
+    // real minimum roughness. Lower than that I start to risk floating point
+    // precision errors.
+    // if I ever need to go lower, I'll have to start using the mirror/delta function
+    // adjustments
+    this.roughness = roughness * 0.9293 + 0.0707;
+    this.anisotropy = clamp(anisotropy, 0.01, 0.99);
     this.bumpStrength = bumpStrength;
     this.uvRepeat = uvRepeat;
     this.mapUvRepeat = mapUvRepeat;
@@ -64,8 +71,8 @@ export class TorranceSparrow extends Material {
       this.color.r,
       this.color.g,
       this.color.b,
-      this.ax,
-      this.ay,
+      this.roughness,
+      this.anisotropy,
       this.bumpStrength,
       this.uvRepeat.x,
       this.uvRepeat.y,
@@ -87,6 +94,8 @@ export class TorranceSparrow extends Material {
         color: vec3f,
         ax: f32,
         ay: f32,
+        roughness: f32,
+        anisotropy: f32,
         bumpStrength: f32,
         uvRepeat: vec2f,
         mapUvRepeat: vec2f,
@@ -106,8 +115,10 @@ export class TorranceSparrow extends Material {
           materialsData[offset + 2],
           materialsData[offset + 3],
         );
-        ts.ax = materialsData[offset + 4];
-        ts.ay = materialsData[offset + 5];
+        ts.ax = 0; // we'll map this value in the shader
+        ts.ay = 0; // we'll map this value in the shader
+        ts.roughness = materialsData[offset + 4];
+        ts.anisotropy = materialsData[offset + 5];
         ts.bumpStrength = materialsData[offset + 6];
         ts.uvRepeat.x = materialsData[offset + 7];
         ts.uvRepeat.y = materialsData[offset + 8];
@@ -359,9 +370,12 @@ export class TorranceSparrow extends Material {
           let roughness = getTexelFromTextureArrays(
             material.roughnessMapLocation, ires.uv, material.uvRepeat
           ).xy;
-          material.ax *= max(roughness.x, 0.0001);
-          material.ay *= max(roughness.y, 0.0001);
+          material.roughness *= max(roughness.x, 0.0001);
         }
+
+        let axay = anisotropyRemap(material.roughness, material.anisotropy);
+        material.ax = axay.x;
+        material.ay = axay.y;
 
         var vertexNormal = ires.normal;
         if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {

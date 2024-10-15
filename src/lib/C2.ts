@@ -12,6 +12,7 @@ import { PreviewSegment } from './segment/previewSegment';
 import { get } from 'svelte/store';
 import { tick } from './utils/tick';
 import { getDeviceAndContext } from './webgpu-utils/getDeviceAndContext';
+import { MultiScatterLUTSegment } from './segment/multiScatterLUTSegment';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
@@ -81,8 +82,13 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
 
   centralStatusMessage.set('compiling shaders');
   await tick(); // will give us the chance of showing the message above
-  renderLoop();
+  // renderLoop();
   centralStatusMessage.set('');
+
+  let msls = new MultiScatterLUTSegment();
+  msls.setSize(new Vector2(32, 32));
+  await msls.compute();
+  await msls.readBuffer();
 
   return {
     getFocusDistanceFromScreenPoint:

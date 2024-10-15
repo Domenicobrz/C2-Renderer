@@ -41,6 +41,7 @@ ${Diffuse.shaderCreateStruct()}
 ${Diffuse.shaderShadeDiffuse()}
 ${TorranceSparrow.shaderStruct()}
 ${TorranceSparrow.shaderCreateStruct()}
+${TorranceSparrow.shaderBRDF()}
 ${TorranceSparrow.shaderShadeTorranceSparrow()}
 ${Dielectric.shaderStruct()}
 ${Dielectric.shaderCreateStruct()}

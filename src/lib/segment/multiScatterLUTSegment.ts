@@ -2,6 +2,7 @@ import { Vector2 } from 'three';
 import { globals } from '$lib/C2';
 import { multiScatterLUTShader } from '$lib/shaders/multiScatterLUTShader';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
+import { saveArrayBufferLocally } from '$lib/utils/saveArrayBufferLocally';
 
 export class MultiScatterLUTSegment {
   // private fields
@@ -111,6 +112,21 @@ export class MultiScatterLUTSegment {
     this.stagingBuffer.unmap();
     const floatsData = new Float32Array(data);
     console.log(floatsData);
+
+    this.saveLUTBuffer(floatsData);
+  }
+
+  saveLUTBuffer(floatsData: Float32Array) {
+    let arrayBuffer = new ArrayBuffer(floatsData.byteLength + 2 * 4);
+    let uintView = new Uint32Array(arrayBuffer, 0, 2);
+    uintView[0] = this.LUTSize.x;
+    uintView[1] = this.LUTSize.y;
+
+    let elsCount = this.LUTSize.x * this.LUTSize.y;
+    let floatsView = new Float32Array(arrayBuffer, 2 * 4, elsCount);
+    floatsView.set(floatsData, 0);
+
+    saveArrayBufferLocally(arrayBuffer, 'torranceSparrowMultiScatter.LUT');
   }
 
   setSize(size: Vector2) {

@@ -27,19 +27,9 @@ fn integrateE_withImportance(dotVN: f32, roughness: f32, samples: u32, gid: vec2
 
   var integral: f32 = 0;
   for (var i: u32 = 0; i < samples; i++) {
-    // let's use openPBR parameterization
-    // let's use openPBR parameterization
-    // let's use openPBR parameterization
-    // let's use openPBR parameterization
-    // let's use openPBR parameterization
-    // let's use openPBR parameterization
-    // https://academysoftwarefoundation.github.io/OpenPBR/#model/microfacetmodel
-    // https://academysoftwarefoundation.github.io/OpenPBR/#model/microfacetmodel
-    // https://academysoftwarefoundation.github.io/OpenPBR/#model/microfacetmodel
-    // https://academysoftwarefoundation.github.io/OpenPBR/#model/microfacetmodel
-
-    let ax = roughness;
-    let ay = roughness;
+    let axay = anisotropyRemap(roughness, 0.0);
+    let ax = axay.x;
+    let ay = axay.y;
 
     var ru32s: u32 = 0;
     if (i % 2 == 0) { ru32s = u32(uRands.x * 928473289 + uRands.y * 875973289); } 

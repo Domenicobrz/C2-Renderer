@@ -19,8 +19,9 @@ import { Plane } from '$lib/primitives/plane';
 import { misPart } from './parts/mis';
 import { texturePart } from './parts/texture';
 import { shadingNormalsPart } from './parts/shadingNormal';
+import type { LUTManager } from '$lib/managers/lutManager';
 
-export function getComputeShader() {
+export function getComputeShader(lutManager: LUTManager) {
   return /* wgsl */ `
 // keep in mind that configManager.shaderPart() might return different shader code if the
 // internal shader configs have changed
@@ -32,6 +33,7 @@ ${pbrtMathUtilsPart}
 ${misPart}
 ${texturePart}
 ${shadingNormalsPart}
+${lutManager.getShaderPart()}
 ${TileSequence.shaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
@@ -95,6 +97,11 @@ ${Plane.shaderMethods()}
 @group(3) @binding(8) var textures128: texture_2d_array<f32>;
 @group(3) @binding(9) var textures512: texture_2d_array<f32>;
 @group(3) @binding(10) var textures1024: texture_2d_array<f32>;
+// learn opengl uses 128x128 on their own implementation for DGF
+// adobe photoshop can export and use LUTs of 32 and 64
+// I decided to use up to two slots: lut32 and lut64
+// for LUTs that are single-layer and higher than 64, we can use the texture_2d_arrays above
+@group(3) @binding(11) var lut32: texture_3d<f32>;
 
 struct DebugInfo {
   tid: vec3u,

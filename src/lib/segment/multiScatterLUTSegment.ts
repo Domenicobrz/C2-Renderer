@@ -117,13 +117,16 @@ export class MultiScatterLUTSegment {
   }
 
   saveLUTBuffer(floatsData: Float32Array) {
-    let arrayBuffer = new ArrayBuffer(floatsData.byteLength + 2 * 4);
-    let uintView = new Uint32Array(arrayBuffer, 0, 2);
-    uintView[0] = this.LUTSize.x;
-    uintView[1] = this.LUTSize.y;
+    let headerBytes = 4 * 4;
+    let arrayBuffer = new ArrayBuffer(floatsData.byteLength + headerBytes);
+    let uintView = new Uint32Array(arrayBuffer, 0, 4);
+    uintView[0] = 1; // number of channels (r,g,b,a)
+    uintView[1] = this.LUTSize.x;
+    uintView[2] = this.LUTSize.y;
+    uintView[3] = 1; // size of the z-dimension is simply one
 
     let elsCount = this.LUTSize.x * this.LUTSize.y;
-    let floatsView = new Float32Array(arrayBuffer, 2 * 4, elsCount);
+    let floatsView = new Float32Array(arrayBuffer, headerBytes, elsCount);
     floatsView.set(floatsData, 0);
 
     saveArrayBufferLocally(arrayBuffer, 'torranceSparrowMultiScatter.LUT');

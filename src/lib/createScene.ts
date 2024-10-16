@@ -5,6 +5,7 @@ import type { Triangle } from './primitives/triangle';
 import { c2FeaturesScene } from './scenes/c2features';
 import { cornellSphereScene } from './scenes/cornellSphere';
 import { envmapHorseScene } from './scenes/envmapHorse';
+import { furnaceTestScene } from './scenes/furnaceTest';
 
 export type C2Scene = {
   triangles: Triangle[];
@@ -14,7 +15,8 @@ export type C2Scene = {
 };
 
 export async function createScene(): Promise<C2Scene> {
-  return cornellSphereScene();
+  return furnaceTestScene();
+  // return cornellSphereScene();
   // return c2FeaturesScene();
   // return envmapHorseScene();
 }

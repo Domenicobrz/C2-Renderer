@@ -295,6 +295,17 @@ export class TorranceSparrow extends Material {
 
   static shaderShadeTorranceSparrow(): string {
     return /* wgsl */ `
+      // https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf
+      fn multiScatterCompensationTorranceSparrow(F0: vec3f, wo: vec3f, roughness: f32) -> vec3f {
+        let ESSwo = getLUTvalue(
+          vec3f(roughness, saturate(wo.z /* dot(wo, norm) */), 0),
+          LUT_MultiScatterTorranceSparrow, 
+        ).x;
+
+        let multiScatteringCoefficient = (1.0 + F0 * (1.0 - ESSwo) / ESSwo);
+        return multiScatteringCoefficient;
+      }
+
       fn shadeTorranceSparrowSampleBRDF(
         rands: vec4f, 
         material: TORRANCE_SPARROW,
@@ -307,6 +318,7 @@ export class TorranceSparrow extends Material {
         misWeight: ptr<function, f32>,
       ) {
         TS_Sample_f(wo, rands.xy, material.ax, material.ay, material.color, wi, pdf, brdf);
+        *brdf *= multiScatterCompensationTorranceSparrow(material.color, wo, material.roughness);
         
         let lightSamplePdf = getLightPDF(Ray((*worldSpaceRay).origin, normalize(TBN * *wi)));
         *misWeight = getMisWeight(*pdf, lightSamplePdf);
@@ -334,6 +346,8 @@ export class TorranceSparrow extends Material {
         
         var brdfSamplePdf = TS_PDF(wo, *wi, material.ax, material.ay);
         *brdf = TS_f(wo, *wi, material.ax, material.ay, material.color);
+        *brdf *= multiScatterCompensationTorranceSparrow(material.color, wo, material.roughness);
+
         if (
           brdfSamplePdf == 0.0 || 
           lightSample.pdf == 0.0

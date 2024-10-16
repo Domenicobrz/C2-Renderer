@@ -1,13 +1,13 @@
 export function getComputeBindGroupLayout(
   device: GPUDevice,
-  entries: ('storage' | 'uniform' | 'read-only-storage' | 'texture' | '2d-array')[]
+  entries: ('storage' | 'uniform' | 'read-only-storage' | 'texture' | '2d-array' | '3d')[]
 ) {
   return getBindGroupLayout(device, GPUShaderStage.COMPUTE, entries);
 }
 
 export function getFragmentBindGroupLayout(
   device: GPUDevice,
-  entries: ('storage' | 'uniform' | 'read-only-storage' | 'texture' | '2d-array')[]
+  entries: ('storage' | 'uniform' | 'read-only-storage' | 'texture' | '2d-array' | '3d')[]
 ) {
   return getBindGroupLayout(device, GPUShaderStage.FRAGMENT, entries);
 }
@@ -15,7 +15,7 @@ export function getFragmentBindGroupLayout(
 function getBindGroupLayout(
   device: GPUDevice,
   visibility: number,
-  entries: ('storage' | 'uniform' | 'read-only-storage' | 'texture' | '2d-array')[]
+  entries: ('storage' | 'uniform' | 'read-only-storage' | 'texture' | '2d-array' | '3d')[]
 ) {
   return device.createBindGroupLayout({
     entries: entries.map((value, i) => {
@@ -43,6 +43,16 @@ function getBindGroupLayout(
           visibility,
           texture: {
             viewDimension: '2d-array'
+          }
+        };
+      }
+
+      if (value == '3d') {
+        return {
+          binding: i,
+          visibility,
+          texture: {
+            viewDimension: '3d'
           }
         };
       }

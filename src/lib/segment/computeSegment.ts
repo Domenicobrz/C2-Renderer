@@ -13,6 +13,7 @@ import { globals } from '$lib/C2';
 import { TextureArraysSegment } from './textureArraysSegment';
 import { Orbit } from '$lib/controls/Orbit';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
+import { LUTManager, LUTtype } from '$lib/managers/lutManager';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -48,6 +49,7 @@ export class ComputeSegment {
   private lightsCDFBuffer: GPUBuffer | undefined;
   private envmapPC2DBuffer: GPUBuffer | undefined;
   private envmapInfoBuffer: GPUBuffer | undefined;
+  private lutManager: LUTManager;
 
   private resetSegment: ResetSegment;
 
@@ -68,6 +70,8 @@ export class ComputeSegment {
 
     this.passPerformance = new ComputePassPerformance(device);
 
+    this.lutManager = new LUTManager(device);
+
     this.bindGroupLayouts = [
       getComputeBindGroupLayout(device, ['storage', 'storage', 'uniform']),
       getComputeBindGroupLayout(device, ['uniform', 'uniform', 'uniform', 'uniform']),
@@ -83,7 +87,8 @@ export class ComputeSegment {
         'uniform',
         '2d-array',
         '2d-array',
-        '2d-array'
+        '2d-array',
+        '3d'
       ])
     ];
     this.layout = device.createPipelineLayout({
@@ -251,7 +256,7 @@ export class ComputeSegment {
     return -1;
   }
 
-  updateScene(scene: C2Scene) {
+  async updateScene(scene: C2Scene) {
     this.resetSamplesAndTile();
     // if we have a new envmap, we might have to require a shader re-compilation
     this.requestShaderCompilation = true;
@@ -261,6 +266,11 @@ export class ComputeSegment {
     // we may want to async this and do it over a set of frames
     // rather than all at once
     this.textureArraySegment.update(scene.materials);
+
+    await this.lutManager.load(
+      'luts/torranceSparrowMultiScatter.LUT',
+      LUTtype.MultiScatterTorranceSparrow
+    );
 
     if (this.camera) {
       this.camera.dispose();
@@ -373,6 +383,10 @@ export class ComputeSegment {
         {
           binding: 10,
           resource: this.textureArraySegment.textures1024.createView({ dimension: '2d-array' })
+        },
+        {
+          binding: 11,
+          resource: this.lutManager.getTexture().createView({ dimension: '3d' })
         }
       ]
     });
@@ -435,7 +449,7 @@ export class ComputeSegment {
   createPipeline() {
     const computeModule = this.device.createShaderModule({
       label: 'compute module',
-      code: getComputeShader()
+      code: getComputeShader(this.lutManager)
     });
 
     this.pipeline = this.device.createComputePipeline({

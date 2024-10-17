@@ -19,10 +19,15 @@ export async function furnaceTestScene(): Promise<C2Scene> {
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 2);
 
+  let roughnessMap = (
+    await new TextureLoader().loadAsync('scene-assets/textures/roughness-test.png')
+  ).source.data;
+
   let mat = new TorranceSparrow({
     color: new Color(0.99, 0.99, 0.99),
-    roughness: 0.99,
-    anisotropy: 1
+    roughness: 1,
+    anisotropy: 0
+    // roughnessMap
   });
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];

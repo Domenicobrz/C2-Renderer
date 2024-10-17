@@ -12,6 +12,8 @@ export class TorranceSparrow extends Material {
   private uvRepeat: Vector2;
   private mapUvRepeat: Vector2;
 
+  static MIN_INPUT_ROUGHNESS = 0.0707;
+
   constructor({
     color,
     roughness,
@@ -36,6 +38,9 @@ export class TorranceSparrow extends Material {
     flipTextureY?: boolean;
   }) {
     super({ flipTextureY });
+
+    let minimumRoughness = TorranceSparrow.MIN_INPUT_ROUGHNESS;
+
     this.type = MATERIAL_TYPE.TORRANCE_SPARROW;
     this.color = color;
     // roughness will be squared while doing the ax,ay remapping
@@ -44,7 +49,7 @@ export class TorranceSparrow extends Material {
     // precision errors.
     // if I ever need to go lower, I'll have to start using the mirror/delta function
     // adjustments
-    this.roughness = roughness * 0.9293 + 0.0707;
+    this.roughness = roughness * (1.0 - minimumRoughness) + minimumRoughness;
     this.anisotropy = clamp(anisotropy, 0.01, 0.99);
     this.bumpStrength = bumpStrength;
     this.uvRepeat = uvRepeat;
@@ -384,7 +389,8 @@ export class TorranceSparrow extends Material {
           let roughness = getTexelFromTextureArrays(
             material.roughnessMapLocation, ires.uv, material.uvRepeat
           ).xy;
-          material.roughness *= max(roughness.x, 0.0001);
+          material.roughness *= roughness.x;
+          material.roughness = max(material.roughness, ${TorranceSparrow.MIN_INPUT_ROUGHNESS});
         }
 
         let axay = anisotropyRemap(material.roughness, material.anisotropy);

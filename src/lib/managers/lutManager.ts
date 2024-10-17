@@ -43,7 +43,8 @@ export class LUTManager {
     if (type == LUTtype.MultiScatterTorranceSparrow) {
       this.offsetsShaderPart += /* wgsl */ `
         if (lutType == LUT_MultiScatterTorranceSparrow) {
-          discreteUvs.z += ${this.zOffsetPointer};
+          zOffset = ${this.zOffsetPointer};
+          useBilinearInterpolation = true;
         }
       `;
     }
@@ -115,16 +116,73 @@ export class LUTManager {
     return /* wgsl */ `
       ${lutTypeShaderPart}
 
-      fn getLUTvalue(uv: vec3f, lutType: u32) -> vec4f {
-        var discreteUvs = vec3u(
-          u32(uv.x * 31.999),
-          u32(uv.y * 31.999),
-          u32(uv.z * 31.999),
-        );
+      fn interpolateLUTbilinear(uv: vec3f, zOffset: i32) -> vec4f {
+        let clampedUv = clamp(uv, vec3f(0.0), vec3f(0.99999));
 
+        let oneOver32  = 0.03125;  // <-- single texel size on a 32x32 LUT
+        var duv = mod3f(clampedUv, vec3f(oneOver32)) / oneOver32;
+        let yo: i32 = select(-1, 1, duv.y >= 0.5);
+        let xo: i32 = select(-1, 1, duv.x >= 0.5);
+
+        let discreteUv0 = vec3i(
+          i32(clampedUv.x * 32),
+          i32(clampedUv.y * 32),
+          i32(clampedUv.z * 32) + zOffset,
+        );
+        let isDXOver32OrUnder0 = (discreteUv0.x + xo >= 32) || (discreteUv0.x + xo < 0);
+        let isDYOver32OrUnder0 = (discreteUv0.y + yo >= 32) || (discreteUv0.y + yo < 0);
+
+        let discreteUvPlusX = vec3i(
+          select(discreteUv0.x + xo, discreteUv0.x, isDXOver32OrUnder0),
+          discreteUv0.y,
+          discreteUv0.z,
+        );
+        let discreteUvPlusY = vec3i(
+          discreteUv0.x,
+          select(discreteUv0.y + yo, discreteUv0.y, isDYOver32OrUnder0),
+          discreteUv0.z,
+        );
+        let discreteUvPlusXY = vec3i(
+          select(discreteUv0.x + xo, discreteUv0.x, isDXOver32OrUnder0),
+          select(discreteUv0.y + yo, discreteUv0.y, isDYOver32OrUnder0),
+          discreteUv0.z,
+        );
+        
+        let v = textureLoad(lut32, discreteUv0, 0);
+        let vx = textureLoad(lut32, discreteUvPlusX, 0);
+        let vy = textureLoad(lut32, discreteUvPlusY, 0);
+        let vxy = textureLoad(lut32, discreteUvPlusXY, 0);
+
+        let tx = select(0.5 - duv.x, duv.x - 0.5, duv.x >= 0.5);
+        let ty = select(0.5 - duv.y, duv.y - 0.5, duv.y >= 0.5);
+
+        let v0 = mix(v, vx, tx);
+        let v1 = mix(vy, vxy, tx);
+        let interpolatedValue = mix(v0, v1, ty);
+
+        return interpolatedValue;
+      }
+
+      fn getLUTvalue(uv: vec3f, lutType: u32) -> vec4f {
+        var useTrilinearInterpolation = false;
+        var useBilinearInterpolation = false;
+        var useLinearInterpolation = false;
+        var value = vec4f(0);
+
+        var zOffset: i32 = 0;
         ${this.offsetsShaderPart}
 
-        let value = textureLoad(lut32, discreteUvs, 0);
+        if (useTrilinearInterpolation) {
+          // for 3d luts
+          // not implemented, throw error?
+        } else if (useBilinearInterpolation) {
+          // for single-layer luts
+          value = interpolateLUTbilinear(uv, zOffset);
+        } else if (useLinearInterpolation) {
+          // for single-line luts
+          // not implemented, throw error?
+        }
+
         return value;
       }
     `;

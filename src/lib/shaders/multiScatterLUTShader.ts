@@ -65,7 +65,11 @@ fn integrateE_withImportance(dotVN: f32, roughness: f32, samples: u32, gid: vec2
   let idx = gid.y * LUTSize.x + gid.x;
 
   let samples: u32 = 1000000;
+  // it's important that we consider that this is the roughness value
+  // at the "center" of the pixel
+  // this is necessary to get correct values when using bilinear interpolation
   let roughness = (f32(gid.x) + 0.5) / f32(LUTSize.x);
+  // same for dotVN, we need the value at the "center" of the pixel 
   let dotVN = (f32(gid.y) + 0.5) / f32(LUTSize.y);
 
   LUTOutput[idx] += integrateE_withImportance(dotVN, roughness, samples, gid.xy);

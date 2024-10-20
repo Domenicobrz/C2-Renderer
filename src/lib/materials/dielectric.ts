@@ -137,9 +137,10 @@ export class Dielectric extends Material {
     `;
   }
 
-  static shaderShadeDielectric(): string {
+  // this division was created to simplify the shader of the multi-scatter LUT creation
+  static shaderBRDF(): string {
     return /* wgsl */ `
-      // assuming throwbridge reitz distribution methods are already defined ...
+    // assuming throwbridge reitz distribution methods are already defined ...
       // assuming throwbridge reitz distribution methods are already defined ...
       // assuming throwbridge reitz distribution methods are already defined ...
       fn FrDielectric(_cosTheta_i: f32, _eta: f32) -> f32 {
@@ -380,8 +381,11 @@ export class Dielectric extends Material {
           }
         }
       }
+    `;
+  }
 
-
+  static shaderShadeDielectric(): string {
+    return /* wgsl */ `
       fn shadeDielectricSampleBRDF(
         rands: vec4f, 
         material: DIELECTRIC,

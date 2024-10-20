@@ -3,8 +3,10 @@ import { globals } from '$lib/C2';
 import { multiScatterLUTShader } from '$lib/shaders/multiScatterLUTShader';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { saveArrayBufferLocally } from '$lib/utils/saveArrayBufferLocally';
+import { multiScatterLUTTestShader } from '$lib/shaders/multiScatterLUTTestShader';
+import { Eavg, EavgI, ESS, ESSI } from './luttest';
 
-export class MultiScatterLUTSegment {
+export class MultiScatterLUTTestSegment {
   // private fields
   private device: GPUDevice;
   private pipeline: GPUComputePipeline | null = null;
@@ -25,7 +27,15 @@ export class MultiScatterLUTSegment {
     this.device = device;
 
     this.bindGroupLayouts = [
-      getComputeBindGroupLayout(device, ['storage', 'uniform', 'uniform', 'uniform'])
+      getComputeBindGroupLayout(device, [
+        'storage',
+        'uniform',
+        'uniform',
+        '3d',
+        'texture',
+        '3d',
+        'texture'
+      ])
     ];
     this.layout = device.createPipelineLayout({
       label: 'multi-scatter LUT - pipeline layout',
@@ -34,7 +44,7 @@ export class MultiScatterLUTSegment {
 
     const computeModule = this.device.createShaderModule({
       label: 'multi-scatter LUT compute module',
-      code: multiScatterLUTShader
+      code: multiScatterLUTTestShader
     });
 
     this.pipeline = this.device.createComputePipeline({
@@ -51,42 +61,6 @@ export class MultiScatterLUTSegment {
       size: 4 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
-  }
-
-  createImageFromLUT(size: Vector2, data: Float32Array) {
-    let width = size.x;
-    let height = size.y;
-    let buffer = new Uint8ClampedArray(width * height * 4);
-
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        let bufferIdx = y * width + x;
-        // canvas sadly puts the data in flippedY order so we need to use a different index
-        let dataIdx = (height - y - 1) * width + x;
-
-        let val = data[dataIdx];
-        buffer[bufferIdx * 4 + 0] = val * 255;
-        buffer[bufferIdx * 4 + 1] = val * 255;
-        buffer[bufferIdx * 4 + 2] = val * 255;
-        buffer[bufferIdx * 4 + 3] = 255;
-      }
-    }
-
-    let canvas = document.createElement('canvas');
-    let ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('missing canvas-2d context');
-
-    canvas.width = width;
-    canvas.height = height;
-
-    var idata = ctx.createImageData(width, height);
-    idata.data.set(buffer);
-
-    ctx.putImageData(idata, 0, 0);
-
-    var image = new Image();
-    image.src = canvas.toDataURL('image/png', 1.0);
-    document.body.appendChild(image);
   }
 
   async readBuffer() {
@@ -135,6 +109,78 @@ export class MultiScatterLUTSegment {
   }
 
   setSize(size: Vector3, type: number) {
+    const lut32texture = this.device.createTexture({
+      label: 'ess 3d texture',
+      size: [16, 16, 16],
+      dimension: '3d', // defaults to 2d so it's best to set it here
+      format: 'rgba32float',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+    });
+    let lut32data = [];
+    for (let i = 0; i < ESS.length; i++) {
+      lut32data.push(ESS[i], 0, 0, 0);
+    }
+    this.device.queue.writeTexture(
+      { texture: lut32texture },
+      new Float32Array(lut32data),
+      { bytesPerRow: 16 * 4 * 4, rowsPerImage: 16 },
+      { width: 16, height: 16, depthOrArrayLayers: 16 }
+    );
+
+    const eavgtexture = this.device.createTexture({
+      label: 'eavg texture',
+      size: [16, 16, 1],
+      dimension: '2d', // defaults to 2d so it's best to set it here
+      format: 'rgba32float',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+    });
+    let eavgtexturedata = [];
+    for (let i = 0; i < Eavg.length; i++) {
+      eavgtexturedata.push(Eavg[i], 0, 0, 0);
+    }
+    this.device.queue.writeTexture(
+      { texture: eavgtexture },
+      new Float32Array(eavgtexturedata),
+      { bytesPerRow: 16 * 4 * 4, rowsPerImage: 16 },
+      { width: 16, height: 16, depthOrArrayLayers: 1 }
+    );
+
+    const essitexture = this.device.createTexture({
+      label: 'essi 3d texture',
+      size: [16, 16, 16],
+      dimension: '3d', // defaults to 2d so it's best to set it here
+      format: 'rgba32float',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+    });
+    let essidata = [];
+    for (let i = 0; i < ESSI.length; i++) {
+      essidata.push(ESSI[i], 0, 0, 0);
+    }
+    this.device.queue.writeTexture(
+      { texture: essitexture },
+      new Float32Array(essidata),
+      { bytesPerRow: 16 * 4 * 4, rowsPerImage: 16 },
+      { width: 16, height: 16, depthOrArrayLayers: 16 }
+    );
+
+    const eavgItexture = this.device.createTexture({
+      label: 'eavgI texture',
+      size: [16, 16, 1],
+      dimension: '2d', // defaults to 2d so it's best to set it here
+      format: 'rgba32float',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+    });
+    let eavgItexturedata = [];
+    for (let i = 0; i < EavgI.length; i++) {
+      eavgItexturedata.push(EavgI[i], 0, 0, 0);
+    }
+    this.device.queue.writeTexture(
+      { texture: eavgItexture },
+      new Float32Array(eavgItexturedata),
+      { bytesPerRow: 16 * 4 * 4, rowsPerImage: 16 },
+      { width: 16, height: 16, depthOrArrayLayers: 1 }
+    );
+
     this.LUTSize = size;
 
     let LUTTypeUniformBuffer = this.device.createBuffer({
@@ -175,7 +221,22 @@ export class MultiScatterLUTSegment {
         { binding: 0, resource: { buffer: this.workBuffer } },
         { binding: 1, resource: { buffer: LUTSizeUniformBuffer } },
         { binding: 2, resource: { buffer: this.randsUniformBuffer } },
-        { binding: 3, resource: { buffer: LUTTypeUniformBuffer } }
+        {
+          binding: 3,
+          resource: lut32texture.createView({ dimension: '3d' })
+        },
+        {
+          binding: 4,
+          resource: eavgtexture.createView()
+        },
+        {
+          binding: 5,
+          resource: essitexture.createView({ dimension: '3d' })
+        },
+        {
+          binding: 6,
+          resource: eavgItexture.createView()
+        }
       ]
     });
   }

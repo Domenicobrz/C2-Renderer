@@ -13,7 +13,7 @@ import { get } from 'svelte/store';
 import { tick } from './utils/tick';
 import { getDeviceAndContext } from './webgpu-utils/getDeviceAndContext';
 import { MultiScatterLUTSegment } from './segment/multiScatterLUTSegment';
-import { calculateEavg, calculateEavgI } from './segment/luttest';
+import { calculateEavg, calculateEavgI, calculateTest } from './segment/luttest';
 import { MultiScatterLUTTestSegment } from './segment/multiScatterLUTTestSegment';
 
 let computeSegment: ComputeSegment;
@@ -93,12 +93,17 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   // await msls.readBuffer();
 
   let msls = new MultiScatterLUTTestSegment();
-  msls.setSize(new Vector3(16, 16, 16), 1);
-  await msls.compute();
+  msls.setSize(new Vector3(16, 16, 1), 1);
+  // for (let i = 0; i < 400; i++) {
+  for (let i = 0; i < 4000; i++) {
+    console.log('s:', i * 50000);
+    await msls.compute();
+  }
   await msls.readBuffer();
 
   // calculateEavg();
   // calculateEavgI();
+  calculateTest();
 
   return {
     getFocusDistanceFromScreenPoint:

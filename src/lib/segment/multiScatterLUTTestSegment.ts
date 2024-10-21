@@ -22,6 +22,8 @@ export class MultiScatterLUTTestSegment {
   private LUTSize: Vector3 = new Vector3(-1, -1, -1);
   private LUTbyteLength: number = -1;
 
+  private samplesCount: number = 0;
+
   constructor() {
     let device = globals.device;
     this.device = device;
@@ -86,7 +88,8 @@ export class MultiScatterLUTTestSegment {
     const copyArrayBuffer = this.stagingBuffer.getMappedRange(0, this.LUTbyteLength);
     const data = copyArrayBuffer.slice(0);
     this.stagingBuffer.unmap();
-    const floatsData = new Float32Array(data);
+    let floatsData = new Float32Array(data);
+    floatsData = floatsData.map((v) => v / this.samplesCount);
     console.log(floatsData);
 
     // this.saveLUTBuffer(floatsData);
@@ -242,14 +245,12 @@ export class MultiScatterLUTTestSegment {
   }
 
   updateRands() {
-    this.device.queue.writeBuffer(
-      this.randsUniformBuffer,
-      0,
-      new Float32Array([Math.random(), Math.random(), Math.random(), Math.random()])
-    );
+    let arr = [Math.random(), Math.random(), Math.random(), Math.random()];
+    this.device.queue.writeBuffer(this.randsUniformBuffer, 0, new Float32Array(arr));
   }
 
   async compute() {
+    this.samplesCount += 1;
     if (!this.pipeline || !this.bindGroup0 || !this.LUTSize) {
       throw new Error('undefined bind groups / pipeline / canvasSize');
     }

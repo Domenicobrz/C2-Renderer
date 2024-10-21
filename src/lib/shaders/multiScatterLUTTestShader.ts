@@ -39,19 +39,35 @@ fn integrateDielectricE_withImportance(samples: u32, gid: vec3u) -> f32 {
   // it's important that we consider that this is the roughness value
   // at the "center" of the pixel
   // this is necessary to get correct values when using bilinear interpolation
-  let roughness = (f32(gid.x) + 0.5) / f32(LUTSize.x);
+  let roughness = (f32(gid.x) + 0.5) / f32(16);
   // same for dotVN, we need the value at the "center" of the pixel 
   // let dotVN = (f32(gid.y) + 0.5) / f32(LUTSize.y) * 2.0 - 1.0;
-  var dotVN = (f32(gid.y) + 0.5) / f32(LUTSize.y) * -2.0 + 1.0;
+  var dotVN = (f32(gid.y) + 0.5) / f32(16) * -2.0 + 1.0;
   if (dotVN == 0.0) { dotVN = 0.001; }
-  let eta = 1.0 + (f32(gid.z) + 0.5) / f32(LUTSize.z) * 2.0;
+  let eta = 1.0 + (f32(gid.z) + 0.5) / f32(16) * 2.0;
 
   let woTheta = acos(dotVN);
   let wo = normalize(vec3f(sin(woTheta), 0, dotVN));
   let wg = vec3f(0, 0, 1);
 
+  let Eavg  = textureLoad(EAVGlut, vec2u(gid.x, gid.z), 0).x;
+  let EavgI = textureLoad(EAVGIlut, vec2u(gid.x, gid.z), 0).x;
+  let ESS_eta_wo = textureLoad(ESSlut, vec3u(gid.x, gid.y, gid.z), 0).x;
+  let ESS_etai_wo = textureLoad(ESSIlut, vec3u(gid.x, gid.y, gid.z), 0).x;
+  let Favg = getFavg(eta);
+  let FavgI = getFavg(1.0 / eta);
+
+  var invalidSamplesCount = 0;
+
   var integral: f32 = 0;
   for (var i: u32 = 0; i < samples; i++) {
+  // let nx: u32 = 20;
+  // let ny: u32 = 200;  // 100.000 total samples
+  // for (var i: u32 = 0; i < nx; i++) {
+  // for (var j: u32 = 0; j < ny; j++) {
+  //   let stepX = (2.0 * PI) / f32(nx);
+  //   let stepY = (2.0)      / f32(ny);
+
     let axay = anisotropyRemap(roughness, 0.0);
     let ax = axay.x;
     let ay = axay.y;
@@ -61,50 +77,118 @@ fn integrateDielectricE_withImportance(samples: u32, gid: vec3u) -> f32 {
     if (i % 2 == 1) { ru32s = u32(uRands.z * 928473289 + uRands.w * 875973289); } 
 
     let rands = rand4(
+      // gid.y * LUTSize.x * 178 + gid.x * 91 + ru32s + u32(i * 173759) + u32(j * 375149),
       gid.y * LUTSize.x * 178 + gid.x * 91 + ru32s + u32(i * 173759),
     );
 
-    let material = DIELECTRIC(vec3f(1.0), ax, ay, eta, 0, vec2f(0), vec2f(0), vec2i(0), vec2i(0), vec2i(0));
+    // // let t = (f32(j) + 0.5) / f32(ny);
+    // let t = (f32(j) + rands.x) / f32(ny);
+    // var ifl = t * 16;
+    // // if (ifl < 0.5) { ifl = 0.5; }
+    // // if (ifl > 15.5) { ifl = 15.5; }
+
+    // // let wiCosTheta = (f32(j) + rands.x) / f32(ny) * 2 - 1;
+    // let wiCosTheta = (ifl / 16) * -2 + 1;
+    // let wiTheta = acos(wiCosTheta);
+    // let wiPhi = stepX * (f32(j) + rands.y);
+    // var wi = normalize(vec3(
+    //   sin(wiPhi) * sin(wiTheta),
+    //   cos(wiPhi) * sin(wiTheta),
+    //   wiCosTheta,
+    // ));
+
+    let material = DIELECTRIC(vec3f(0.0), ax, ay, eta, 0, vec2f(0), vec2f(0), vec2i(0), vec2i(0), vec2i(0));
 
     var wi = vec3f(0);
     var brdf: vec3f;
     var pdf: f32;
     Dielectric_Sample_f(wo, material, rands, &wi, &pdf, &brdf);
+    // pdf = 1.0;
+    // pdf = Dielectric_PDF(wo, wi, material);
+    // brdf = Dielectric_f(wo, wi, material);
+    // let pdf2 = Dielectric_PDF(wo, wi, material);
 
 
-    let ESS_eta_wo = textureLoad(ESSlut, vec3u(gid.x, gid.y, gid.z), 0).x;
-    let ESS_eta_wi = textureLoad(ESSlut, vec3u(gid.x, u32((1.0 - (dot(wi, wg) * 0.5 + 0.5)) * 16), gid.z), 0).x;
-    let ESS_etai_wo = textureLoad(ESSIlut, vec3u(gid.x, gid.y, gid.z), 0).x;
-    let ESS_etai_wi = textureLoad(ESSIlut, vec3u(gid.x, u32((1.0 - (dot(wi, wg) * 0.5 + 0.5)) * 16), gid.z), 0).x;
-    let Favg = getFavg(eta);
-    let FavgI = getFavg(1.0 / eta);
-    let Eavg  = textureLoad(EAVGlut, vec2u(gid.x, gid.z), 0).x;
-    let EavgI = textureLoad(EAVGIlut, vec2u(gid.x, gid.z), 0).x;
-    
-    if (wo.z > 0) {
-      let fmsr = Favg * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
-      let fmst = (1.0 - Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
-    
-      let a = (1.0 - Favg) / (1.0 - EavgI);
-      let b = (1.0 - FavgI) / (1.0 - Eavg) * eta * eta;
-      let x = b / (a + b);
+    let ifl = (1.0 - (dot(wi, wg) * 0.5 + 0.5)) * 16.0;
+    let i0 = u32(ifl);
+    var id = ifl - f32(i0);
+    var i1: u32 = 0;
 
-      brdf += fmsr + x * fmst;
-      // brdf /= ESS_eta_wo;
-    } else {
-      brdf = vec3(0.0);
+    if (ifl >= 15.5) {
+      i1 = i0;
+      id = 0.0;
+      // i1 = i0 - 1;
+      // id = 15.5 - ifl;
+    } else if (ifl <= 0.5) {
+      i1 = i0;
+      id = 0;
+      // i1 = i0 + 1;
+      // id = -0.5 + ifl;
+    } else if (id <= 0.5) {
+      i1 = i0 - 1;
+      id = 0.5 - id;
+    } else if (id > 0.5) {
+      i1 = i0 + 1;
+      id = id - 0.5;
     }
+    // id = 0.0;
 
-    if (isFloatNaN(pdf) || pdf == 0.0) {
-      pdf = 1.0;
+    let ESS_eta_wi0 = textureLoad(ESSlut, vec3u(gid.x, i0, gid.z), 0).x;
+    let ESS_etai_wi0 = textureLoad(ESSIlut, vec3u(gid.x, i0, gid.z), 0).x;
+    let ESS_eta_wi1 = textureLoad(ESSlut, vec3u(gid.x, i1, gid.z), 0).x;
+    let ESS_etai_wi1 = textureLoad(ESSIlut, vec3u(gid.x, i1, gid.z), 0).x;
+
+    let ESS_eta_wi = mix(ESS_eta_wi0, ESS_eta_wi1, id);
+    let ESS_etai_wi = mix(ESS_etai_wi0, ESS_etai_wi1, id);
+    
+    // if (wo.z > 0) {
+    //   let fmsr = Favg * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
+    //   // let fmst = (1.0 - Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
+    //   let fmstnr = (1.0 - Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
+    
+    //   let a = (1.0 - Favg) / (1.0 - EavgI);
+    //   let b = (1.0 - FavgI) / (1.0 - Eavg) * eta * eta;
+    //   let x = b / (a + b);
+
+    //   // brdf += (fmsr + x * fmst);
+    //   // brdf += (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg)) * 0.5; // + x * fmst);
+    //   // brdf /= ESS_eta_wo;
+
+    //   brdf = vec3f((1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg)));
+    //   // brdf = vec3f(ESS_eta_wo);
+    // } else {
+    //   brdf = vec3(0.0);
+    // }
+
+
+    // brdf = vec3f(1.0);
+    // brdf += 0.5 * vec3f((1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg)));
+    brdf = vec3f((1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg)));
+
+    if ((isFloatNaN(pdf) || pdf == 0.0)) {
+      // pdf = 1.0;
       brdf = vec3f(0.0);
+      invalidSamplesCount += 1;
     }
 
     let sample = (brdf.x / pdf) * abs(dot(wi, wg));
-    integral += sample;
+    // let sample = (1 / pdf) * abs(dot(wi, wg));
+    // integral += sample;
+    // integral += sample * stepX * stepY;
+    integral += 1.0 / pdf; // * stepX * stepY;
+
+    // integral = ESS_eta_wi * wi.z * stepY;
+    // integral = wi.z;
+    // if (j > 15) {
+      // break;
+    // }
   }
+  // break;
+  // }
 
   integral /= f32(samples);
+  // integral = f32(invalidSamplesCount);
+
   return integral;
 }
 
@@ -115,7 +199,7 @@ fn integrateDielectricE_withImportance(samples: u32, gid: vec3u) -> f32 {
   if (gid.x >= LUTSize.x || gid.y >= LUTSize.y || gid.z >= LUTSize.z) { return; }
   let idx = gid.z * LUTSize.x * LUTSize.y + gid.y * LUTSize.x + gid.x;
 
-  let samples: u32 = 100000;
+  let samples: u32 = 50000;
 
   LUTOutput[idx] += integrateDielectricE_withImportance(samples, gid.xyz);
 }

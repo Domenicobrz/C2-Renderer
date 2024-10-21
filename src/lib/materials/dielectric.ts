@@ -172,7 +172,7 @@ export class Dielectric extends Material {
         }
 
         // Evaluate sampling PDF of rough dielectric BSDF
-        let cosTheta_o = CosTheta(wo);
+        let cosTheta_o = CosTheta(wo);  
         let cosTheta_i = CosTheta(wi);
         let reflect: bool = cosTheta_i * cosTheta_o > 0;
         var etap = 1.0;

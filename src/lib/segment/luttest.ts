@@ -5048,6 +5048,84 @@ export const ESSI = [
   0.18156380951404572, 0.16204622387886047
 ];
 
+export function calculateTest() {
+  let x = 2;
+  let y = 0;
+  let z = 0;
+  let roughness = (x + 0.5) / 16;
+  let dotVN = ((y + 0.5) / 16) * -2 + 1;
+  let eta = 1.0 + ((z + 0.5) / 16) * 2.0;
+
+  console.log(`E(r: ${roughness}, n: ${eta}, uo: ${dotVN}): `, ESS[z * 16 * 16 + y * 16 + x]);
+  console.log(`Eavg(r: ${roughness}, n: ${eta}): `, Eavg[z * 16 + x]);
+
+  let step = (1 / 16) * 2;
+  let int = 0;
+  for (let i = 0; i < 16; i++) {
+    let dotVN = ((i + 0.5) / 16) * -2 + 1;
+    let y = i;
+
+    let idx = z * 16 * 16 + y * 16 + x;
+    let v = ESS[idx];
+    int += v * Math.abs(dotVN) * step;
+    // console.log(v, dotVN);
+    // int += v * step;
+    // int += Math.abs(dotVN) * step;
+  }
+
+  const final =
+    ((2 * (1 - ESS[z * 16 * 16 + y * 16 + x])) / (1.0 - Eavg[z * 16 + x])) * (1.0 - int);
+
+  console.log('integrated1 E(ui): ', int);
+  console.log('final1: ', final, final * 0.5);
+
+  {
+    let step = (1 / 500) * 2;
+    let int = 0;
+    for (let i = 0; i < 500; i++) {
+      let t = (i + 0.5) / 500;
+      let ifl = t * 16;
+      // if (ifl < 0.5) ifl = 0.5;
+      // if (ifl > 15.5) ifl = 15.5;
+      let y0 = Math.floor(ifl);
+      let dotVN = (ifl / 16) * -2 + 1;
+
+      let id = ifl - y0;
+      let y1 = 0;
+
+      if (ifl > 15.5) {
+        // if (ifl > 1.5) {
+        y1 = y0;
+        id = 0.0;
+      } else if (ifl <= 0.5) {
+        y1 = y0;
+        id = 0;
+      } else if (id <= 0.5) {
+        y1 = y0 - 1;
+        id = 0.5 - id;
+      } else if (id > 0.5) {
+        y1 = y0 + 1;
+        id = id - 0.5;
+      }
+
+      let v0 = ESS[z * 16 * 16 + y0 * 16 + x];
+      let v1 = ESS[z * 16 * 16 + y1 * 16 + x];
+      let v = v0 * (1.0 - id) + v1 * id;
+
+      int += v * Math.abs(dotVN) * step;
+      // int += v * step;
+      // int += Math.abs(dotVN) * step;
+      // console.log(v, dotVN, int);
+    }
+
+    const final2 =
+      ((2 * (1 - ESS[z * 16 * 16 + y * 16 + x])) / (1.0 - Eavg[z * 16 + x])) * (1.0 - int);
+
+    console.log('integrated2 E(ui): ', int);
+    console.log('final2: ', final2, final2 * 0.5);
+  }
+}
+
 export function calculateEavg() {
   // x: roughness, y: eta
   let Eavg = [];

@@ -93,10 +93,11 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   // await msls.readBuffer();
 
   let msls = new MultiScatterLUTTestSegment();
-  msls.setSize(new Vector3(16, 16, 1), 1);
+  msls.setSize(new Vector3(50, 50, 1), 1);
   // for (let i = 0; i < 400; i++) {
-  for (let i = 0; i < 4000; i++) {
-    console.log('s:', i * 50000);
+  for (let i = 0; i < 1; i++) {
+    console.log('s:', (i + 1) * 50000 * (50 * 50));
+    // console.log('s:', (i + 1) * 200 * 500 * 50 * 50);
     await msls.compute();
   }
   await msls.readBuffer();

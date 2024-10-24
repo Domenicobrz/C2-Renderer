@@ -90,7 +90,15 @@ export class MultiScatterLUTTestSegment {
     this.stagingBuffer.unmap();
     let floatsData = new Float32Array(data);
     floatsData = floatsData.map((v) => v / this.samplesCount);
-    console.log(floatsData);
+
+    let int = 0;
+    for (let i = 0; i < floatsData.length; i++) {
+      // with importance sampling:
+      int += floatsData[i] * (1 / (this.LUTSize.x * this.LUTSize.y));
+      // without importance sampling:
+      // int += floatsData[i]; // * (1 / (this.LUTSize.x * this.LUTSize.y));
+    }
+    console.log('gpu computed integral:', int);
 
     // this.saveLUTBuffer(floatsData);
   }
@@ -263,6 +271,7 @@ export class MultiScatterLUTTestSegment {
       Math.ceil(this.LUTSize.y / 8),
       Math.ceil(this.LUTSize.z)
     );
+    // const workGroupsCount = new Vector3(50, 50, 1);
 
     // Encode commands to do the computation
     const encoder = this.device.createCommandEncoder({

@@ -118,8 +118,8 @@ fn integrateDielectricE_withImportance(samples: u32, gid: vec3u) -> f32 {
 
 
     // let ifl = (1.0 - (dot(wi, wg) * 0.5 + 0.5)) * 16.0;
-    let ifl = (rands.z) * 16.0;
-    // let ifl = (0.75) * 16.0;
+    // let ifl = (rands.z) * 16.0;
+    let ifl = (0.75) * 16.0;
     var mswi = (ifl / 16) * -2 + 1;
     // let ifl = (0.0 - (dot(wi, wg) * 0.5 + 0.5)) * 16.0;
     let i0 = u32(ifl);
@@ -156,22 +156,19 @@ fn integrateDielectricE_withImportance(samples: u32, gid: vec3u) -> f32 {
 
     // let fmsr = Favg * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
     // let fmst = (1.0 - Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
-    var a = (1.0 - Favg) / (1.0 - EavgI);
-    var b = (1.0 - FavgI) / (1.0 - Eavg) * (eta) * (eta);
-    var x = b / (a + b);
+    let a = (1.0 - Favg) / (1.0 - EavgI);
+    let b = (1.0 - FavgI) / (1.0 - Eavg) * (eta) * (eta);
+    let x = b / (a + b);
     // let fmsr = x * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
     // let fmst = (1.0 - x) * (1.0 - ESS_eta_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
-    var fmsr = (Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
-    var fmst = x * (1.0 - Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
+    let fmsr = (Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
+    let fmst = x * (1.0 - Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
     
-    
-    // a = (1.0 - Favg) / (1.0 - Eavg);
-    // b = (1.0 - FavgI) / (1.0 - Eavg) * (eta) * (eta);
-    // x = b / (a + b);
-    // fmsr =           (Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
-    // fmst = x * (1.0 - Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
-    
-
+    // let fmsr = FavgI * (1.0 - ESS_etai_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
+    // let fmst = (1.0 - FavgI) * (1.0 - ESS_etai_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
+    // let a = (1.0 - Favg) / (1.0 - EavgI);
+    // let b = (1.0 - FavgI) / (1.0 - Eavg) * eta * eta;
+    // let x = 1 - b / (a + b);  // notice the 1 - (x)
 
     // let msBrdf = 0.5 * x * vec3f(fmsr + fmst);
     let msBrdf = 0.5 * vec3f(fmsr + fmst);
@@ -202,9 +199,9 @@ fn integrateDielectricE_withImportance(samples: u32, gid: vec3u) -> f32 {
     }
 
     // let sample = (brdf.x / pdf) * abs(dot(wi, wg));
-    let sample = (brdf.x / pdf) * abs(dot(wi, wg)) + (msBrdf.x / msPdf) * abs(mswi); // <-- which is basically: abs(dot(mswi, wg));
+    // let sample = (brdf.x / pdf) * abs(dot(wi, wg)) + (msBrdf.x / msPdf) * abs(mswi); // <-- which is basically: abs(dot(mswi, wg));
     // let sample = (msBrdf.x / msPdf) * abs(mswi); // <-- which is basically: abs(dot(mswi, wg));
-    // let sample = (ESS_eta_wo); // <-- which is basically: abs(dot(mswi, wg));
+    let sample = (ESS_eta_wo); // <-- which is basically: abs(dot(mswi, wg));
     integral += sample;
     // integral += sample * stepX * stepY;
     

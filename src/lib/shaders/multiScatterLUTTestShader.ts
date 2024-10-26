@@ -17,6 +17,36 @@ ${TorranceSparrow.shaderBRDF()}
 ${Dielectric.shaderStruct()}
 ${Dielectric.shaderBRDF()}
 
+    // var id = ifl - f32(i0);
+    // var i1: u32 = 0;
+
+    // if (ifl >= 15.5) {
+    //   i1 = i0;
+    //   id = 0.0;
+    //   // i1 = i0 - 1;
+    //   // id = 15.5 - ifl;
+    // } else if (ifl <= 0.5) {
+    //   i1 = i0;
+    //   id = 0;
+    //   // i1 = i0 + 1;
+    //   // id = -0.5 + ifl;
+    // } else if (id <= 0.5) {
+    //   i1 = i0 - 1;
+    //   id = 0.5 - id;
+    // } else if (id > 0.5) {
+    //   i1 = i0 + 1;
+    //   id = id - 0.5;
+    // }
+    // id = 0.0;
+
+    // let ESS_eta_wi0 = textureLoad(ESSlut, vec3u(tx, i0, tz), 0).x;
+    // let ESS_etai_wi0 = textureLoad(ESSIlut, vec3u(tx, i0, tz), 0).x;
+    // let ESS_eta_wi1 = textureLoad(ESSlut, vec3u(tx, i1, tz), 0).x;
+    // let ESS_etai_wi1 = textureLoad(ESSIlut, vec3u(tx, i1, tz), 0).x;
+
+    // let ESS_eta_wi = mix(ESS_eta_wi0, ESS_eta_wi1, id);
+    // let ESS_etai_wi = mix(ESS_etai_wi0, ESS_etai_wi1, id);
+
 @group(0) @binding(0) var<storage, read_write> LUTOutput: array<f32>;
 @group(0) @binding(1) var<uniform> LUTSize: vec3u;
 @group(0) @binding(2) var<uniform> uRands: vec4f;
@@ -37,21 +67,16 @@ fn getFavg(eta: f32) -> f32 {
 
 fn integrateDielectricE_withImportance(samples: u32, gid: vec3u) -> f32 {
   // "table targets"
-  // let tx: u32 = 2;
-  // let ty: u32 = 0;
-  // let tz: u32 = 0;
-  let tx: u32 = 4;
-  let ty: u32 = 0;
-  let tz: u32 = 2;
+  let tx: u32 = 8;
+  let ty: u32 = 12;
+  let tz: u32 = 8;
 
   // it's important that we consider that this is the roughness value
   // at the "center" of the pixel
   // this is necessary to get correct values when using bilinear interpolation
   let roughness = (f32(tx) + 0.5) / f32(16);
-  // same for dotVN, we need the value at the "center" of the pixel 
-  // let dotVN = (f32(gid.y) + 0.5) / f32(LUTSize.y) * 2.0 - 1.0;
-  var dotVN = (f32(ty) + 0.5) / f32(16) * -2.0 + 1.0;
-  if (dotVN == 0.0) { dotVN = 0.001; }
+  var dotVN = (f32(ty) + 0.5) / f32(16);
+  // dotVN *= -1;
   let eta = 1.0 + (f32(tz) + 0.5) / f32(16) * 2.0;
 
   let woTheta = acos(dotVN);
@@ -109,102 +134,67 @@ fn integrateDielectricE_withImportance(samples: u32, gid: vec3u) -> f32 {
     var brdf: vec3f;
     var pdf: f32;
     Dielectric_Sample_f(wo, material, rands, &wi, &pdf, &brdf);
-    // TS_Sample_f(wo, rands.xy, ax, ay, vec3f(1.0), &wi, &pdf, &brdf);
 
-    // // pdf = 1.0;
     // pdf = Dielectric_PDF(wo, wi, material);
     // brdf = Dielectric_f(wo, wi, material);
-    // // let pdf2 = Dielectric_PDF(wo, wi, material);
 
-
-    // let ifl = (1.0 - (dot(wi, wg) * 0.5 + 0.5)) * 16.0;
-    let ifl = (rands.z) * 16.0;
-    // let ifl = (0.75) * 16.0;
-    var mswi = (ifl / 16) * -2 + 1;
-    // let ifl = (0.0 - (dot(wi, wg) * 0.5 + 0.5)) * 16.0;
-    let i0 = u32(ifl);
-    var id = ifl - f32(i0);
-    var i1: u32 = 0;
-
-    if (ifl >= 15.5) {
-      i1 = i0;
-      id = 0.0;
-      // i1 = i0 - 1;
-      // id = 15.5 - ifl;
-    } else if (ifl <= 0.5) {
-      i1 = i0;
-      id = 0;
-      // i1 = i0 + 1;
-      // id = -0.5 + ifl;
-    } else if (id <= 0.5) {
-      i1 = i0 - 1;
-      id = 0.5 - id;
-    } else if (id > 0.5) {
-      i1 = i0 + 1;
-      id = id - 0.5;
-    }
-    id = 0.0;
-
-    let ESS_eta_wi0 = textureLoad(ESSlut, vec3u(tx, i0, tz), 0).x;
-    let ESS_etai_wi0 = textureLoad(ESSIlut, vec3u(tx, i0, tz), 0).x;
-    let ESS_eta_wi1 = textureLoad(ESSlut, vec3u(tx, i1, tz), 0).x;
-    let ESS_etai_wi1 = textureLoad(ESSIlut, vec3u(tx, i1, tz), 0).x;
-
-    let ESS_eta_wi = mix(ESS_eta_wi0, ESS_eta_wi1, id);
-    let ESS_etai_wi = mix(ESS_etai_wi0, ESS_etai_wi1, id);
-
-
-    // let fmsr = Favg * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
-    // let fmst = (1.0 - Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
-    var a = (1.0 - Favg) / (1.0 - EavgI);
-    var b = (1.0 - FavgI) / (1.0 - Eavg) * (eta) * (eta);
+    var a = (1.0 - Favg) / (1.0 - EavgI); 
+    var b = ((1.0 - FavgI) / (1.0 - Eavg)) * (eta * eta);
     var x = b / (a + b);
-    // let fmsr = x * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
-    // let fmst = (1.0 - x) * (1.0 - ESS_eta_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
-    var fmsr = (Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
-    var fmst = x * (1.0 - Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
-    
-    
-    // a = (1.0 - Favg) / (1.0 - Eavg);
-    // b = (1.0 - FavgI) / (1.0 - Eavg) * (eta) * (eta);
-    // x = b / (a + b);
-    // fmsr =           (Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
-    // fmst = x * (1.0 - Favg) * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
-    
 
+    let y = x * (1.0 - Favg);
+    let y2 = (1-x) * (1.0 - FavgI);
 
-    // let msBrdf = 0.5 * x * vec3f(fmsr + fmst);
-    let msBrdf = 0.5 * vec3f(fmsr + fmst);
-    // let msBrdf = 0.5 * vec3f(fmst);
-    let msPdf = 1 / (4.0 * PI);
+    // - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-
-    
-    let fmsr2 = (Favg) * (1.0 - ESS_eta_wi) * (1.0 - ESS_eta_wo) / (PI * (1.0 - Eavg));
-    // in questo caso voglio la f(wi,wo), e siccome NON HO CAMBIATO LE DIREZIONI, wi è *dentro*,
-    // ed essendo dentro devo aggiustare tutte le variabili, come farei se volessi f(wo,wi) e
-    // wo fosse "dentro"
-    let fmst2 = (1-x) * (1.0 - FavgI) * (1.0 - ESS_etai_wi) * (1.0 - ESS_eta_wo) / (PI * (1.0 - Eavg));
-    // let fmst2 = x * (1.0 - Favg) * (1.0 - ESS_eta_wi) * (1.0 - ESS_etai_wo) / (PI * (1.0 - EavgI));
-    let msBrdf2 = 0.5 * vec3f(fmsr2 + fmst2);
-    let msPdf2 = 1 / (4.0 * PI);
-
-
-
-    // let msBrdf = 0.5 * vec3f((1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg)));
-    // let msPdf = 1 / (4.0 * PI);
-
-
-    if ((isFloatNaN(pdf) || pdf == 0.0)) {
-      // pdf = 1.0;
-      // brdf = vec3f(0.0);
-      // invalidSamplesCount += 1;
+    var fmsr = 0.0;
+    var fmst = 0.0;
+    let ifl = (rands.z) * 16.0;
+    let reflection = rands.w > 0.5;
+    // let ifl = 14.0;
+    let i0 = u32(ifl);
+    var mswi = (ifl / 16);
+    let ESS_eta_wi = textureLoad(ESSlut, vec3u(tx, i0, tz), 0).x;
+    let ESS_etai_wi = textureLoad(ESSIlut, vec3u(tx, i0, tz), 0).x;
+    {
+      fmsr = (1 - y) * (1.0 - ESS_eta_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
+      // fmsr = (1 - y2) * (1.0 - ESS_etai_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
+      fmsr *= mswi;
     }
+    {
+      fmst = y * (1.0 - ESS_eta_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - EavgI));
+      // fmst = y2 * (1.0 - ESS_etai_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - Eavg));
+      fmst *= mswi;
+
+      // fmst/*2*/ = (y2) * (1.0 - ESS_eta_wo) * (1.0 - ESS_etai_wi) / (PI * (1.0 - Eavg));
+      // fmst/*2*/ = y * (1.0 - ESS_etai_wo) * (1.0 - ESS_eta_wi) / (PI * (1.0 - EavgI));
+    }
+
+    // they can both be negative (?)
+    var msBrdf = vec3f(fmsr + fmst);
+
+    // if we launch a single ray per ms-brdf evaluation, we need to do this instead:
+    if (reflection) {
+      msBrdf = vec3f(fmsr * 2.0);
+    } else {
+      msBrdf = vec3f(fmst * 2.0);
+    }
+
+    // let msBrdf = vec3f(fmst);
+    let msPdf = 1 / (2.0 * PI);
+    // let msPdf = 1.0;
+    
+    if ((isFloatNaN(pdf) || pdf == 0.0)) {
+      // ?
+    }
+
+    // note that the compensation brdf needs to be *added* to the original brdf,
+    // which also means (not sure though) we can't add the ms lobe with the standard 
+    // MIS strategy, we would have instead to pick one or the other from time to time
 
     // let sample = (brdf.x / pdf) * abs(dot(wi, wg));
-    let sample = (brdf.x / pdf) * abs(dot(wi, wg)) + (msBrdf.x / msPdf) * abs(mswi); // <-- which is basically: abs(dot(mswi, wg));
-    // let sample = (msBrdf.x / msPdf) * abs(mswi); // <-- which is basically: abs(dot(mswi, wg));
-    // let sample = (ESS_eta_wo); // <-- which is basically: abs(dot(mswi, wg));
+    let sample = (brdf.x / pdf) * abs(dot(wi, wg)) + (msBrdf.x / msPdf);
+    // let sample = (fmst); 
     integral += sample;
     // integral += sample * stepX * stepY;
     

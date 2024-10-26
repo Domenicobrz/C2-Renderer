@@ -5,6 +5,7 @@ import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout'
 import { saveArrayBufferLocally } from '$lib/utils/saveArrayBufferLocally';
 import { multiScatterLUTTestShader } from '$lib/shaders/multiScatterLUTTestShader';
 import { Eavg, EavgI, ESS, ESSI } from './luttest';
+import { Eavg2, EavgI2, ESS2, ESSI2 } from './lut-test/luts';
 
 export class MultiScatterLUTTestSegment {
   // private fields
@@ -128,8 +129,8 @@ export class MultiScatterLUTTestSegment {
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
     });
     let lut32data = [];
-    for (let i = 0; i < ESS.length; i++) {
-      lut32data.push(ESS[i], 0, 0, 0);
+    for (let i = 0; i < ESS2.length; i++) {
+      lut32data.push(ESS2[i], 0, 0, 0);
     }
     this.device.queue.writeTexture(
       { texture: lut32texture },
@@ -146,8 +147,8 @@ export class MultiScatterLUTTestSegment {
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
     });
     let eavgtexturedata = [];
-    for (let i = 0; i < Eavg.length; i++) {
-      eavgtexturedata.push(Eavg[i], 0, 0, 0);
+    for (let i = 0; i < Eavg2.length; i++) {
+      eavgtexturedata.push(Eavg2[i], 0, 0, 0);
     }
     this.device.queue.writeTexture(
       { texture: eavgtexture },
@@ -164,8 +165,8 @@ export class MultiScatterLUTTestSegment {
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
     });
     let essidata = [];
-    for (let i = 0; i < ESSI.length; i++) {
-      essidata.push(ESSI[i], 0, 0, 0);
+    for (let i = 0; i < ESSI2.length; i++) {
+      essidata.push(ESSI2[i], 0, 0, 0);
     }
     this.device.queue.writeTexture(
       { texture: essitexture },
@@ -182,8 +183,8 @@ export class MultiScatterLUTTestSegment {
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
     });
     let eavgItexturedata = [];
-    for (let i = 0; i < EavgI.length; i++) {
-      eavgItexturedata.push(EavgI[i], 0, 0, 0);
+    for (let i = 0; i < EavgI2.length; i++) {
+      eavgItexturedata.push(EavgI2[i], 0, 0, 0);
     }
     this.device.queue.writeTexture(
       { texture: eavgItexture },

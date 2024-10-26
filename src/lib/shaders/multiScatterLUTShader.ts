@@ -28,10 +28,9 @@ fn integrateDielectricE_withImportance(samples: u32, gid: vec3u) -> f32 {
   // this is necessary to get correct values when using bilinear interpolation
   let roughness = (f32(gid.x) + 0.5) / f32(LUTSize.x);
   // same for dotVN, we need the value at the "center" of the pixel 
-  // let dotVN = (f32(gid.y) + 0.5) / f32(LUTSize.y) * 2.0 - 1.0;
-  var dotVN = (f32(gid.y) + 0.5) / f32(LUTSize.y) * -2.0 + 1.0;
-  if (dotVN == 0.0) { dotVN = 0.001; }
-  let eta = (1.0 + (f32(gid.z) + 0.5) / f32(LUTSize.z) * 2.0);
+  var dotVN = (f32(gid.y) + 0.5) / f32(LUTSize.y);
+  // if (dotVN == 0.0) { dotVN = 0.001; } // this one wont be necessary anymore
+  let eta = 1.0 / (1.0 + (f32(gid.z) + 0.5) / f32(LUTSize.z) * 2.0);
 
   let woTheta = acos(dotVN);
   let wo = normalize(vec3f(sin(woTheta), 0, dotVN));

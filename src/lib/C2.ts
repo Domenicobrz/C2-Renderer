@@ -16,6 +16,7 @@ import { MultiScatterLUTSegment } from './segment/multiScatterLUTSegment';
 import { calculateEavg, calculateEavgI, calculateTest } from './segment/luttest';
 import { MultiScatterLUTTestSegment } from './segment/multiScatterLUTTestSegment';
 import { calculateEavg2, calculateEavgI2 } from './segment/lut-test/compute-eavg';
+import { LUTManager, LUTtype } from './managers/lutManager';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
@@ -85,23 +86,33 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
 
   centralStatusMessage.set('compiling shaders');
   await tick(); // will give us the chance of showing the message above
-  // renderLoop();
+  renderLoop();
   centralStatusMessage.set('');
 
   // let msls = new MultiScatterLUTSegment();
-  // msls.setSize(new Vector3(16, 16, 16), 1);
-  // await msls.compute();
+  // msls.setSize(new Vector3(32, 32, 32), 1);
+  // await msls.compute(200);
   // await msls.readBuffer();
 
-  let msls = new MultiScatterLUTTestSegment();
-  msls.setSize(new Vector3(50, 50, 1), 1);
-  // for (let i = 0; i < 400; i++) {
-  for (let i = 0; i < 1; i++) {
-    console.log('s:', (i + 1) * 50000 * (50 * 50));
-    // console.log('s:', (i + 1) * 200 * 500 * 50 * 50);
-    await msls.compute();
-  }
-  await msls.readBuffer();
+  // let lm = new LUTManager(device);
+  // let { arrayData } = await lm.load(
+  //   'luts/multiScatterDielectricEoInverse.LUT',
+  //   LUTtype.MultiScatterDielectricEoInverse
+  // );
+
+  // let msls = new MultiScatterLUTSegment();
+  // msls.setSize(new Vector3(32, 32, 32), 1);
+  // msls.calculateEavg(arrayData, 32);
+
+  // let msls = new MultiScatterLUTTestSegment();
+  // msls.setSize(new Vector3(50, 50, 1), 1);
+  // // for (let i = 0; i < 400; i++) {
+  // for (let i = 0; i < 1; i++) {
+  //   console.log('s:', (i + 1) * 50000 * (50 * 50));
+  //   // console.log('s:', (i + 1) * 200 * 500 * 50 * 50);
+  //   await msls.compute();
+  // }
+  // await msls.readBuffer();
 
   // // calculateEavg();
   // // calculateEavgI();

@@ -1,21 +1,24 @@
 import { Vector2, type Color } from 'three';
 import { MATERIAL_TYPE, Material } from './material';
 import { intBitsToFloat } from '$lib/utils/intBitsToFloat';
+import { clamp } from '$lib/utils/math';
 
 // from: https://www.pbr-book.org/4ed/Reflection_Models/Roughness_Using_Microfacet_Theory
 export class Dielectric extends Material {
   private absorption: Color;
-  private ax: number;
-  private ay: number;
+  private roughness: number;
+  private anisotropy: number;
   private eta: number;
   private bumpStrength: number;
   private uvRepeat: Vector2;
   private mapUvRepeat: Vector2;
 
+  static MIN_INPUT_ROUGHNESS = 0.0707;
+
   constructor({
     absorption,
-    ax,
-    ay,
+    roughness,
+    anisotropy,
     eta,
     absorptionMap,
     roughnessMap,
@@ -26,8 +29,8 @@ export class Dielectric extends Material {
     flipTextureY = false
   }: {
     absorption: Color;
-    ax: number;
-    ay: number;
+    roughness: number;
+    anisotropy: number;
     eta: number;
     absorptionMap?: HTMLImageElement;
     roughnessMap?: HTMLImageElement;
@@ -38,10 +41,13 @@ export class Dielectric extends Material {
     mapUvRepeat?: Vector2;
   }) {
     super({ flipTextureY });
+
+    let minimumRoughness = Dielectric.MIN_INPUT_ROUGHNESS;
+
     this.type = MATERIAL_TYPE.DIELECTRIC;
     this.absorption = absorption;
-    this.ax = ax;
-    this.ay = ay;
+    this.roughness = roughness * (1.0 - minimumRoughness) + minimumRoughness;
+    this.anisotropy = clamp(anisotropy, 0.01, 0.99);
     this.eta = eta;
     this.bumpStrength = bumpStrength;
     this.uvRepeat = uvRepeat;
@@ -68,8 +74,8 @@ export class Dielectric extends Material {
       this.absorption.r,
       this.absorption.g,
       this.absorption.b,
-      this.ax,
-      this.ay,
+      this.roughness,
+      this.anisotropy,
       this.eta,
       this.bumpStrength,
       this.uvRepeat.x,
@@ -92,6 +98,8 @@ export class Dielectric extends Material {
         absorption: vec3f,
         ax: f32,
         ay: f32,
+        roughness: f32,
+        anisotropy: f32,
         eta: f32,
         bumpStrength: f32,
         uvRepeat: vec2f,
@@ -112,8 +120,10 @@ export class Dielectric extends Material {
           materialsData[offset + 2],
           materialsData[offset + 3],
         );
-        d.ax = materialsData[offset + 4];
-        d.ay = materialsData[offset + 5];
+        d.ax = 0; // we'll map this value in the shader
+        d.ay = 0; // we'll map this value in the shader
+        d.roughness = materialsData[offset + 4];
+        d.anisotropy = materialsData[offset + 5];
         d.eta = materialsData[offset + 6];
         d.bumpStrength = materialsData[offset + 7];
         d.uvRepeat.x = materialsData[offset + 8];
@@ -467,9 +477,13 @@ export class Dielectric extends Material {
           let roughness = getTexelFromTextureArrays(
             material.roughnessMapLocation, ires.uv, material.uvRepeat
           ).xy;
-          material.ax *= max(roughness.x, 0.0001);
-          material.ay *= max(roughness.y, 0.0001);
+          material.roughness *= roughness.x;
+          material.roughness = max(material.roughness, ${Dielectric.MIN_INPUT_ROUGHNESS});
         }
+
+        let axay = anisotropyRemap(material.roughness, material.anisotropy);
+        material.ax = axay.x;
+        material.ay = axay.y;
 
         var vertexNormal = ires.normal;
         var N = vertexNormal;
@@ -568,6 +582,20 @@ export class Dielectric extends Material {
             rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse, 
             &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
           );
+
+          var msComp = 1.0;
+          let woLutIndex = min(abs(wo.z), 0.9999);
+          let roughLutIndex = min(material.roughness, 0.9999);
+          let etaLutIndex = min(((material.eta - 1.0) / 2.0), 0.9999);
+          if (wo.z > 0.0) {
+            let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
+            msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEo).x;
+          } else {
+            let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
+            msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEoInverse).x;
+          }
+          lightSampleBrdf /= msComp;
+          brdfSampleBrdf /= msComp;
 
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;

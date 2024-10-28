@@ -31,6 +31,7 @@ fn integrateDielectricE_withImportance(samples: u32, gid: vec3u) -> f32 {
   var dotVN = (f32(gid.y) + 0.5) / f32(LUTSize.y);
   // if (dotVN == 0.0) { dotVN = 0.001; } // this one wont be necessary anymore
   let eta = 1.0 / (1.0 + (f32(gid.z) + 0.5) / f32(LUTSize.z) * 2.0);
+  // let eta = (1.0 + (f32(gid.z) + 0.5) / f32(LUTSize.z) * 2.0);
 
   let woTheta = acos(dotVN);
   let wo = normalize(vec3f(sin(woTheta), 0, dotVN));
@@ -124,9 +125,9 @@ const DielectricLUT : u32 = 1;
   @builtin(local_invocation_id) lid: vec3<u32>,
 ) {
   if (gid.x >= LUTSize.x || gid.y >= LUTSize.y || gid.z >= LUTSize.z) { return; }
-  let idx = gid.z * LUTSize.x * LUTSize.y + gid.y * LUTSize.x + gid.x;
+  let idx = gid.z * (LUTSize.x * LUTSize.y) + gid.y * LUTSize.x + gid.x;
 
-  let samples: u32 = 500000;
+  let samples: u32 = 10000;
 
   if (LUTType == TorranceSparrowLUT) {
     LUTOutput[idx] += integrateE_withImportance(samples, gid.xy);

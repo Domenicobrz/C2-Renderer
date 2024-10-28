@@ -39,16 +39,17 @@ export async function envmapHorseScene(): Promise<C2Scene> {
   let materials: Material[] = [
     new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
     new Diffuse({ color: new Color(1, 0.05, 0.05) }),
-    new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), ax: 0.25, ay: 0.25 }),
+    new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), roughness: 0.25, anisotropy: 0 }),
     new Emissive({ color: new Color(1, 0.7, 0.5), intensity: 20 }),
     new Diffuse({ color: new Color(0.05, 1, 0.05) }),
     new Dielectric({
       absorption: new Color(0.35, 0.68, 0.99).multiplyScalar(1.85),
-      ax: 0.01,
-      ay: 0.01,
+      roughness: 0.85,
+      // roughness: 0.01,
+      anisotropy: 0,
       eta: 1.6
     }),
-    new TorranceSparrow({ color: new Color(0.5, 0.5, 0.5), ax: 0.45, ay: 0.45 })
+    new TorranceSparrow({ color: new Color(0.5, 0.5, 0.5), roughness: 0.45, anisotropy: 0 })
   ];
 
   let gty = -2;
@@ -82,7 +83,7 @@ export async function envmapHorseScene(): Promise<C2Scene> {
         let col = Math.pow(Math.random(), 2) * 0.9 + 0.1;
         let roughness = 0.001; // Math.random();
         materials.push(
-          new TorranceSparrow({ color: new Color(col, col, col), ax: roughness, ay: roughness })
+          new TorranceSparrow({ color: new Color(col, col, col), roughness, anisotropy: 0 })
         );
       }
 

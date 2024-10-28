@@ -16,6 +16,7 @@ export class MultiScatterLUTSegment {
   private stagingBuffer: GPUBuffer | null = null;
 
   private bindGroup0: GPUBindGroup | null = null;
+  private samples: number = 1;
 
   private LUTSize: Vector3 = new Vector3(-1, -1, -1);
   private LUTbyteLength: number = -1;
@@ -47,7 +48,7 @@ export class MultiScatterLUTSegment {
     });
 
     this.randsUniformBuffer = this.device.createBuffer({
-      label: 'multi-scatter LUT - work buffer',
+      label: 'multi-scatter LUT - randoms buffer',
       size: 4 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
@@ -112,26 +113,57 @@ export class MultiScatterLUTSegment {
     const copyArrayBuffer = this.stagingBuffer.getMappedRange(0, this.LUTbyteLength);
     const data = copyArrayBuffer.slice(0);
     this.stagingBuffer.unmap();
-    const floatsData = new Float32Array(data);
-    console.log(floatsData);
+    const floatsData = new Float32Array(data).map((v) => (v /= this.samples));
+    // console.log(floatsData);
 
-    // this.saveLUTBuffer(floatsData);
+    this.saveLUTBuffer(floatsData, 1, this.LUTSize);
   }
 
-  saveLUTBuffer(floatsData: Float32Array) {
+  saveLUTBuffer(floatsData: Float32Array, channels: number, lutSize: Vector3) {
     let headerBytes = 4 * 4;
     let arrayBuffer = new ArrayBuffer(floatsData.byteLength + headerBytes);
     let uintView = new Uint32Array(arrayBuffer, 0, 4);
-    uintView[0] = 1; // number of channels (r,g,b,a)
-    uintView[1] = this.LUTSize.x;
-    uintView[2] = this.LUTSize.y;
-    uintView[3] = this.LUTSize.z;
+    uintView[0] = channels; // number of channels (r,g,b,a)
+    uintView[1] = lutSize.x;
+    uintView[2] = lutSize.y;
+    uintView[3] = lutSize.z;
 
-    let elsCount = this.LUTSize.x * this.LUTSize.y * this.LUTSize.z;
+    let elsCount = lutSize.x * lutSize.y * lutSize.z;
     let floatsView = new Float32Array(arrayBuffer, headerBytes, elsCount);
     floatsView.set(floatsData, 0);
 
     saveArrayBufferLocally(arrayBuffer, 'multiScatter.LUT');
+  }
+
+  integrateEavg(Eo: Float32Array, size: number, x: number, z: number) {
+    let step = 1 / size;
+    let int = 0;
+
+    for (let y = 0; y < size; y++) {
+      let dotVN = (y + 0.5) / size;
+
+      let idx = z * size * size + y * size + x;
+
+      let v = Eo[idx];
+      int += v * /* Math.abs(dotVN) */ dotVN * step;
+    }
+    int *= 2;
+
+    return int;
+  }
+
+  calculateEavg(Eo: Float32Array, size: number) {
+    // x: roughness, y: eta
+    let Eavg = [];
+
+    for (let i = 0; i < size; i++) {
+      for (let j = 0; j < size; j++) {
+        Eavg.push(this.integrateEavg(Eo, size, j, i));
+      }
+    }
+
+    console.log(Eavg);
+    this.saveLUTBuffer(new Float32Array(Eavg), 1, new Vector3(size, size, 1));
   }
 
   setSize(size: Vector3, type: number) {
@@ -188,7 +220,7 @@ export class MultiScatterLUTSegment {
     );
   }
 
-  async compute() {
+  async computeLUT() {
     if (!this.pipeline || !this.bindGroup0 || !this.LUTSize) {
       throw new Error('undefined bind groups / pipeline / canvasSize');
     }
@@ -220,5 +252,20 @@ export class MultiScatterLUTSegment {
     this.device.queue.submit([computeCommandBuffer]);
 
     return this.device.queue.onSubmittedWorkDone();
+  }
+
+  async compute(samples: number) {
+    this.samples = samples;
+
+    if (!this.pipeline || !this.bindGroup0 || !this.LUTSize) {
+      throw new Error('undefined bind groups / pipeline / canvasSize');
+    }
+
+    for (let i = 0; i < samples; i++) {
+      await this.computeLUT();
+      console.log('computed sample: ', i);
+    }
+
+    return;
   }
 }

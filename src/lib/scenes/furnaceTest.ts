@@ -19,6 +19,11 @@ export async function furnaceTestScene(): Promise<C2Scene> {
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 2);
 
+  let planeMesh = new Mesh(new PlaneGeometry(1, 1));
+  planeMesh.scale.set(2, 2, 1);
+  planeMesh.position.set(0, 0, 2);
+  // planeMesh.rotation.y = Math.PI;
+
   let roughnessMap = (
     await new TextureLoader().loadAsync('scene-assets/textures/roughness-test.png')
   ).source.data;
@@ -31,14 +36,15 @@ export async function furnaceTestScene(): Promise<C2Scene> {
   // });
   let mat = new Dielectric({
     absorption: new Color(0, 0, 0),
-    ax: 0.21,
-    ay: 0.21,
+    roughness: 0.81,
+    anisotropy: 0,
     // roughness: 1,
     // anisotropy: 0,
     eta: 1.5
   });
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
+  // triangles = [...triangles, ...meshToTriangles(planeMesh, materials.length - 1)];
 
   // create & set camera
   const camera = new Orbit();

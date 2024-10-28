@@ -67,7 +67,7 @@ fn SinPhi(w: vec3f) -> f32 {
   }
 }
 fn IsInf(v: f32) -> bool {
-  return v > 999999999999999.0;
+  return v > 999999999999999999.0;
 }
 fn SchlickFresnel(r0: vec3f, radians: f32) -> vec3f {
   // -- The common Schlick Fresnel approximation

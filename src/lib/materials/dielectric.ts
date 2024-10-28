@@ -229,6 +229,13 @@ export class Dielectric extends Material {
         pdf: ptr<function, f32>,
         f:   ptr<function, vec3f>,
       ) {
+        if (CosTheta(wo) == 0.0) {
+          *wi = vec3f(0, 0, 1);
+          *f = vec3f(0.0);
+          *pdf = 1.0;
+          return;
+        }
+
         if (material.eta == 1.0 || (material.ax < 0.0005 && material.ay < 0.0005)) {
           // sample perfect specular BRDF
 
@@ -286,7 +293,6 @@ export class Dielectric extends Material {
               *pdf = 1.0;
               return;
             }
-              
             *pdf = TR_DistributionPDF(wo, wm, material.ax, material.ay) / 
                       (4 * AbsDot(wo, wm)) * pr / (pr + pt);
 
@@ -543,6 +549,20 @@ export class Dielectric extends Material {
           shadeDielectricSampleBRDF(
             rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &w
           );
+
+          var msComp = 1.0;
+          let woLutIndex = min(abs(wo.z), 0.9999);
+          let roughLutIndex = min(material.roughness, 0.9999);
+          let etaLutIndex = min(((material.eta - 1.0) / 2.0), 0.9999);
+          if (wo.z > 0.0) {
+            let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
+            msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEo).x;
+          } else {
+            let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
+            msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEoInverse).x;
+          }
+          brdf /= msComp;
+
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
           *reflectance *= (brdf / pdf) * abs(dot(N, (*ray).direction));
@@ -582,20 +602,6 @@ export class Dielectric extends Material {
             rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse, 
             &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
           );
-
-          var msComp = 1.0;
-          let woLutIndex = min(abs(wo.z), 0.9999);
-          let roughLutIndex = min(material.roughness, 0.9999);
-          let etaLutIndex = min(((material.eta - 1.0) / 2.0), 0.9999);
-          if (wo.z > 0.0) {
-            let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
-            msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEo).x;
-          } else {
-            let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
-            msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEoInverse).x;
-          }
-          lightSampleBrdf /= msComp;
-          brdfSampleBrdf /= msComp;
 
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;

@@ -203,7 +203,7 @@ export class TorranceSparrow extends Material {
       return normalize(vec3f(alpha_x * nh.x, alpha_y * nh.y, max(1e-6, nh.z)));
     }
     fn TS_PDF(wo: vec3f, wi: vec3f, alpha_x: f32, alpha_y: f32) -> f32 {
-      if (!SameHemisphere(wo, wi)) {
+      if (!SameHemisphere(wo, wi) || CosTheta(wo) == 0) {
         return 0;
       }
       var wm = wo + wi;
@@ -226,7 +226,7 @@ export class TorranceSparrow extends Material {
       // whereas the implementation in pbrt v4 has wo pointing to the camera 
       *wi = reflect(-wo, wm);
 
-      if (!SameHemisphere(wo, *wi)) {
+      if (!SameHemisphere(wo, *wi) || CosTheta(wo) == 0) {
         *f = vec3f(0.0);
         *pdf = 1.0;
         return;

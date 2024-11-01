@@ -13,9 +13,6 @@ import { get } from 'svelte/store';
 import { tick } from './utils/tick';
 import { getDeviceAndContext } from './webgpu-utils/getDeviceAndContext';
 import { MultiScatterLUTSegment } from './segment/multiScatterLUTSegment';
-import { calculateEavg, calculateEavgI, calculateTest } from './segment/luttest';
-import { MultiScatterLUTTestSegment } from './segment/multiScatterLUTTestSegment';
-import { calculateEavg2, calculateEavgI2 } from './segment/lut-test/compute-eavg';
 import { LUTManager, LUTtype } from './managers/lutManager';
 
 let computeSegment: ComputeSegment;

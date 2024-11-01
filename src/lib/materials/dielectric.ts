@@ -1,21 +1,24 @@
 import { Vector2, type Color } from 'three';
 import { MATERIAL_TYPE, Material } from './material';
 import { intBitsToFloat } from '$lib/utils/intBitsToFloat';
+import { clamp } from '$lib/utils/math';
 
 // from: https://www.pbr-book.org/4ed/Reflection_Models/Roughness_Using_Microfacet_Theory
 export class Dielectric extends Material {
   private absorption: Color;
-  private ax: number;
-  private ay: number;
+  private roughness: number;
+  private anisotropy: number;
   private eta: number;
   private bumpStrength: number;
   private uvRepeat: Vector2;
   private mapUvRepeat: Vector2;
 
+  static MIN_INPUT_ROUGHNESS = 0.0707;
+
   constructor({
     absorption,
-    ax,
-    ay,
+    roughness,
+    anisotropy,
     eta,
     absorptionMap,
     roughnessMap,
@@ -26,8 +29,8 @@ export class Dielectric extends Material {
     flipTextureY = false
   }: {
     absorption: Color;
-    ax: number;
-    ay: number;
+    roughness: number;
+    anisotropy: number;
     eta: number;
     absorptionMap?: HTMLImageElement;
     roughnessMap?: HTMLImageElement;
@@ -38,11 +41,21 @@ export class Dielectric extends Material {
     mapUvRepeat?: Vector2;
   }) {
     super({ flipTextureY });
+
+    let minimumRoughness = Dielectric.MIN_INPUT_ROUGHNESS;
+
     this.type = MATERIAL_TYPE.DIELECTRIC;
     this.absorption = absorption;
-    this.ax = ax;
-    this.ay = ay;
+    this.roughness = roughness * (1.0 - minimumRoughness) + minimumRoughness;
+    this.anisotropy = clamp(anisotropy, 0.01, 0.99);
     this.eta = eta;
+    if (eta < 1 || eta > 3) {
+      this.eta = clamp(eta, 1, 3);
+      console.error(
+        "eta value can't be smaller than 1 or greater than 3, values for this material have been clamped"
+      );
+    }
+
     this.bumpStrength = bumpStrength;
     this.uvRepeat = uvRepeat;
     this.mapUvRepeat = mapUvRepeat;
@@ -68,8 +81,8 @@ export class Dielectric extends Material {
       this.absorption.r,
       this.absorption.g,
       this.absorption.b,
-      this.ax,
-      this.ay,
+      this.roughness,
+      this.anisotropy,
       this.eta,
       this.bumpStrength,
       this.uvRepeat.x,
@@ -92,6 +105,8 @@ export class Dielectric extends Material {
         absorption: vec3f,
         ax: f32,
         ay: f32,
+        roughness: f32,
+        anisotropy: f32,
         eta: f32,
         bumpStrength: f32,
         uvRepeat: vec2f,
@@ -112,8 +127,10 @@ export class Dielectric extends Material {
           materialsData[offset + 2],
           materialsData[offset + 3],
         );
-        d.ax = materialsData[offset + 4];
-        d.ay = materialsData[offset + 5];
+        d.ax = 0; // we'll map this value in the shader
+        d.ay = 0; // we'll map this value in the shader
+        d.roughness = materialsData[offset + 4];
+        d.anisotropy = materialsData[offset + 5];
         d.eta = materialsData[offset + 6];
         d.bumpStrength = materialsData[offset + 7];
         d.uvRepeat.x = materialsData[offset + 8];
@@ -137,9 +154,10 @@ export class Dielectric extends Material {
     `;
   }
 
-  static shaderShadeDielectric(): string {
+  // this division was created to simplify the shader of the multi-scatter LUT creation
+  static shaderBRDF(): string {
     return /* wgsl */ `
-      // assuming throwbridge reitz distribution methods are already defined ...
+    // assuming throwbridge reitz distribution methods are already defined ...
       // assuming throwbridge reitz distribution methods are already defined ...
       // assuming throwbridge reitz distribution methods are already defined ...
       fn FrDielectric(_cosTheta_i: f32, _eta: f32) -> f32 {
@@ -171,7 +189,7 @@ export class Dielectric extends Material {
         }
 
         // Evaluate sampling PDF of rough dielectric BSDF
-        let cosTheta_o = CosTheta(wo);
+        let cosTheta_o = CosTheta(wo);  
         let cosTheta_i = CosTheta(wi);
         let reflect: bool = cosTheta_i * cosTheta_o > 0;
         var etap = 1.0;
@@ -218,6 +236,13 @@ export class Dielectric extends Material {
         pdf: ptr<function, f32>,
         f:   ptr<function, vec3f>,
       ) {
+        if (CosTheta(wo) == 0.0) {
+          *wi = vec3f(0, 0, 1);
+          *f = vec3f(0.0);
+          *pdf = 1.0;
+          return;
+        }
+
         if (material.eta == 1.0 || (material.ax < 0.0005 && material.ay < 0.0005)) {
           // sample perfect specular BRDF
 
@@ -275,7 +300,6 @@ export class Dielectric extends Material {
               *pdf = 1.0;
               return;
             }
-              
             *pdf = TR_DistributionPDF(wo, wm, material.ax, material.ay) / 
                       (4 * AbsDot(wo, wm)) * pr / (pr + pt);
 
@@ -380,8 +404,11 @@ export class Dielectric extends Material {
           }
         }
       }
+    `;
+  }
 
-
+  static shaderShadeDielectric(): string {
+    return /* wgsl */ `
       fn shadeDielectricSampleBRDF(
         rands: vec4f, 
         material: DIELECTRIC,
@@ -438,6 +465,21 @@ export class Dielectric extends Material {
         *misWeight = getMisWeight(lightSample.pdf, brdfSamplePdf);
       }
 
+      fn dielectricMultiScatteringFactor(wo: vec3f, material: DIELECTRIC) -> f32 {
+        var msComp = 1.0;
+        let woLutIndex = min(abs(wo.z), 0.9999);
+        let roughLutIndex = min(material.roughness, 0.9999);
+        let etaLutIndex = min(((material.eta - 1.0) / 2.0), 0.9999);
+        if (wo.z > 0.0) {
+          let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
+          msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEo).x;
+        } else {
+          let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
+          msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEoInverse).x;
+        }
+
+        return msComp;
+      }
 
       fn shadeDielectric(
         ires: BVHIntersectionResult, 
@@ -463,9 +505,13 @@ export class Dielectric extends Material {
           let roughness = getTexelFromTextureArrays(
             material.roughnessMapLocation, ires.uv, material.uvRepeat
           ).xy;
-          material.ax *= max(roughness.x, 0.0001);
-          material.ay *= max(roughness.y, 0.0001);
+          material.roughness *= roughness.x;
+          material.roughness = max(material.roughness, ${Dielectric.MIN_INPUT_ROUGHNESS});
         }
+
+        let axay = anisotropyRemap(material.roughness, material.anisotropy);
+        material.ax = axay.x;
+        material.ay = axay.y;
 
         var vertexNormal = ires.normal;
         var N = vertexNormal;
@@ -520,14 +566,17 @@ export class Dielectric extends Material {
         var wi = vec3f(0,0,0); 
         let wo = normalize(TBNinverse * -(*ray).direction);
 
+        let msCompensation = dielectricMultiScatteringFactor(wo, material);
+
         if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32; var brdf: vec3f;
           shadeDielectricSampleBRDF(
             rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &w
           );
+
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
-          *reflectance *= (brdf / pdf) * abs(dot(N, (*ray).direction));
+          *reflectance *= (brdf / msCompensation) / pdf * abs(dot(N, (*ray).direction));
         }
 
         if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
@@ -546,7 +595,7 @@ export class Dielectric extends Material {
 
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
-          *reflectance *= brdf * (misWeight / pdf) * abs(dot(N, (*ray).direction));
+          *reflectance *= (brdf / msCompensation) * (misWeight / pdf) * abs(dot(N, (*ray).direction));
         }
 
         if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
@@ -576,8 +625,11 @@ export class Dielectric extends Material {
           // We're also making sure the light-sample ray is correctly being positioned inside or outside 
           // the medium before using the ray
           // *****************
-          *rad += *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * abs(dot(N, lightSampleWi));
-          *reflectance *= brdfSampleBrdf * (brdfMisWeight / brdfSamplePdf) * abs(dot(N, (*ray).direction));
+          *rad += *reflectance * lightRadiance * (lightSampleBrdf / msCompensation) * 
+            (lightMisWeight / lightSamplePdf) * abs(dot(N, lightSampleWi));
+          
+          *reflectance *= (brdfSampleBrdf / msCompensation) * (brdfMisWeight / brdfSamplePdf) * 
+            abs(dot(N, (*ray).direction));
         }
       } 
     `;

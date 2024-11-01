@@ -47,6 +47,7 @@ ${TorranceSparrow.shaderBRDF()}
 ${TorranceSparrow.shaderShadeTorranceSparrow()}
 ${Dielectric.shaderStruct()}
 ${Dielectric.shaderCreateStruct()}
+${Dielectric.shaderBRDF()}
 ${Dielectric.shaderShadeDielectric()}
 ${Material.shaderShade()}
 ${Camera.shaderStruct()}

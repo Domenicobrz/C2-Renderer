@@ -13,6 +13,10 @@ import { get } from 'svelte/store';
 import { tick } from './utils/tick';
 import { getDeviceAndContext } from './webgpu-utils/getDeviceAndContext';
 import { MultiScatterLUTSegment } from './segment/multiScatterLUTSegment';
+import { calculateEavg, calculateEavgI, calculateTest } from './segment/luttest';
+import { MultiScatterLUTTestSegment } from './segment/multiScatterLUTTestSegment';
+import { calculateEavg2, calculateEavgI2 } from './segment/lut-test/compute-eavg';
+import { LUTManager, LUTtype } from './managers/lutManager';
 
 let computeSegment: ComputeSegment;
 let renderSegment: RenderSegment;
@@ -63,7 +67,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   centralStatusMessage.set('processing bvh and materials');
   await tick(); // will give us the chance of showing the message above
   await computeSegment.updateScene(scene);
-  computeSegment.setDebugPixelTarget(394, 325);
+  computeSegment.setDebugPixelTarget(400, 300);
 
   renderSegment = new RenderSegment(context, presentationFormat);
   renderSegment.updateScene(scene);
@@ -86,9 +90,8 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   centralStatusMessage.set('');
 
   // let msls = new MultiScatterLUTSegment();
-  // msls.setSize(new Vector2(32, 32));
-  // await msls.compute();
-  // await msls.readBuffer();
+  // msls.setSize(new Vector3(32, 32, 32), 1);
+  // msls.calculateEavg(arrayData, 32);
 
   return {
     getFocusDistanceFromScreenPoint:

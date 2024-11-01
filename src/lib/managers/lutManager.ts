@@ -2,11 +2,17 @@ import { loadArrayBuffer } from '$lib/utils/loadArrayBuffer';
 
 export enum LUTtype {
   MultiScatterTorranceSparrow,
-  MultiScatterDielectric
+  MultiScatterDielectricEo,
+  MultiScatterDielectricEoInverse,
+  MultiScatterDielectricEavg,
+  MultiScatterDielectricEavgInverse
 }
 let lutTypeShaderPart = /* wgsl */ `
   const LUT_MultiScatterTorranceSparrow = 0;
-  const LUT_MultiScatterDielectric = 1;
+  const LUT_MultiScatterDielectricEo = 1;
+  const LUT_MultiScatterDielectricEoInverse = 2;
+  const LUT_MultiScatterDielectricEavg = 3;
+  const LUT_MultiScatterDielectricEavgInverse = 4;
 `;
 
 export class LUTManager {
@@ -49,9 +55,49 @@ export class LUTManager {
       `;
     }
 
+    if (type == LUTtype.MultiScatterDielectricEo) {
+      this.offsetsShaderPart += /* wgsl */ `
+        if (lutType == LUT_MultiScatterDielectricEo) {
+          zOffset = ${this.zOffsetPointer};
+          useBilinearInterpolation = true;
+        }
+      `;
+    }
+
+    if (type == LUTtype.MultiScatterDielectricEoInverse) {
+      this.offsetsShaderPart += /* wgsl */ `
+        if (lutType == LUT_MultiScatterDielectricEoInverse) {
+          zOffset = ${this.zOffsetPointer};
+          useBilinearInterpolation = true;
+        }
+      `;
+    }
+
+    if (type == LUTtype.MultiScatterDielectricEavg) {
+      this.offsetsShaderPart += /* wgsl */ `
+        if (lutType == LUT_MultiScatterDielectricEavg) {
+          zOffset = ${this.zOffsetPointer};
+          useBilinearInterpolation = true;
+        }
+      `;
+    }
+
+    if (type == LUTtype.MultiScatterDielectricEavgInverse) {
+      this.offsetsShaderPart += /* wgsl */ `
+        if (lutType == LUT_MultiScatterDielectricEavgInverse) {
+          zOffset = ${this.zOffsetPointer};
+          useBilinearInterpolation = true;
+        }
+      `;
+    }
+
     this.zOffsetPointer += sizeZ;
 
     this.storeLUTdata(sizeX, sizeY, sizeZ, channels, data);
+
+    return {
+      arrayData: data
+    };
   }
 
   storeLUTdata(sx: number, sy: number, sz: number, channels: number, data: Float32Array) {

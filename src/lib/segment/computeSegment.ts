@@ -271,6 +271,14 @@ export class ComputeSegment {
       'luts/torranceSparrowMultiScatter.LUT',
       LUTtype.MultiScatterTorranceSparrow
     );
+    await this.lutManager.load(
+      'luts/multiScatterDielectricEo.LUT',
+      LUTtype.MultiScatterDielectricEo
+    );
+    await this.lutManager.load(
+      'luts/multiScatterDielectricEoInverse.LUT',
+      LUTtype.MultiScatterDielectricEoInverse
+    );
 
     if (this.camera) {
       this.camera.dispose();

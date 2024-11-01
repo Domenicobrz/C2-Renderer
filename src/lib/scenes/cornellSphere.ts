@@ -18,7 +18,12 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), roughness: 0, anisotropy: 0 }),
     new Emissive({ color: new Color(1, 1, 1), intensity: 10 }),
     new Diffuse({ color: new Color(0.05, 1, 0.05) }),
-    new Dielectric({ absorption: new Color(0.095, 0.195, 0.295), ax: 0.05, ay: 0.05, eta: 1.5 })
+    new Dielectric({
+      absorption: new Color(0.095, 0.195, 0.295),
+      roughness: 0.05,
+      anisotropy: 0,
+      eta: 1.5
+    })
   ];
 
   for (let i = 0; i < 5; i++) {
@@ -92,13 +97,19 @@ export async function cornellSphereScene(): Promise<C2Scene> {
 
   let mesh = new Mesh(new SphereGeometry(1, 40, 40));
   mesh.scale.set(2, 2, 2);
-  mesh.position.set(0, 0, 2);
+  mesh.position.set(0, 0, 1);
 
   // let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
-  let mat = new TorranceSparrow({
-    color: new Color(0.99, 0.99, 0.99),
-    roughness: 0.3,
-    anisotropy: 1
+  // let mat = new TorranceSparrow({
+  //   color: new Color(0.99, 0.99, 0.99),
+  //   roughness: 0.3,
+  //   anisotropy: 1
+  // });
+  let mat = new Dielectric({
+    absorption: new Color(0, 0, 0),
+    roughness: 0.9,
+    anisotropy: 0,
+    eta: 1.5
   });
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];

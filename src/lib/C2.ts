@@ -91,35 +91,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
 
   // let msls = new MultiScatterLUTSegment();
   // msls.setSize(new Vector3(32, 32, 32), 1);
-  // await msls.compute(200);
-  // await msls.readBuffer();
-
-  // let lm = new LUTManager(device);
-  // let { arrayData } = await lm.load(
-  //   'luts/multiScatterDielectricEoInverse.LUT',
-  //   LUTtype.MultiScatterDielectricEoInverse
-  // );
-
-  // let msls = new MultiScatterLUTSegment();
-  // msls.setSize(new Vector3(32, 32, 32), 1);
   // msls.calculateEavg(arrayData, 32);
-
-  // let msls = new MultiScatterLUTTestSegment();
-  // msls.setSize(new Vector3(50, 50, 1), 1);
-  // // for (let i = 0; i < 400; i++) {
-  // for (let i = 0; i < 1; i++) {
-  //   console.log('s:', (i + 1) * 50000 * (50 * 50));
-  //   // console.log('s:', (i + 1) * 200 * 500 * 50 * 50);
-  //   await msls.compute();
-  // }
-  // await msls.readBuffer();
-
-  // // calculateEavg();
-  // // calculateEavgI();
-  // calculateTest();
-
-  // calculateEavg2();
-  // calculateEavgI2();
 
   return {
     getFocusDistanceFromScreenPoint:

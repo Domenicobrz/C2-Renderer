@@ -279,14 +279,6 @@ export class ComputeSegment {
       'luts/multiScatterDielectricEoInverse.LUT',
       LUTtype.MultiScatterDielectricEoInverse
     );
-    await this.lutManager.load(
-      'luts/multiScatterDielectricEavg.LUT',
-      LUTtype.MultiScatterDielectricEavg
-    );
-    await this.lutManager.load(
-      'luts/multiScatterDielectricEavgInverse.LUT',
-      LUTtype.MultiScatterDielectricEavgInverse
-    );
 
     if (this.camera) {
       this.camera.dispose();

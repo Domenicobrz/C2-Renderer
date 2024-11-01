@@ -15,8 +15,8 @@ export type C2Scene = {
 };
 
 export async function createScene(): Promise<C2Scene> {
-  // return furnaceTestScene();
+  return furnaceTestScene();
   // return cornellSphereScene();
   // return c2FeaturesScene();
-  return envmapHorseScene();
+  // return envmapHorseScene();
 }

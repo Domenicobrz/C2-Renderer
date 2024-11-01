@@ -45,7 +45,6 @@ export class LUTManager {
     let sizeZ = headerView[3];
 
     let data = new Float32Array(buffer, headerBytes, sizeX * sizeY * sizeZ * channels);
-    // console.log(path, data);
 
     if (type == LUTtype.MultiScatterTorranceSparrow) {
       this.offsetsShaderPart += /* wgsl */ `

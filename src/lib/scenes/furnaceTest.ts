@@ -1,4 +1,13 @@
-import { Color, Mesh, PlaneGeometry, SphereGeometry, TextureLoader, Vector2, Vector3 } from 'three';
+import {
+  BoxGeometry,
+  Color,
+  Mesh,
+  PlaneGeometry,
+  SphereGeometry,
+  TextureLoader,
+  Vector2,
+  Vector3
+} from 'three';
 import { Diffuse } from '../materials/diffuse';
 import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';
@@ -22,7 +31,7 @@ export async function furnaceTestScene(): Promise<C2Scene> {
   let planeMesh = new Mesh(new PlaneGeometry(1, 1));
   planeMesh.scale.set(2, 2, 1);
   planeMesh.position.set(0, 0, 2);
-  // planeMesh.rotation.y = Math.PI;
+  planeMesh.rotation.y = Math.PI;
 
   let roughnessMap = (
     await new TextureLoader().loadAsync('scene-assets/textures/roughness-test.png')
@@ -36,7 +45,8 @@ export async function furnaceTestScene(): Promise<C2Scene> {
   // });
   let mat = new Dielectric({
     absorption: new Color(0, 0, 0),
-    roughness: 0.81,
+    // roughness: 0.25,
+    roughness: 0.8,
     anisotropy: 0,
     // roughness: 1,
     // anisotropy: 0,

@@ -49,6 +49,13 @@ export class Dielectric extends Material {
     this.roughness = roughness * (1.0 - minimumRoughness) + minimumRoughness;
     this.anisotropy = clamp(anisotropy, 0.01, 0.99);
     this.eta = eta;
+    if (eta < 1 || eta > 3) {
+      this.eta = clamp(eta, 1, 3);
+      console.error(
+        "eta value can't be smaller than 1 or greater than 3, values for this material have been clamped"
+      );
+    }
+
     this.bumpStrength = bumpStrength;
     this.uvRepeat = uvRepeat;
     this.mapUvRepeat = mapUvRepeat;
@@ -458,6 +465,21 @@ export class Dielectric extends Material {
         *misWeight = getMisWeight(lightSample.pdf, brdfSamplePdf);
       }
 
+      fn dielectricMultiScatteringFactor(wo: vec3f, material: DIELECTRIC) -> f32 {
+        var msComp = 1.0;
+        let woLutIndex = min(abs(wo.z), 0.9999);
+        let roughLutIndex = min(material.roughness, 0.9999);
+        let etaLutIndex = min(((material.eta - 1.0) / 2.0), 0.9999);
+        if (wo.z > 0.0) {
+          let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
+          msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEo).x;
+        } else {
+          let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
+          msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEoInverse).x;
+        }
+
+        return msComp;
+      }
 
       fn shadeDielectric(
         ires: BVHIntersectionResult, 
@@ -544,28 +566,17 @@ export class Dielectric extends Material {
         var wi = vec3f(0,0,0); 
         let wo = normalize(TBNinverse * -(*ray).direction);
 
+        let msCompensation = dielectricMultiScatteringFactor(wo, material);
+
         if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32; var brdf: vec3f;
           shadeDielectricSampleBRDF(
             rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &w
           );
 
-          var msComp = 1.0;
-          let woLutIndex = min(abs(wo.z), 0.9999);
-          let roughLutIndex = min(material.roughness, 0.9999);
-          let etaLutIndex = min(((material.eta - 1.0) / 2.0), 0.9999);
-          if (wo.z > 0.0) {
-            let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
-            msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEo).x;
-          } else {
-            let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
-            msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEoInverse).x;
-          }
-          brdf /= msComp;
-
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
-          *reflectance *= (brdf / pdf) * abs(dot(N, (*ray).direction));
+          *reflectance *= (brdf / msCompensation) / pdf * abs(dot(N, (*ray).direction));
         }
 
         if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
@@ -584,7 +595,7 @@ export class Dielectric extends Material {
 
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
-          *reflectance *= brdf * (misWeight / pdf) * abs(dot(N, (*ray).direction));
+          *reflectance *= (brdf / msCompensation) * (misWeight / pdf) * abs(dot(N, (*ray).direction));
         }
 
         if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
@@ -614,8 +625,11 @@ export class Dielectric extends Material {
           // We're also making sure the light-sample ray is correctly being positioned inside or outside 
           // the medium before using the ray
           // *****************
-          *rad += *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * abs(dot(N, lightSampleWi));
-          *reflectance *= brdfSampleBrdf * (brdfMisWeight / brdfSamplePdf) * abs(dot(N, (*ray).direction));
+          *rad += *reflectance * lightRadiance * (lightSampleBrdf / msCompensation) * 
+            (lightMisWeight / lightSamplePdf) * abs(dot(N, lightSampleWi));
+          
+          *reflectance *= (brdfSampleBrdf / msCompensation) * (brdfMisWeight / brdfSamplePdf) * 
+            abs(dot(N, (*ray).direction));
         }
       } 
     `;

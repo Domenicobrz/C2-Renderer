@@ -92,7 +92,7 @@ export async function envmapHorseScene(): Promise<C2Scene> {
       let height = noise2D(i * 0.03 + 3, j * 0.03 + 0.35) * 8 + 8;
       let cyl = new CylinderGeometry(rad, rad, height, 6, 1, false, 0);
       cyl.translate(rad * 1.9 * i + xOff - 2, -3 + height / 2 + gty, rad * 1.65 * j);
-      // triangles = [...triangles, ...geometryToTriangles(cyl, materials.length - 1)];
+      triangles = [...triangles, ...geometryToTriangles(cyl, materials.length - 1)];
     }
   }
 
@@ -106,8 +106,8 @@ export async function envmapHorseScene(): Promise<C2Scene> {
   let envmap = new Envmap();
   // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
   // await envmap.fromEquirect('scene-assets/envmaps/lebombo_1k.hdr');
-  // await envmap.fromEquirect('scene-assets/envmaps/large_corridor_1k.hdr', 300);
-  await envmap.fromEquirect('scene-assets/envmaps/furnace_test.hdr', 100);
+  await envmap.fromEquirect('scene-assets/envmaps/large_corridor_1k.hdr', 300);
+  // await envmap.fromEquirect('scene-assets/envmaps/furnace_test.hdr', 100);
   envmap.scale = 0.9;
   envmap.rotX = 5.2;
   envmap.rotY = 0.5;

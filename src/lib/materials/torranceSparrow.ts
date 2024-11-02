@@ -406,7 +406,7 @@ export class TorranceSparrow extends Material {
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
             material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-            ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
+            ires, &bumpOffset
           );
         }
 
@@ -435,7 +435,7 @@ export class TorranceSparrow extends Material {
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires.triangle, N, &tangent, &bitangent);
+        getTangentFromTriangle(ires, ires.triangle, N, &tangent, &bitangent);
 
         // normal could be flipped at some point, should we also flip TB?
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping

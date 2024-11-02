@@ -519,7 +519,7 @@ export class Dielectric extends Material {
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
             material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-            ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
+            ires, &bumpOffset
           );
         }
 
@@ -554,7 +554,7 @@ export class Dielectric extends Material {
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires.triangle, N, &tangent, &bitangent);
+        getTangentFromTriangle(ires, ires.triangle, N, &tangent, &bitangent);
        
 
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping

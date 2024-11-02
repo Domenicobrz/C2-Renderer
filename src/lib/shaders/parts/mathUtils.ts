@@ -64,46 +64,11 @@ fn isFloatNaN(value: f32) -> bool {
 
 // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
 fn getTangentFromTriangle(
-  triangle: Triangle, shadingNormal: vec3f, tangent: ptr<function, vec3f>, bitangent: ptr<function, vec3f>
+  ires: BVHIntersectionResult, triangle: Triangle, shadingNormal: vec3f, 
+  tangent: ptr<function, vec3f>, bitangent: ptr<function, vec3f>
 ) {
-
-  let t = triangle;
-  var malconstructedUvs = false;
-
-  // check if uvs exist, if they do let's use uv-based tangents
-  if (t.uv0.x > -1) {
-    let edge1 = t.v1 - t.v0;
-    let edge2 = t.v2 - t.v0;
-    let deltaUV1 = t.uv1 - t.uv0;
-    let deltaUV2 = t.uv2 - t.uv0;  
-  
-    let div = (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-    let f = 1.0 / div;
-    if (div == 0.0) {
-      malconstructedUvs = true;
-    }
-
-    *tangent = normalize(vec3f(
-      f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x),
-      f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y),
-      f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z)
-    ));
-  
-    // for some reason, specifying the bitangent this way causes issues
-    // *bitangent = normalize(vec3f(
-    //   f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x),
-    //   f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y),
-    //   f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z)
-    // ));
-  
-    *bitangent = normalize(cross(*tangent, t.geometricNormal));
-  } 
-  
-  if (t.uv0.x < -0.9 || malconstructedUvs) {
-    // otherwise default to auto geometry-based tangents
-    *tangent = normalize(t.v1 - t.v0);
-    *bitangent = normalize(cross(*tangent, t.geometricNormal));
-  }
+  *tangent = ires.tangent;
+  *bitangent = normalize(cross(*tangent, triangle.geometricNormal));
 
   // the tangents above are calculated with the geometric normal (picked from ires.triangle)
   // and have to be adjusted to use the vertex/shading normal

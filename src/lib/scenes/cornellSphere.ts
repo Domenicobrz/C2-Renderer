@@ -95,16 +95,21 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     )
   );
 
-  let mesh = new Mesh(new SphereGeometry(1, 40, 40));
+  let mesh = new Mesh(new SphereGeometry(1, 25, 25));
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 1);
 
-  let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
-  // let mat = new TorranceSparrow({
-  //   color: new Color(0.99, 0.99, 0.99),
-  //   roughness: 0.3,
-  //   anisotropy: 1
-  // });
+  // let mesh = new Mesh(new PlaneGeometry(2, 2));
+  // mesh.scale.set(2, 2, 2);
+  // mesh.position.set(0, 0, 1);
+  // mesh.rotation.x = 0.5;
+
+  // let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
+  let mat = new TorranceSparrow({
+    color: new Color(0.99, 0.99, 0.99),
+    roughness: 0.3,
+    anisotropy: 1
+  });
   // let mat = new Dielectric({
   //   absorption: new Color(0, 0, 0),
   //   roughness: 0.9,
@@ -120,7 +125,8 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   camera.movementSpeed = 0.15;
 
   camera.aperture = 0;
-  camera.fov = 0.69;
+  // camera.fov = 0.69;
+  camera.fov = 0.44;
   camera.focusDistance = 9.53;
   camera.exposure = 1.85;
 

@@ -110,7 +110,7 @@ export class Diffuse extends Material {
         ray: ptr<function, Ray>, 
         pdf: ptr<function, f32>,
         misWeight: ptr<function, f32>,
-        triangle: Triangle
+        ires: BVHIntersectionResult
       ) {
         // uniform hemisphere sampling:
         // let rand_1 = rands.x;
@@ -137,7 +137,7 @@ export class Diffuse extends Material {
 
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(triangle, N, &tangent, &bitangent);
+        getTangentFromTriangle(ires, ires.triangle, N, &tangent, &bitangent);
       
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
         let TBN = mat3x3f(tangent, bitangent, N);
@@ -212,7 +212,7 @@ export class Diffuse extends Material {
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
             material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-            ires.hitPoint, ires.uv, ires.triangle, &bumpOffset
+            ires, &bumpOffset
           );
         }
 
@@ -242,7 +242,7 @@ export class Diffuse extends Material {
 
         if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32;
-          shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &w, ires.triangle);
+          shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &w, ires);
           (*ray).origin += (*ray).direction * 0.001;
           *reflectance *= brdf * (1 / pdf) * color * max(dot(N, (*ray).direction), 0.0);
         }
@@ -251,7 +251,7 @@ export class Diffuse extends Material {
           var pdf: f32; var misWeight: f32; var ls: vec3f;
           let isBrdfSample = rands1.w < 0.5;
           if (isBrdfSample) {
-            shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &misWeight, ires.triangle);
+            shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &misWeight, ires);
           } else {
             shadeDiffuseSampleLight(rands2, N, ray, &pdf, &misWeight, &ls);          
           }
@@ -265,7 +265,7 @@ export class Diffuse extends Material {
           var rayBrdf = Ray((*ray).origin, (*ray).direction);
           var rayLight = Ray((*ray).origin, (*ray).direction);
 
-          shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight, ires.triangle);
+          shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight, ires);
           shadeDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
 
           (*ray).origin += rayBrdf.direction * 0.001;

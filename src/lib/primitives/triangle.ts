@@ -2,6 +2,7 @@ import { AABB } from '$lib/bvh/aabb';
 import { Emissive } from '$lib/materials/emissive';
 import type { Material } from '$lib/materials/material';
 import { getLuminance } from '$lib/utils/getLuminance';
+import { getTangent } from '$lib/utils/calculateTangents';
 import { vec3 } from '$lib/utils/math';
 import { Vector2, Vector3 } from 'three';
 
@@ -14,6 +15,9 @@ export class Triangle {
   public uv0: Vector2 = new Vector2(-1, -1);
   public uv1: Vector2 = new Vector2(-1, -1);
   public uv2: Vector2 = new Vector2(-1, -1);
+  public tang0: Vector3 = new Vector3(-1, -1);
+  public tang1: Vector3 = new Vector3(-1, -1);
+  public tang2: Vector3 = new Vector3(-1, -1);
 
   constructor(
     public v0: Vector3,
@@ -25,7 +29,10 @@ export class Triangle {
     norm2?: Vector3,
     uv0?: Vector2,
     uv1?: Vector2,
-    uv2?: Vector2
+    uv2?: Vector2,
+    tang0?: Vector3,
+    tang1?: Vector3,
+    tang2?: Vector3
   ) {
     let v1v0 = v1.clone().sub(v0);
     let v2v0 = v2.clone().sub(v0);
@@ -44,6 +51,23 @@ export class Triangle {
     if (uv0) this.uv0 = uv0;
     if (uv1) this.uv1 = uv1;
     if (uv2) this.uv2 = uv2;
+
+    if (tang0) this.tang0 = tang0;
+    if (tang1) this.tang1 = tang1;
+    if (tang2) this.tang2 = tang2;
+
+    if (!tang0) {
+      this.computeTangents();
+    }
+  }
+
+  computeTangents() {
+    let t = this;
+    let tangent = getTangent(t.v0, t.v1, t.v2, t.uv0, t.uv1, t.uv2);
+
+    this.tang0 = tangent;
+    this.tang1 = tangent;
+    this.tang2 = tangent;
   }
 
   setIdxRef(idx: number) {
@@ -131,11 +155,11 @@ export class Triangle {
   }
 
   static getBufferData(triangles: Triangle[], materialOffsetsByIndex: number[]) {
-    const STRUCT_SIZE = 144; /* determined with offset computer */
+    const STRUCT_SIZE = 192; /* determined with offset computer */
     const trianglesCount = triangles.length;
     const data = new ArrayBuffer(STRUCT_SIZE * trianglesCount);
 
-    // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001008401000000000000003d888b0237284d3025f2381bcb288abe3eafc62d6ca0d8042fc1971a88f51b3ff18869efcbe1877af43e5e4fd0b7625f6439325a1f16083a6b0a7bb0996446ac9a036e2faff7f3dc83b7312639a457959688af3cfba5180e2e8a030b88bbda0c78bcfe6fa57d75b4c893b02933da320fbaef2d5f6287f13c6f34fbe4feb439d47a0c35be7484bf17ff57b7182f4c8e1881a36e6a9d9ef929ad3b889a0faf52bc96fc39279ccd1b68f0265879282f7f13a6ca93520b28e6671acbcf0bc905b4659207572b37b3963a352617092b936bd52647d847b02d993b024e20fe1a8393
+    // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001007502000000000000003d888b0237284c234702b7aab29385155b3f2718992e9b6754bac0a4d3907ac90197744d48b9165df714046bc7d6a8882427bc684ede9e1685318a82b40048c549223d1f7abe31636c665e79d11c08efcc4fb5bff7d8a86f8925b840379e9f0fe6217697f31c7d707c87c5c75ec8a65e9710bf6837a91498edfefafe8b2e149fb80f170cb95db955139c3d8643b5d6547487a586549965e3ec33f42a335c3340c334845ae27cda95db9375d1372ddf5fc521a40e6e0f2cfcc9ebb05307ec87db49570a3287af807057e2a490786b24e6193736769a632b793b83634489093c3a260745eb7cb2f55a50af23b63060f1fbe34aa6e79b0b5a543ca1a2ba6ec4338f23d28f0c8f448fffd0a8a78c
     triangles.forEach((t, i) => {
       const offs = i * STRUCT_SIZE;
       const views = {
@@ -145,12 +169,15 @@ export class Triangle {
         uv0: new Float32Array(data, offs + 48, 2),
         uv1: new Float32Array(data, offs + 56, 2),
         uv2: new Float32Array(data, offs + 64, 2),
-        area: new Float32Array(data, offs + 72, 1),
-        norm0: new Float32Array(data, offs + 80, 3),
-        norm1: new Float32Array(data, offs + 96, 3),
-        norm2: new Float32Array(data, offs + 112, 3),
-        geometricNormal: new Float32Array(data, offs + 128, 3),
-        materialOffset: new Uint32Array(data, offs + 140, 1)
+        tang0: new Float32Array(data, offs + 80, 3),
+        tang1: new Float32Array(data, offs + 96, 3),
+        tang2: new Float32Array(data, offs + 112, 3),
+        area: new Float32Array(data, offs + 124, 1),
+        norm0: new Float32Array(data, offs + 128, 3),
+        norm1: new Float32Array(data, offs + 144, 3),
+        norm2: new Float32Array(data, offs + 160, 3),
+        geometricNormal: new Float32Array(data, offs + 176, 3),
+        materialOffset: new Uint32Array(data, offs + 188, 1)
       };
       views.v0.set([t.v0.x, t.v0.y, t.v0.z]);
       views.v1.set([t.v1.x, t.v1.y, t.v1.z]);
@@ -162,6 +189,9 @@ export class Triangle {
       views.norm0.set([t.norm0.x, t.norm0.y, t.norm0.z]);
       views.norm1.set([t.norm1.x, t.norm1.y, t.norm1.z]);
       views.norm2.set([t.norm2.x, t.norm2.y, t.norm2.z]);
+      views.tang0.set([t.tang0.x, t.tang0.y, t.tang0.z]);
+      views.tang1.set([t.tang1.x, t.tang1.y, t.tang1.z]);
+      views.tang2.set([t.tang2.x, t.tang2.y, t.tang2.z]);
       views.geometricNormal.set([t.geometricNormal.x, t.geometricNormal.y, t.geometricNormal.z]);
       views.materialOffset.set([materialOffsetsByIndex[t.materialIndex]]);
     });
@@ -176,7 +206,8 @@ export class Triangle {
         t: f32,
         hitPoint: vec3f,
         uv: vec2f,
-        normal: vec3f
+        normal: vec3f,
+        tangent: vec3f,
       }
 
       // this layout saves some bytes because of padding
@@ -188,6 +219,9 @@ export class Triangle {
         uv0: vec2f,
         uv1: vec2f,
         uv2: vec2f,
+        tang0: vec3f,
+        tang1: vec3f,
+        tang2: vec3f,
         area: f32,
         norm0: vec3f,
         norm1: vec3f,
@@ -226,14 +260,15 @@ export class Triangle {
         let det = dot(v0v1, pvec);
       
         const CULLING = false;
+        const noIntersection = IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0), vec3(0));
       
         if (CULLING) {
           if (det < 0.000001) {
-            return IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0));
+            return noIntersection;
           }
         } else {
           if (abs(det) < 0.000001) {
-            return IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0));
+            return noIntersection;
           }
         }
       
@@ -242,20 +277,20 @@ export class Triangle {
         let u = dot(tvec, pvec) * invDet;
       
         if (u < 0 || u > 1) {
-          return IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0));
+          return noIntersection;
         }
       
         let qvec = cross(tvec, v0v1);
         let v = dot(ray.direction, qvec) * invDet;
       
         if (v < 0 || u + v > 1) {
-          return IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0));
+          return noIntersection;
         }
       
         let t = dot(v0v2, qvec) * invDet;
 
         if (t < 0) {
-          return IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0));
+          return noIntersection;
         }
 
         let hitPoint = ray.origin + t * ray.direction;
@@ -271,7 +306,12 @@ export class Triangle {
         let norm2 = triangle.norm2;
         let hitNormal = normalize(norm0 * w + norm1 * u + norm2 * v);
 
-        return IntersectionResult(true, t, hitPoint, hitUV, hitNormal);
+        let tang0 = triangle.tang0;
+        let tang1 = triangle.tang1;
+        let tang2 = triangle.tang2;
+        let hitTangent = normalize(tang0 * w + tang1 * u + tang2 * v);
+
+        return IntersectionResult(true, t, hitPoint, hitUV, hitNormal, hitTangent);
       }
     `;
   }

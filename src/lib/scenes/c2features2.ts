@@ -37,18 +37,26 @@ export async function c2Features2Scene(): Promise<C2Scene> {
   materials.push(
     new TorranceSparrow({
       // color: new Color(0.35, 0.35, 0.35),
-      color: new Color(0.15, 0.15, 0.15),
-      roughness: 0.45,
-      anisotropy: 0,
-      map: gcDiff,
-      roughnessMap: gcRough,
-      bumpMap: gcBump,
-      bumpStrength: 4.35,
-      uvRepeat: new Vector2(20, 20),
-      mapUvRepeat: new Vector2(20, 20)
+      // color: new Color(0.175, 0.165, 0.15),
+      color: new Color(0.075, 0.065, 0.05),
+      roughness: 0.95,
+      anisotropy: 0
+      // map: gcDiff,
+      // roughnessMap: gcRough,
+      // bumpMap: gcBump,
+      // bumpStrength: 4.35,
+      // uvRepeat: new Vector2(10, 10),
+      // mapUvRepeat: new Vector2(10, 10)
     })
   );
-  triangles = [...triangles, ...meshToTriangles(plane, materials.length - 1)];
+  // triangles = [...triangles, ...meshToTriangles(plane, materials.length - 1)];
+
+  let gltfCyclo = await new GLTFLoader().loadAsync('scene-assets/models/3d-cyclorama.glb');
+  let cyclorama = gltfCyclo.scene.children[0];
+  cyclorama.scale.set(38, 38, 38);
+  cyclorama.position.set(40, 0, -33);
+  cyclorama.rotation.y = 4.35;
+  triangles = [...triangles, ...meshToTriangles(cyclorama, materials.length - 1)];
 
   let gltf = await new GLTFLoader().loadAsync('scene-assets/models/ducati_monster_1200.glb');
   let ducati = gltf.scene.children[0];
@@ -132,13 +140,13 @@ export async function c2Features2Scene(): Promise<C2Scene> {
   });
 
   const camera = new Orbit();
-  camera.set(new Vector3(-10.5, 6.0, 3.5), new Vector3(-1.6, 1.6, -0.5));
+  camera.set(new Vector3(-18.6, 2.4, 8.9), new Vector3(-9.3, 2.0, 3.8));
 
   camera.movementSpeed = 0.15;
 
-  camera.aperture = 0.05;
-  camera.fov = 0.53;
-  camera.focusDistance = 10.13770598985303;
+  camera.aperture = 0.035;
+  camera.fov = 0.27;
+  camera.focusDistance = 19.228981692834083;
   camera.exposure = 1.85;
 
   let envmap = new Envmap();
@@ -146,8 +154,10 @@ export async function c2Features2Scene(): Promise<C2Scene> {
   await envmap.fromEquirect('scene-assets/envmaps/lebombo_1k.hdr');
   // await envmap.fromEquirect('scene-assets/envmaps/large_corridor_1k.hdr');
   envmap.scale = 1;
-  envmap.rotX = 1.2;
-  envmap.rotY = 0;
+  envmap.rotX = 0.7;
+  // envmap.rotY = 0;
+  envmap.rotY = 2.2;
+  // envmap.rotY = 2.7;
 
   return { triangles, materials, camera, envmap };
 }

@@ -37,8 +37,8 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   materials.push(
     new TorranceSparrow({
       color: new Color(0.5, 0.5, 0.5),
-      ax: 0.151,
-      ay: 0.151,
+      roughness: 0.2,
+      anisotropy: 0,
       map: gcDiff,
       roughnessMap: gcRough,
       bumpMap: gcBump,
@@ -111,8 +111,8 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   materials.push(
     new Dielectric({
       absorption: new Color(0.25, 0.58, 0.99).multiplyScalar(4.5),
-      ax: 0.01,
-      ay: 0.01,
+      roughness: 0.03,
+      anisotropy: 0,
       eta: 1.6
     })
   );
@@ -124,8 +124,8 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
     new TorranceSparrow({
       color: new Color(1, 1, 1),
       map: graffitiTexture,
-      ax: 0.1,
-      ay: 0.01
+      roughness: 0.2,
+      anisotropy: 1
     })
   );
   triangles = [

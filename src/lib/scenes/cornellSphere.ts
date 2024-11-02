@@ -99,18 +99,18 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 1);
 
-  // let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
+  let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
   // let mat = new TorranceSparrow({
   //   color: new Color(0.99, 0.99, 0.99),
   //   roughness: 0.3,
   //   anisotropy: 1
   // });
-  let mat = new Dielectric({
-    absorption: new Color(0, 0, 0),
-    roughness: 0.9,
-    anisotropy: 0,
-    eta: 1.5
-  });
+  // let mat = new Dielectric({
+  //   absorption: new Color(0, 0, 0),
+  //   roughness: 0.9,
+  //   anisotropy: 0,
+  //   eta: 1.5
+  // });
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
 

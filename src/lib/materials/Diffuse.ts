@@ -112,18 +112,28 @@ export class Diffuse extends Material {
         misWeight: ptr<function, f32>,
         triangle: Triangle
       ) {
-        // why am I using uniform sampling? cosine weighted is better.
+        // uniform hemisphere sampling:
+        // let rand_1 = rands.x;
+        // let rand_2 = rands.y;
+        // let phi = 2.0 * PI * rand_1;
+        // let root = sqrt(1 - rand_2 * rand_2);
+        // // local space new ray direction
+        // let newDir = vec3f(cos(phi) * root, rand_2, sin(phi) * root);
+        // var brdfSamplePdf = 1 / (2 * PI);
+
+        // *********************************************************************
         // if you switch to another brdf pdf, remember to also update the light sample brdf's pdf
-        // if you switch to another brdf pdf, remember to also update the light sample brdf's pdf
-        // if you switch to another brdf pdf, remember to also update the light sample brdf's pdf
+        // *********************************************************************
+        // cosine-weighted hemisphere sampling:
         let rand_1 = rands.x;
         let rand_2 = rands.y;
         let phi = 2.0 * PI * rand_1;
-        let root = sqrt(1 - rand_2 * rand_2);
+        let theta = acos(sqrt(rand_2));
+        let cosTheta = cos(theta);
+        let sinTheta = sin(theta);
         // local space new ray direction
-        let newDir = vec3f(cos(phi) * root, rand_2, sin(phi) * root);
-
-        var brdfSamplePdf = 1 / (2 * PI);
+        let newDir = vec3f(cos(phi) * sinTheta, cosTheta, sin(phi) * sinTheta);
+        var brdfSamplePdf = cosTheta / PI;
 
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
@@ -154,7 +164,8 @@ export class Diffuse extends Material {
 
         (*ray).direction = lightSample.direction;
 
-        var brdfSamplePdf = 1 / (2 * PI);
+        let cosTheta = dot(lightSample.direction, N);
+        var brdfSamplePdf = cosTheta / PI;
         // if the sampled ray sits below the hemisphere, brdfSamplePdf is zero,
         // since diffuse materials never sample a direction under the hemisphere.
         // However at this point, it doesn't even make sense to evaluate the 

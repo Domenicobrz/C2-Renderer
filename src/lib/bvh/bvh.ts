@@ -326,6 +326,7 @@ export class BVH {
         hitPoint: vec3f,
         uv: vec2f,
         normal: vec3f,
+        tangent: vec3f,
         triangle: Triangle,
         triangleIndex: i32,
       }
@@ -485,12 +486,16 @@ export class BVH {
         let rootNode = bvhData[0];
 
         if (!aabbIntersect(ray.origin, ray.direction, rootNode.aabb).hit) {
-          return BVHIntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0), triangles[0], 0);
+          return BVHIntersectionResult(
+            false, 0, vec3f(0), vec2f(0), vec3f(0), vec3f(0), triangles[0], 0
+          );
         }
 
         // from: https://github.com/gpuweb/gpuweb/issues/3431#issuecomment-1453667278
         let highestFloat = 0x1.fffffep+127f;
-        var closestIntersection = IntersectionResult(false, highestFloat, vec3f(0), vec2f(0), vec3f(0));
+        var closestIntersection = IntersectionResult(
+          false, highestFloat, vec3f(0), vec2f(0), vec3f(0), vec3f(0)
+        );
         var closestPrimitiveIndex = -1;
 
         var stack = array<i32, 64>();
@@ -565,6 +570,7 @@ export class BVH {
           closestIntersection.hitPoint, 
           closestIntersection.uv,
           closestIntersection.normal,
+          closestIntersection.tangent,
           triangles[closestPrimitiveIndex],
           closestPrimitiveIndex
         );

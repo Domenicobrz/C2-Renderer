@@ -335,9 +335,6 @@ export class ComputeSegment {
     });
     let materialsData = new Float32Array(combinedArray);
 
-    let ub = new Uint8Array(materialsData.buffer);
-    console.log(ub.subarray(15033 * 4, (15033 + 13) * 4));
-
     let envmap = scene.envmap || new Envmap();
     // this will, unfortunately, trigger the updateConfig() function in the next javascript tick
     // we should hopefully be able to fix this completely in svelte 5

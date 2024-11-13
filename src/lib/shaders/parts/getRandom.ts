@@ -15,8 +15,9 @@ fn getRandom() -> f32 {
     randomsArrayIndex = 0;
   }
 
-  return min(fract(sample + randomsOffset), 0.99999999);
-  // return sample;
+  // return min(fract(sample + randomsOffset), 0.99999999);
+  return sample;
+  // return clamp(sample, 0.000001, 0.999999);
   // return rand4(u32(randomsOffset * 98723659) + u32(sample * 89302723)).x;
   // return rand4(u32(sample * 89302723)).x;
   // return rand4(tidd.x * 987123659 + tidd.y * 34675309 + si * 42795873 + randomsArrayIndex * 38859239).x;
@@ -47,4 +48,3 @@ fn selectRandomArraySampleComponent(sample: vec4f, index: u32) -> f32 {
   }
 }
 `;
-

@@ -316,7 +316,27 @@ export class ComputeSegment {
 
     let { LightsCDFBufferData, LightsCDFBufferDataByteSize } = bvh.getLightsCDFBufferData();
 
-    let materialsData = new Float32Array(scene.materials.map((mat) => mat.getFloatsArray()).flat());
+    // ********* important **********
+    // we can't, unfortunately, use .flat() like in the commented line below
+    // when materials want to save a -1 integer as a float value,
+    // they're making a bit-cast that results in bit values: 255 255 255 255
+    // which is interpreted as a NaN when reading it as float.
+    // .flat(), apparently, when copying NaN floats **sometimes** doesn't copy the floats
+    // with the bit representation that I choose, but instead uses the standard/javascript
+    // bit representation of NaN values which is: 0, 0, 192, 127
+    // you can check it by typing: new Uint8Array(new Float32Array([NaN]).buffer)
+    // in the console. I should have become a painter rather than dealing with this madness
+    // ********* important **********
+    // let materialsData = new Float32Array(scene.materials.map((mat) => mat.getFloatsArray()).flat());
+    let combinedArray: number[] = [];
+    scene.materials.forEach((mat) => {
+      let fa = mat.getFloatsArray();
+      fa.forEach((v) => combinedArray.push(v));
+    });
+    let materialsData = new Float32Array(combinedArray);
+
+    let ub = new Uint8Array(materialsData.buffer);
+    console.log(ub.subarray(15033 * 4, (15033 + 13) * 4));
 
     let envmap = scene.envmap || new Envmap();
     // this will, unfortunately, trigger the updateConfig() function in the next javascript tick
@@ -468,7 +488,7 @@ export class ComputeSegment {
   updateRandomsBuffer() {
     let arr = new Float32Array(this.haltonSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
     this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
-    
+
     // let randoms = [];
     // for (let i = 0; i < this.RANDOMS_BUFFER_COUNT; i++) {
     //   randoms.push(Math.random());

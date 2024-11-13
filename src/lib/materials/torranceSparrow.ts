@@ -421,15 +421,11 @@ export class TorranceSparrow extends Material {
         // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xy is used for brdf samples
         // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
-        let rands1 = rand4(
-          tid.y * canvasSize.x + tid.x +
-          u32(cameraSamples.a.x * 928373289 + cameraSamples.a.y * 877973289) +
-          u32(i * 17325799),
+        let rands1 = vec4f(
+          getRandom(), getRandom(), getRandom(), getRandom()
         );
-        let rands2 = rand4(
-          tid.y * canvasSize.x + tid.x + 148789 +
-          u32(cameraSamples.a.z * 597834279 + cameraSamples.a.w * 34219873) +
-          u32(i * 86210973),
+        let rands2 = vec4f(
+          getRandom(), getRandom(), getRandom(), getRandom()
         );
 
         // we need to calculate a TBN matrix

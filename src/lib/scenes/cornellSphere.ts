@@ -16,7 +16,8 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
     new Diffuse({ color: new Color(1, 0.05, 0.05) }),
     new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), roughness: 0, anisotropy: 0 }),
-    new Emissive({ color: new Color(1, 1, 1), intensity: 10 }),
+    // new Emissive({ color: new Color(1, 1, 1), intensity: 10 }),
+    new Emissive({ color: new Color(1, 1, 1), intensity: 1 }),
     new Diffuse({ color: new Color(0.05, 1, 0.05) }),
     new Dielectric({
       absorption: new Color(0.095, 0.195, 0.295),
@@ -76,7 +77,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     );
   }
 
-  const ls = 0.75;
+  const ls = 5.75;
   const lt = new Vector3(0, 3.9, 0);
   triangles.push(
     new Triangle(
@@ -99,12 +100,12 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 1);
 
-  // let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
-  let mat = new TorranceSparrow({
-    color: new Color(0.99, 0.99, 0.99),
-    roughness: 0.9,
-    anisotropy: 1
-  });
+  let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
+  // let mat = new TorranceSparrow({
+  //   color: new Color(0.99, 0.99, 0.99),
+  //   roughness: 0.9,
+  //   anisotropy: 1
+  // });
   // let mat = new Dielectric({
   //   absorption: new Color(0, 0, 0),
   //   roughness: 0.9,

@@ -126,7 +126,8 @@ export class Diffuse extends Material {
         // *********************************************************************
         // cosine-weighted hemisphere sampling:
         let rand_1 = rands.x;
-        let rand_2 = rands.y;
+        // if rand_2 is 0, both cosTheta and the pdf will be zero
+        let rand_2 = max(rands.y, 0.000001);
         let phi = 2.0 * PI * rand_1;
         let theta = acos(sqrt(rand_2));
         let cosTheta = cos(theta);
@@ -227,15 +228,11 @@ export class Diffuse extends Material {
         // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xy is used for brdf samples
         // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
-        let rands1 = rand4(
-          tid.y * canvasSize.x + tid.x +
-          u32(cameraSamples.a.x * 928373289 + cameraSamples.a.y * 877973289) +
-          u32(i * 17325799),
+        let rands1 = vec4f(
+          getRandom(), getRandom(), getRandom(), getRandom()
         );
-        let rands2 = rand4(
-          tid.y * canvasSize.x + tid.x + 148789 +
-          u32(cameraSamples.a.z * 597834279 + cameraSamples.a.w * 34219873) +
-          u32(i * 86210973),
+        let rands2 = vec4f(
+          getRandom(), getRandom(), getRandom(), getRandom()
         );
 
         var brdf = 1 / PI;
@@ -273,7 +270,7 @@ export class Diffuse extends Material {
 
           // light contribution
           *rad += color * brdf * lightSampleRadiance * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
-          *reflectance *= color * brdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);
+          *reflectance *= color * brdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);    
         }
       }
     `;

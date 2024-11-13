@@ -95,6 +95,9 @@ fn anisotropyRemap(roughness: f32, anisotropy: f32) -> vec2f {
   return vec2f(at, ab);
 } 
 
+fn mod1u(x: u32, y: u32) -> u32 {
+  return x - y * (x / y);
+}
 fn mod1f(x: f32, y: f32) -> f32 {
   return x - y * floor(x / y);
 }

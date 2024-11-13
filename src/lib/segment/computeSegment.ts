@@ -14,6 +14,7 @@ import { TextureArraysSegment } from './textureArraysSegment';
 import { Orbit } from '$lib/controls/Orbit';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { LUTManager, LUTtype } from '$lib/managers/lutManager';
+import { HaltonSampler } from '$lib/samplers/Halton';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -34,6 +35,8 @@ export class ComputeSegment {
 
   private canvasSize: Vector2 | null = null;
   private canvasSizeUniformBuffer: GPUBuffer;
+  private randomsUniformBuffer: GPUBuffer;
+  private RANDOMS_BUFFER_COUNT = 200;
 
   private configUniformBuffer: GPUBuffer;
   private tileUniformBuffer: GPUBuffer;
@@ -60,6 +63,8 @@ export class ComputeSegment {
   private scene: C2Scene | undefined;
   private camera!: Camera;
   private bvh: BVH | undefined;
+
+  private haltonSampler = new HaltonSampler();
 
   constructor(tileSequence: TileSequence) {
     let device = globals.device;
@@ -98,6 +103,12 @@ export class ComputeSegment {
     // create a typedarray to hold the values for the uniforms in JavaScript
     this.canvasSizeUniformBuffer = device.createBuffer({
       size: 2 * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    // create a typedarray to hold the values for the uniforms in JavaScript
+    this.randomsUniformBuffer = device.createBuffer({
+      size: this.RANDOMS_BUFFER_COUNT * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
@@ -292,7 +303,7 @@ export class ComputeSegment {
       layout: this.bindGroupLayouts[1],
       entries: [
         { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
-        { binding: 1, resource: { buffer: this.camera.cameraSampleUniformBuffer } },
+        { binding: 1, resource: { buffer: this.randomsUniformBuffer } },
         { binding: 2, resource: { buffer: this.configUniformBuffer } },
         { binding: 3, resource: { buffer: this.tileUniformBuffer } }
       ]
@@ -439,7 +450,7 @@ export class ComputeSegment {
       // thus we'll re-draw a portion of the pixels that were part of the previous tile,
       // those pixels will need a new camera sample to properly accumulate new radiance values
       // otherwise they would count twice the results of the same camera sample
-      this.camera.updateCameraSample();
+      this.updateRandomsBuffer();
     }
   }
 
@@ -450,8 +461,19 @@ export class ComputeSegment {
       // thus we'll re-draw a portion of the pixels that were part of the previous tile,
       // those pixels will need a new camera sample to properly accumulate new radiance values
       // otherwise they would count twice the results of the same camera sample
-      this.camera.updateCameraSample();
+      this.updateRandomsBuffer();
     }
+  }
+
+  updateRandomsBuffer() {
+    let arr = new Float32Array(this.haltonSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+    this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
+    
+    // let randoms = [];
+    // for (let i = 0; i < this.RANDOMS_BUFFER_COUNT; i++) {
+    //   randoms.push(Math.random());
+    // }
+    // this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, new Float32Array(randoms));
   }
 
   createPipeline() {
@@ -493,12 +515,12 @@ export class ComputeSegment {
     if (samplesInfo.count === 0) {
       this.tileSequence.resetTile();
       this.resetSegment.reset();
-      this.camera.resetSampler();
+      this.haltonSampler.reset();
     }
 
     let tile = this.tileSequence.getNextTile(
       /* on new sample / tile start */ () => {
-        this.camera.updateCameraSample();
+        this.updateRandomsBuffer();
         samplesInfo.increment();
       }
     );

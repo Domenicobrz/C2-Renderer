@@ -85,10 +85,8 @@ export class Emissive extends Material {
     
         (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
     
-        let rands = rand4(
-          tid.y * canvasSize.x + tid.x +
-          u32(cameraSamples.a.x * 928373289 + cameraSamples.a.y * 877973289) +
-          u32(i * 17325799),
+        let rands = vec4f(
+          getRandom(), getRandom(), getRandom(), getRandom()
         );
     
         let r0 = 2.0 * PI * rands.x;

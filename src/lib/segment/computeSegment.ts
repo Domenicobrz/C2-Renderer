@@ -317,8 +317,8 @@ export class ComputeSegment {
     let { LightsCDFBufferData, LightsCDFBufferDataByteSize } = bvh.getLightsCDFBufferData();
 
     // ********* important **********
-    // we can't, unfortunately, use .flat() like in the commented line below
-    // when materials want to save a -1 integer as a float value,
+    // we can't, unfortunately, use .flat() like in the commented line below.
+    // When materials want to save a -1 integer as a float value,
     // they're making a bit-cast that results in bit values: 255 255 255 255
     // which is interpreted as a NaN when reading it as float.
     // .flat(), apparently, when copying NaN floats **sometimes** doesn't copy the floats

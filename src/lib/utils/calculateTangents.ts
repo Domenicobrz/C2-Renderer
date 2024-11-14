@@ -43,6 +43,20 @@ export function computeGeometryTangents(geometry: BufferGeometry) {
       sum.add(tangents[t]);
     }
     sum.divideScalar(tangents.length);
+
+    // sometimes unfortunately tangents end up being 0,0,0 and that wreaks havoc
+    // on the renderer
+    if (sum.x == 0 && sum.y == 0 && sum.z == 0) {
+      let useableTangentIndex = 0;
+      for (let t = 0; t < tangents.length; t++) {
+        let tan = tangents[t];
+        if (tan.x != 0.0 || tan.y != 0.0 || tan.z != 0.0) {
+          useableTangentIndex = t;
+        }
+      }
+      sum.copy(tangents[useableTangentIndex]);
+    }
+
     tangentsArray.push(sum.x, sum.y, sum.z);
   }
 

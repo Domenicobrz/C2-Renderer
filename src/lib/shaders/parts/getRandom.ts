@@ -15,8 +15,8 @@ fn getRandom() -> f32 {
     randomsArrayIndex = 0;
   }
 
-  // return min(fract(sample + randomsOffset), 0.99999999);
-  return sample;
+  return min(fract(sample + randomsOffset), 0.99999999);
+  // return sample;
   // return clamp(sample, 0.000001, 0.999999);
   // return rand4(u32(randomsOffset * 98723659) + u32(sample * 89302723)).x;
   // return rand4(u32(sample * 89302723)).x;

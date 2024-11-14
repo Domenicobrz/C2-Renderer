@@ -483,14 +483,14 @@ export class ComputeSegment {
   }
 
   updateRandomsBuffer() {
-    let arr = new Float32Array(this.haltonSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-    this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
+    // let arr = new Float32Array(this.haltonSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+    // this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
 
-    // let randoms = [];
-    // for (let i = 0; i < this.RANDOMS_BUFFER_COUNT; i++) {
-    //   randoms.push(Math.random());
-    // }
-    // this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, new Float32Array(randoms));
+    let randoms = [];
+    for (let i = 0; i < this.RANDOMS_BUFFER_COUNT; i++) {
+      randoms.push(Math.random());
+    }
+    this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, new Float32Array(randoms));
   }
 
   createPipeline() {

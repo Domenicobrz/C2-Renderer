@@ -20,6 +20,7 @@ import { misPart } from './parts/mis';
 import { texturePart } from './parts/texture';
 import { shadingNormalsPart } from './parts/shadingNormal';
 import type { LUTManager } from '$lib/managers/lutManager';
+import { getRandomPart } from './parts/getRandom';
 
 export function getComputeShader(lutManager: LUTManager) {
   return /* wgsl */ `
@@ -33,6 +34,7 @@ ${pbrtMathUtilsPart}
 ${misPart}
 ${texturePart}
 ${shadingNormalsPart}
+${getRandomPart}
 ${lutManager.getShaderPart()}
 ${TileSequence.shaderPart()}
 ${Emissive.shaderStruct()}
@@ -74,7 +76,7 @@ ${Plane.shaderMethods()}
 @group(1) @binding(0) var<uniform> camera: Camera;
 // seems like maximum bindgroup count is 4 so I need to add the camera sample here 
 // unfortunately and I can't create a separate bindgroup for it
-@group(1) @binding(1) var<uniform> cameraSamples: CameraSamples;
+@group(1) @binding(1) var<uniform> haltonSamples: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
 @group(1) @binding(2) var<uniform> config: Config;
 @group(1) @binding(3) var<uniform> tile: Tile;
 
@@ -140,6 +142,8 @@ fn debugLog(value: f32) {
     debugInfo.isSelectedPixel = true;
   }
   debugInfo.sample = samplesCount[idx];
+
+  initializeRandoms(tid, debugInfo.sample);
 
   var rayContribution: f32;
   var ray = getCameraRay(tid, idx, &rayContribution);

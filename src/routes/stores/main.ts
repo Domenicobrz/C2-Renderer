@@ -107,6 +107,8 @@ export const configOptions = createConfigStore({
   forceMaxTileSize: false,
   BOUNCES_COUNT: 10,
   MIS_TYPE: 2,
+  SAMPLER_TYPE: 0,
+  SAMPLER_CORRELATION_FIX: 1,
   USE_POWER_HEURISTIC: 1,
   ENVMAP_SCALE: 1,
   ENVMAP_ROTX: 0,

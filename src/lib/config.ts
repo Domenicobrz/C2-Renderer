@@ -8,6 +8,17 @@ export enum MIS_TYPE {
   NEXT_EVENT_ESTIMATION = 2
 }
 
+export enum SAMPLER_TYPE {
+  UNIFORM = 0,
+  HALTON = 1
+}
+
+export enum SAMPLER_CORRELATION_FIX {
+  NONE = 0,
+  RANDOM_OFFSET = 1,
+  RANDOM_ARRAY_OFFSET = 2
+}
+
 type ShaderConfig = {
   HAS_ENVMAP: boolean;
 };
@@ -18,6 +29,8 @@ export type ConfigOptions = {
   forceMaxTileSize: boolean;
   BOUNCES_COUNT: number;
   MIS_TYPE: MIS_TYPE;
+  SAMPLER_TYPE: SAMPLER_TYPE;
+  SAMPLER_CORRELATION_FIX: SAMPLER_CORRELATION_FIX;
   USE_POWER_HEURISTIC: 0 | 1;
   ENVMAP_SCALE: number;
   ENVMAP_ROTX: number;
@@ -30,7 +43,7 @@ class ConfigManager {
   public options: ConfigOptions;
   public prevOptions: ConfigOptions;
   public e: EventHandler;
-  public bufferSize = 12;
+  public bufferSize = 16;
 
   constructor() {
     this.options = get(configOptions);
@@ -52,6 +65,7 @@ class ConfigManager {
   getOptionsBuffer(): ArrayBuffer {
     return new Uint32Array([
       this.options.MIS_TYPE,
+      this.options.SAMPLER_CORRELATION_FIX,
       this.options.USE_POWER_HEURISTIC,
       this.options.BOUNCES_COUNT
     ]);
@@ -62,12 +76,17 @@ class ConfigManager {
   shaderPart(): string {
     return /* wgsl */ `
 
+    const CORRELATION_FIX_NONE: u32 = ${SAMPLER_CORRELATION_FIX.NONE};
+    const CORRELATION_FIX_RAND_OFFSET: u32 = ${SAMPLER_CORRELATION_FIX.RANDOM_OFFSET};
+    const CORRELATION_FIX_RAND_ARRAY_OFFSET: u32 = ${SAMPLER_CORRELATION_FIX.RANDOM_ARRAY_OFFSET};
+
     const BRDF_ONLY: u32 = ${MIS_TYPE.BRDF_ONLY};
     const ONE_SAMPLE_MODEL: u32 = ${MIS_TYPE.ONE_SAMPLE_MODEL};
     const NEXT_EVENT_ESTIMATION: u32 = ${MIS_TYPE.NEXT_EVENT_ESTIMATION};
     
     struct Config {
       MIS_TYPE: u32,
+      SAMPLER_CORRELATION_FIX: u32,
       USE_POWER_HEURISTIC: u32,
       BOUNCES_COUNT: i32,
     }

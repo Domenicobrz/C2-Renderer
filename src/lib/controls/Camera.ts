@@ -1,5 +1,4 @@
 import { EventHandler } from '$lib/eventHandler';
-import { HaltonSampler } from '$lib/samplers/Halton';
 import { Matrix4, PerspectiveCamera, Vector2, Vector3 } from 'three';
 import { cameraInfoStore, cameraMovementInfoStore } from '../../routes/stores/main';
 import { get } from 'svelte/store';
@@ -17,14 +16,12 @@ export class Camera {
 
   private canvasSize: Vector2;
 
-  public cameraSampleUniformBuffer: GPUBuffer;
   public cameraUniformBuffer: GPUBuffer;
   public cameraPositionUniformBuffer: GPUBuffer;
   public exposureUniformBuffer: GPUBuffer;
   public cameraMatrixUniformBuffer: GPUBuffer;
   public projectionMatrixUniformBuffer: GPUBuffer;
 
-  private haltonSampler: HaltonSampler = new HaltonSampler();
   private device: GPUDevice;
 
   private requestedBuffersUpdate: boolean = false;
@@ -39,10 +36,6 @@ export class Camera {
     this.projectionMatrix = new Matrix4().identity();
 
     this.device = globals.device;
-    this.cameraSampleUniformBuffer = this.device.createBuffer({
-      size: 8 * 4,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
     this.cameraUniformBuffer = this.device.createBuffer({
       size: 96 /* determined with offset computer */,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
@@ -189,14 +182,8 @@ export class Camera {
   }
 
   dispose() {
-    // sets the resource as garbage-collectable
-    (this.cameraSampleUniformBuffer as any) = null;
     // removes all previous event handlers
     this.e = new EventHandler();
-  }
-
-  resetSampler() {
-    this.haltonSampler.reset();
   }
 
   renderLoopUpdate() {
@@ -334,11 +321,6 @@ export class Camera {
     );
   }
 
-  updateCameraSample() {
-    let samples = this.haltonSampler.getSamples(8);
-    this.device.queue.writeBuffer(this.cameraSampleUniformBuffer, 0, new Float32Array(samples));
-  }
-
   getFocusDistanceFromIntersectionPoint(point: Vector3) {
     // simple solution, won't work with tilt shift
     // let dir = point.clone().sub(this.position);
@@ -383,8 +365,8 @@ export class Camera {
 
         // from [0...1] to [-1...+1]
         let nuv = vec2f(
-          (f32(tid.x) + cameraSamples.a.x) / f32(canvasSize.x) * 2 - 1,
-          (f32(tid.y) + cameraSamples.a.y) / f32(canvasSize.y) * 2 - 1,
+          (f32(tid.x) + getRandom()) / f32(canvasSize.x) * 2 - 1,
+          (f32(tid.y) + getRandom()) / f32(canvasSize.y) * 2 - 1,
         );
       
         let aspectRatio = f32(canvasSize.x) / f32(canvasSize.y);
@@ -410,8 +392,8 @@ export class Camera {
 
         let r1 = rand4(tid.x * 31472 + tid.y * 71893);
         let dofRands = vec2f(
-          fract(r1.x + cameraSamples.a.z),
-          fract(r1.y + cameraSamples.a.w),
+          fract(r1.x + getRandom()),
+          fract(r1.y + getRandom()),
         );
         var offsetRadius = aperture * sqrt(dofRands.x);
         let offsetTheta = dofRands.y * 2.0 * PI;
@@ -437,8 +419,8 @@ export class Camera {
           *contribution = 0.0;
           for(var i = 0; i < 10; i++) {
             let rds = rand4(tid.x * 31472 + tid.y * 71893 + u32(i) * 19537);
-            let r0 = fract(rds.x + cameraSamples.b.x);
-            let r1 = fract(rds.y + cameraSamples.b.y);
+            let r0 = fract(rds.x + getRandom());
+            let r1 = fract(rds.y + getRandom());
 
             var oo = screenDir * (r0 * 2 - 1) * apertureAtEdge;
             oo = oo + screenDirNorm * (r1 * 2 - 1);    
@@ -492,12 +474,6 @@ export class Camera {
         origin: vec3f,
         direction: vec3f,
       }
-      // can't use an array of f32 since I'd have to switch to a storage buffer
-      // (error: runtime-sized arrays can only be used in the <storage> address space) 
-      struct CameraSamples {
-        a: vec4f,
-        b: vec4f,
-      } 
     `;
   }
 }

@@ -5,7 +5,7 @@ import { cameraMovementInfoStore, configOptions, samplesInfo } from '../../route
 import { ResetSegment } from './resetSegment';
 import type { TileSequence, Tile } from '$lib/tile';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
-import { configManager } from '$lib/config';
+import { configManager, SAMPLER_TYPE } from '$lib/config';
 import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
@@ -15,6 +15,7 @@ import { Orbit } from '$lib/controls/Orbit';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { LUTManager, LUTtype } from '$lib/managers/lutManager';
 import { HaltonSampler } from '$lib/samplers/Halton';
+import { UniformSampler } from '$lib/samplers/Uniform';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -65,6 +66,7 @@ export class ComputeSegment {
   private bvh: BVH | undefined;
 
   private haltonSampler = new HaltonSampler();
+  private uniformSampler = new UniformSampler();
 
   constructor(tileSequence: TileSequence) {
     let device = globals.device;
@@ -483,14 +485,15 @@ export class ComputeSegment {
   }
 
   updateRandomsBuffer() {
-    // let arr = new Float32Array(this.haltonSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-    // this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
-
-    let randoms = [];
-    for (let i = 0; i < this.RANDOMS_BUFFER_COUNT; i++) {
-      randoms.push(Math.random());
+    if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.HALTON) {
+      let arr = new Float32Array(this.haltonSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+      this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
     }
-    this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, new Float32Array(randoms));
+
+    if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.UNIFORM) {
+      let arr = new Float32Array(this.uniformSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+      this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
+    }
   }
 
   createPipeline() {
@@ -533,6 +536,7 @@ export class ComputeSegment {
       this.tileSequence.resetTile();
       this.resetSegment.reset();
       this.haltonSampler.reset();
+      this.uniformSampler.reset();
     }
 
     let tile = this.tileSequence.getNextTile(

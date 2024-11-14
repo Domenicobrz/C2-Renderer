@@ -1,7 +1,9 @@
 <script lang="ts">
   import { samplesInfo } from '../../stores/main';
   import Folder from '../Folder.svelte';
+  import CorrelationFix from './CorrelationFix.svelte';
   import MisOptions from './MisOptions.svelte';
+  import Sampler from './Sampler.svelte';
 
   function onSampleLimitInputChange(e: Event) {
     const newSampleLimit = parseInt((e.target as HTMLInputElement).value);
@@ -35,6 +37,14 @@
 <button class="sample-limit-btn" on:click={onOneStepLimitIncrement}>+</button>
 <button class="sample-limit-btn" on:click={infiniteSamplesLimit}>∞</button>
 <button class="sample-limit-btn" on:click={oneSampleLimit}>1</button>
+
+<Folder name="Sampler" roundBox>
+  <Sampler />
+</Folder>
+
+<Folder name="Sample correlation Fix" roundBox>
+  <CorrelationFix />
+</Folder>
 
 <Folder name="Mis Options" roundBox>
   <MisOptions />

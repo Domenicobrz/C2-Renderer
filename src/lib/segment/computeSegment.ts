@@ -16,6 +16,7 @@ import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout'
 import { LUTManager, LUTtype } from '$lib/managers/lutManager';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import { UniformSampler } from '$lib/samplers/Uniform';
+import { BlueNoiseSampler } from '$lib/samplers/BlueNoise';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -67,6 +68,7 @@ export class ComputeSegment {
 
   private haltonSampler = new HaltonSampler();
   private uniformSampler = new UniformSampler();
+  private blueNoiseSampler = new BlueNoiseSampler();
 
   constructor(tileSequence: TileSequence) {
     let device = globals.device;
@@ -494,6 +496,11 @@ export class ComputeSegment {
       let arr = new Float32Array(this.uniformSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
       this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
     }
+
+    if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.BLUE_NOISE) {
+      let arr = new Float32Array(this.blueNoiseSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+      this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
+    }
   }
 
   createPipeline() {
@@ -536,6 +543,7 @@ export class ComputeSegment {
       this.tileSequence.resetTile();
       this.resetSegment.reset();
       this.haltonSampler.reset();
+      this.blueNoiseSampler.reset();
       this.uniformSampler.reset();
     }
 

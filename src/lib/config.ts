@@ -10,7 +10,8 @@ export enum MIS_TYPE {
 
 export enum SAMPLER_TYPE {
   UNIFORM = 0,
-  HALTON = 1
+  HALTON = 1,
+  BLUE_NOISE = 2
 }
 
 export enum SAMPLER_CORRELATION_FIX {

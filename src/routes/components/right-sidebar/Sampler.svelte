@@ -22,6 +22,15 @@
   />
   Halton sequence
 </label>
+<label>
+  <input
+    type="radio"
+    name="sampler-type"
+    value={SAMPLER_TYPE.BLUE_NOISE}
+    bind:group={$configOptions.SAMPLER_TYPE}
+  />
+  Blue Noise
+</label>
 
 <style>
   p {

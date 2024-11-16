@@ -1,7 +1,12 @@
 <script lang="ts">
   import { SAMPLER_CORRELATION_FIX, SAMPLER_TYPE } from '$lib/config';
   import { configOptions } from '../../stores/main';
+  import Warning from '../icons/Warning.svelte';
   import Separator from '../Separator.svelte';
+
+  $: haltonRAOperformanceWarning =
+    $configOptions.SAMPLER_CORRELATION_FIX == SAMPLER_CORRELATION_FIX.RANDOM_ARRAY_OFFSET &&
+    $configOptions.SAMPLER_TYPE == SAMPLER_TYPE.HALTON;
 </script>
 
 <label>
@@ -11,7 +16,7 @@
     value={SAMPLER_CORRELATION_FIX.NONE}
     bind:group={$configOptions.SAMPLER_CORRELATION_FIX}
   />
-  None
+  <p>None</p>
 </label>
 <label>
   <input
@@ -20,7 +25,7 @@
     value={SAMPLER_CORRELATION_FIX.RANDOM_OFFSET}
     bind:group={$configOptions.SAMPLER_CORRELATION_FIX}
   />
-  Add random value
+  <p>Add random value</p>
 </label>
 <label>
   <input
@@ -29,17 +34,40 @@
     value={SAMPLER_CORRELATION_FIX.RANDOM_ARRAY_OFFSET}
     bind:group={$configOptions.SAMPLER_CORRELATION_FIX}
   />
-  Add random value and random array offset
+  <p>Add random value and random array offset</p>
 </label>
 
+{#if haltonRAOperformanceWarning}
+  <Separator topSpace={10} bottomSpace={10} />
+  <h6 class="warning">
+    <Warning />Using random-array-offset with the Halton sampler results in poor sampling
+    performance
+  </h6>
+{/if}
+
 <style>
-  p {
+  :global(h6.warning svg) {
+    flex: 0 0 20px;
+    display: inline-block;
+    margin: 0 5px 0 0;
+  }
+
+  h6.warning {
+    display: flex;
+    align-items: center;
+    margin: 5px 0 0 0;
     font-size: 14px;
+    color: #cb8933;
+  }
+
+  p {
+    margin: 0 0 0 6px;
   }
 
   label {
     font-size: 13px;
-    display: block;
+    display: flex;
+    align-items: center;
   }
 
   label ~ label {

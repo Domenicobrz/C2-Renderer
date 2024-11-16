@@ -390,11 +390,8 @@ export class Camera {
           Ray(vec3f(0), rd), planeDir, camera.focusDistance * -planeDir.z, &focalPoint
         );
 
-        let r1 = rand4(tid.x * 31472 + tid.y * 71893);
-        let dofRands = vec2f(
-          fract(r1.x + getRandom()),
-          fract(r1.y + getRandom()),
-        );
+        let r1 = vec2f(getRandom(), getRandom());
+        let dofRands = r1;
         var offsetRadius = aperture * sqrt(dofRands.x);
         let offsetTheta = dofRands.y * 2.0 * PI;
         var originOffset = vec3f(offsetRadius * cos(offsetTheta), offsetRadius * sin(offsetTheta), 0.0);
@@ -418,9 +415,8 @@ export class Camera {
 
           *contribution = 0.0;
           for(var i = 0; i < 10; i++) {
-            let rds = rand4(tid.x * 31472 + tid.y * 71893 + u32(i) * 19537);
-            let r0 = fract(rds.x + getRandom());
-            let r1 = fract(rds.y + getRandom());
+            let r0 = getRandom();
+            let r1 = getRandom();
 
             var oo = screenDir * (r0 * 2 - 1) * apertureAtEdge;
             oo = oo + screenDirNorm * (r1 * 2 - 1);    

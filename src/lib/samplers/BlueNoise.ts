@@ -14,6 +14,8 @@ function ToroidalDistanceSquared(x1: number, y1: number, x2: number, y2: number)
   return dx * dx + dy * dy;
 }
 
+// TODO: can be improved with:
+// https://blog.demofox.org/2023/03/15/eulers-best-candidate-for-generating-blue-noise-sample-points-and-more/
 export class BlueNoiseSampler {
   private seedString: string;
 

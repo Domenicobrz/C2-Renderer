@@ -540,12 +540,8 @@ export class Dielectric extends Material {
         // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xyz is used for brdf samples
         // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
-        let rands1 = vec4f(
-          getRandom(), getRandom(), getRandom(), getRandom()
-        );
-        let rands2 = vec4f(
-          getRandom(), getRandom(), getRandom(), getRandom()
-        );
+        let rands1 = vec4f(getRand2D(), getRand2D());
+        let rands2 = vec4f(getRand2D(), getRand2D());
         
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);

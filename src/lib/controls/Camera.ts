@@ -364,9 +364,10 @@ export class Camera {
         *contribution = 1.0;
 
         // from [0...1] to [-1...+1]
+        let rands = getRand2D();
         let nuv = vec2f(
-          (f32(tid.x) + getRandom()) / f32(canvasSize.x) * 2 - 1,
-          (f32(tid.y) + getRandom()) / f32(canvasSize.y) * 2 - 1,
+          (f32(tid.x) + rands.x) / f32(canvasSize.x) * 2 - 1,
+          (f32(tid.y) + rands.y) / f32(canvasSize.y) * 2 - 1,
         );
       
         let aspectRatio = f32(canvasSize.x) / f32(canvasSize.y);
@@ -390,7 +391,7 @@ export class Camera {
           Ray(vec3f(0), rd), planeDir, camera.focusDistance * -planeDir.z, &focalPoint
         );
 
-        let r1 = vec2f(getRandom(), getRandom());
+        let r1 = getRand2D();
         let dofRands = r1;
         var offsetRadius = aperture * sqrt(dofRands.x);
         let offsetTheta = dofRands.y * 2.0 * PI;
@@ -415,8 +416,9 @@ export class Camera {
 
           *contribution = 0.0;
           for(var i = 0; i < 10; i++) {
-            let r0 = getRandom();
-            let r1 = getRandom();
+            let rands = getRand2D();
+            let r0 = rands.x;
+            let r1 = rands.y;
 
             var oo = screenDir * (r0 * 2 - 1) * apertureAtEdge;
             oo = oo + screenDirNorm * (r1 * 2 - 1);    

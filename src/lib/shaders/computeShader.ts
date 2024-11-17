@@ -105,6 +105,7 @@ ${Plane.shaderMethods()}
 // I decided to use up to two slots: lut32 and lut64
 // for LUTs that are single-layer and higher than 64, we can use the texture_2d_arrays above
 @group(3) @binding(11) var lut32: texture_3d<f32>;
+@group(3) @binding(12) var blueNoise256: texture_2d<f32>;
 
 struct DebugInfo {
   tid: vec3u,

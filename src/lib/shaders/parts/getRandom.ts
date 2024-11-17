@@ -2,6 +2,8 @@ export const getRandomPart = /* wgsl */ `
 const RANDOMS_VEC4F_ARRAY_COUNT = 50;
 var<private> randomsArrayIndex: u32 = 0;
 var<private> randomsOffset: f32 = 0;
+var<private> randomsOffsetsArray = array<f32, 8>(0,0,0,0,0,0,0,0);
+var<private> randomsOffsetsArrayIndex: u32 = 0;
 
 // we're forcing every routine of the renderer to request a 2D
 // random sample, such that we can make sure that those samples are
@@ -20,8 +22,19 @@ fn getRand2D() -> vec2f {
     if (randomsArrayIndex >= RANDOMS_VEC4F_ARRAY_COUNT) {
       randomsArrayIndex = 0;
     }
-  
-    let value = min(fract(sample + randomsOffset), 0.99999999);
+
+    var offset = 0.0;
+
+    if (
+      config.SAMPLER_DECORRELATION == DECORRELATION_BLUE_NOISE_MASK
+    ) {
+      offset = randomsOffsetsArray[randomsOffsetsArrayIndex];
+      randomsOffsetsArrayIndex = mod1u(randomsOffsetsArrayIndex + 1, 8);
+    } else {
+      offset = randomsOffset;
+    }
+
+    let value = min(fract(sample + offset), 0.99999999);
 
     if (i == 0) {
       rands.x = value;
@@ -41,18 +54,38 @@ fn initializeRandoms(tid: vec3u, sampleIndex: u32) {
   let pseudoRands = rand4(tid.x * 987657 + tid.y * 346799);
 
   if (
-    config.SAMPLER_CORRELATION_FIX == CORRELATION_FIX_RAND_OFFSET || 
-    config.SAMPLER_CORRELATION_FIX == CORRELATION_FIX_RAND_ARRAY_OFFSET
+    config.SAMPLER_DECORRELATION == DECORRELATION_RAND_OFFSET || 
+    config.SAMPLER_DECORRELATION == DECORRELATION_RAND_ARRAY_OFFSET
   ) {
     randomsOffset = pseudoRands.x;
   }
   
   if (
-    config.SAMPLER_CORRELATION_FIX == CORRELATION_FIX_RAND_ARRAY_OFFSET
+    config.SAMPLER_DECORRELATION == DECORRELATION_RAND_ARRAY_OFFSET
   ) {
     // we're multiplying by 2 the offset to respect the 2D distribution we're forcing
     // with getRand2D();
     randomsArrayIndex = u32(pseudoRands.y * 0.5 * f32(RANDOMS_VEC4F_ARRAY_COUNT-1)) * 2;
+  }
+
+  if (
+    config.SAMPLER_DECORRELATION == DECORRELATION_BLUE_NOISE_MASK
+  ) {
+    let tx1 = mod1u(tid.x, 256);
+    let ty1 = mod1u(tid.y, 256);
+    let blueNoise1 = textureLoad(blueNoise256, vec2u(tx1, ty1), 0);
+    let tx2 = mod1u(tid.x + 128, 256);
+    let ty2 = mod1u(tid.y + 128, 256);
+    let blueNoise2 = textureLoad(blueNoise256, vec2u(tx2, ty2), 0);
+  
+    randomsOffsetsArray[0] = blueNoise1.x;
+    randomsOffsetsArray[1] = blueNoise1.y;
+    randomsOffsetsArray[2] = blueNoise1.z;
+    randomsOffsetsArray[3] = blueNoise1.w;
+    randomsOffsetsArray[4] = blueNoise2.x;
+    randomsOffsetsArray[5] = blueNoise2.y;
+    randomsOffsetsArray[6] = blueNoise2.z;
+    randomsOffsetsArray[7] = blueNoise2.w;
   }
 }
 

@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { SAMPLER_CORRELATION_FIX, SAMPLER_TYPE } from '$lib/config';
+  import { SAMPLER_DECORRELATION, SAMPLER_TYPE } from '$lib/config';
   import { configOptions } from '../../stores/main';
   import Warning from '../icons/Warning.svelte';
   import Separator from '../Separator.svelte';
 
   $: haltonRAOperformanceWarning =
-    $configOptions.SAMPLER_CORRELATION_FIX == SAMPLER_CORRELATION_FIX.RANDOM_ARRAY_OFFSET &&
+    $configOptions.SAMPLER_DECORRELATION == SAMPLER_DECORRELATION.RANDOM_ARRAY_OFFSET &&
     $configOptions.SAMPLER_TYPE == SAMPLER_TYPE.HALTON;
 </script>
 
@@ -13,8 +13,8 @@
   <input
     type="radio"
     name="correlation-fix-type"
-    value={SAMPLER_CORRELATION_FIX.NONE}
-    bind:group={$configOptions.SAMPLER_CORRELATION_FIX}
+    value={SAMPLER_DECORRELATION.NONE}
+    bind:group={$configOptions.SAMPLER_DECORRELATION}
   />
   <p>None</p>
 </label>
@@ -22,8 +22,8 @@
   <input
     type="radio"
     name="correlation-fix-type"
-    value={SAMPLER_CORRELATION_FIX.RANDOM_OFFSET}
-    bind:group={$configOptions.SAMPLER_CORRELATION_FIX}
+    value={SAMPLER_DECORRELATION.RANDOM_OFFSET}
+    bind:group={$configOptions.SAMPLER_DECORRELATION}
   />
   <p>Add random value</p>
 </label>
@@ -31,10 +31,19 @@
   <input
     type="radio"
     name="correlation-fix-type"
-    value={SAMPLER_CORRELATION_FIX.RANDOM_ARRAY_OFFSET}
-    bind:group={$configOptions.SAMPLER_CORRELATION_FIX}
+    value={SAMPLER_DECORRELATION.RANDOM_ARRAY_OFFSET}
+    bind:group={$configOptions.SAMPLER_DECORRELATION}
   />
   <p>Add random value and random array offset</p>
+</label>
+<label>
+  <input
+    type="radio"
+    name="correlation-fix-type"
+    value={SAMPLER_DECORRELATION.BLUE_NOISE_MASK}
+    bind:group={$configOptions.SAMPLER_DECORRELATION}
+  />
+  <p>Blue noise mask</p>
 </label>
 
 {#if haltonRAOperformanceWarning}

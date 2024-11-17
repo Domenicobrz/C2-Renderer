@@ -1,7 +1,7 @@
 <script lang="ts">
   import { samplesInfo } from '../../stores/main';
   import Folder from '../Folder.svelte';
-  import CorrelationFix from './CorrelationFix.svelte';
+  import Decorrelation from './Decorrelation.svelte';
   import MisOptions from './MisOptions.svelte';
   import Sampler from './Sampler.svelte';
 
@@ -42,8 +42,8 @@
   <Sampler />
 </Folder>
 
-<Folder name="Sample correlation Fix" roundBox>
-  <CorrelationFix />
+<Folder name="Pixel decorrelation" roundBox>
+  <Decorrelation />
 </Folder>
 
 <Folder name="Mis Options" roundBox>

@@ -17,6 +17,8 @@ import { LUTManager, LUTtype } from '$lib/managers/lutManager';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import { UniformSampler } from '$lib/samplers/Uniform';
 import { BlueNoiseSampler } from '$lib/samplers/BlueNoise';
+import { once } from '$lib/utils/once';
+import { loadTexture } from '$lib/webgpu-utils/getTexture';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -70,6 +72,8 @@ export class ComputeSegment {
   private uniformSampler = new UniformSampler();
   private blueNoiseSampler = new BlueNoiseSampler();
 
+  private blueNoiseTexture!: GPUTexture;
+
   constructor(tileSequence: TileSequence) {
     let device = globals.device;
     this.device = device;
@@ -97,7 +101,8 @@ export class ComputeSegment {
         '2d-array',
         '2d-array',
         '2d-array',
-        '3d'
+        '3d',
+        'texture'
       ])
     ];
     this.layout = device.createPipelineLayout({
@@ -282,18 +287,25 @@ export class ComputeSegment {
     // rather than all at once
     this.textureArraySegment.update(scene.materials);
 
-    await this.lutManager.load(
-      'luts/torranceSparrowMultiScatter.LUT',
-      LUTtype.MultiScatterTorranceSparrow
-    );
-    await this.lutManager.load(
-      'luts/multiScatterDielectricEo.LUT',
-      LUTtype.MultiScatterDielectricEo
-    );
-    await this.lutManager.load(
-      'luts/multiScatterDielectricEoInverse.LUT',
-      LUTtype.MultiScatterDielectricEoInverse
-    );
+    if (once('initialize-luts-and-blue-noise-texture')) {
+      await this.lutManager.load(
+        'luts/torranceSparrowMultiScatter.LUT',
+        LUTtype.MultiScatterTorranceSparrow
+      );
+      await this.lutManager.load(
+        'luts/multiScatterDielectricEo.LUT',
+        LUTtype.MultiScatterDielectricEo
+      );
+      await this.lutManager.load(
+        'luts/multiScatterDielectricEoInverse.LUT',
+        LUTtype.MultiScatterDielectricEoInverse
+      );
+
+      this.blueNoiseTexture = await loadTexture(
+        this.device,
+        'blue-noise-textures/256_256/HDR_RGBA_0.png'
+      );
+    }
 
     if (this.camera) {
       this.camera.dispose();
@@ -427,6 +439,10 @@ export class ComputeSegment {
         {
           binding: 11,
           resource: this.lutManager.getTexture().createView({ dimension: '3d' })
+        },
+        {
+          binding: 12,
+          resource: this.blueNoiseTexture.createView()
         }
       ]
     });

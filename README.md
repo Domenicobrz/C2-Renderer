@@ -16,7 +16,8 @@ A simple webgpu renderer implemented with javascript and svelte
 8. Camera model with support for tilt-shift and cat-eyed bokeh effects
 9. Normal-view and camera-light previews
 10. HDR envmap to PC2D conversion and export
-11. Uniform and Halton sequence samplers, with optional pixel-correlation fix
+11. Uniform, Halton and Blue noise sequence samplers
+12. 3 types of pixel-decorrelation strategies (none, random offset, blue noise mask)
 
 <img src="screenshots/1.png" width="90%" />
 <img src="screenshots/3.png" width="90%" />

@@ -19,6 +19,7 @@ import { UniformSampler } from '$lib/samplers/Uniform';
 import { BlueNoiseSampler } from '$lib/samplers/BlueNoise';
 import { once } from '$lib/utils/once';
 import { loadTexture } from '$lib/webgpu-utils/getTexture';
+import { CustomR2Sampler } from '$lib/samplers/CustomR2';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -71,6 +72,7 @@ export class ComputeSegment {
   private haltonSampler = new HaltonSampler();
   private uniformSampler = new UniformSampler();
   private blueNoiseSampler = new BlueNoiseSampler();
+  private customR2Sampler = new CustomR2Sampler();
 
   private blueNoiseTexture!: GPUTexture;
 
@@ -515,6 +517,11 @@ export class ComputeSegment {
 
     if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.BLUE_NOISE) {
       let arr = new Float32Array(this.blueNoiseSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+      this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
+    }
+
+    if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.CUSTOM_R2) {
+      let arr = new Float32Array(this.customR2Sampler.getSamples(this.RANDOMS_BUFFER_COUNT));
       this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
     }
   }

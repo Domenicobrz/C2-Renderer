@@ -31,6 +31,15 @@
   />
   Blue Noise
 </label>
+<label>
+  <input
+    type="radio"
+    name="sampler-type"
+    value={SAMPLER_TYPE.CUSTOM_R2}
+    bind:group={$configOptions.SAMPLER_TYPE}
+  />
+  Sequenced R2
+</label>
 
 <style>
   p {

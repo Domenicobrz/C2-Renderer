@@ -11,7 +11,8 @@ export enum MIS_TYPE {
 export enum SAMPLER_TYPE {
   UNIFORM = 0,
   HALTON = 1,
-  BLUE_NOISE = 2
+  BLUE_NOISE = 2,
+  CUSTOM_R2 = 3
 }
 
 export enum SAMPLER_DECORRELATION {

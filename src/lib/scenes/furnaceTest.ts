@@ -19,6 +19,7 @@ import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 import type { C2Scene } from '$lib/createScene';
 import { Orbit } from '$lib/controls/Orbit';
 import { Envmap } from '$lib/envmap/envmap';
+import { EONDiffuse } from '$lib/materials/EONDiffuse';
 
 export async function furnaceTestScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -37,21 +38,28 @@ export async function furnaceTestScene(): Promise<C2Scene> {
     await new TextureLoader().loadAsync('scene-assets/textures/roughness-test.png')
   ).source.data;
 
+  // let mat = new Diffuse({
+  //   color: new Color(1, 1, 1)
+  // });
+  let mat = new EONDiffuse({
+    color: new Color(1, 1, 1),
+    roughness: 1
+  });
   // let mat = new TorranceSparrow({
   //   color: new Color(0.99, 0.99, 0.99),
   //   roughness: 1,
   //   anisotropy: 0
   //   // roughnessMap
   // });
-  let mat = new Dielectric({
-    absorption: new Color(0, 0, 0),
-    // roughness: 0.25,
-    roughness: 0.8,
-    anisotropy: 0,
-    // roughness: 1,
-    // anisotropy: 0,
-    eta: 1.5
-  });
+  // let mat = new Dielectric({
+  //   absorption: new Color(0, 0, 0),
+  //   // roughness: 0.25,
+  //   roughness: 0.8,
+  //   anisotropy: 0,
+  //   // roughness: 1,
+  //   // anisotropy: 0,
+  //   eta: 1.5
+  // });
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
   // triangles = [...triangles, ...meshToTriangles(planeMesh, materials.length - 1)];

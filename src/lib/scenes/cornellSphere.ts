@@ -11,15 +11,16 @@ import type { C2Scene } from '$lib/createScene';
 import { Orbit } from '$lib/controls/Orbit';
 import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
+import { EONDiffuse } from '$lib/materials/EONDiffuse';
 
 export async function cornellSphereScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
   let materials: Material[] = [
-    new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
-    new Diffuse({ color: new Color(1, 0.05, 0.05) }),
+    new EONDiffuse({ color: new Color(0.95, 0.95, 0.95), roughness: 1 }),
+    new EONDiffuse({ color: new Color(1, 0.05, 0.05), roughness: 1 }),
     new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), roughness: 0, anisotropy: 0 }),
-    new Emissive({ color: new Color(1, 1, 1), intensity: 10 }),
-    new Diffuse({ color: new Color(0.05, 1, 0.05) }),
+    new Emissive({ color: new Color(1, 1, 1), intensity: 1 }),
+    new EONDiffuse({ color: new Color(0.05, 1, 0.05), roughness: 1 }),
     new Dielectric({
       absorption: new Color(0.095, 0.195, 0.295),
       roughness: 0.05,
@@ -58,7 +59,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     triangles = [...triangles, ...geometryToTriangles(pg, mi)];
   }
 
-  const ls = 1.5;
+  const ls = 5;
   let lpg = new PlaneGeometry(ls, ls);
   lpg.rotateX(Math.PI * 0.5);
   lpg.translate(0, 3.9, 0);
@@ -68,7 +69,8 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 1);
 
-  let mat = new Diffuse({ color: new Color(0.95, 0.95, 0.95) });
+  // let mat = new Diffuse({ color: new Color(1, 1, 1) });
+  let mat = new EONDiffuse({ color: new Color(1, 1, 1), roughness: 1 });
   // let mat = new TorranceSparrow({
   //   color: new Color(0.99, 0.99, 0.99),
   //   roughness: 0.9,
@@ -85,9 +87,9 @@ export async function cornellSphereScene(): Promise<C2Scene> {
 
   // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue-uv.glb');
   // let group = gltf.scene.children[0];
-  // group.scale.set(-2.15, 2.15, 2.15);
-  // group.position.set(0, -3.25, 1.5);
-  // // group.rotation.z = -1.4;
+  // group.scale.set(-2.85, 2.85, 2.85);
+  // group.position.set(0.1, -4, 1.5);
+  // group.rotation.z = 0.4;
   // triangles = [...triangles, ...meshToTriangles(group, materials.length - 1)];
 
   // create & set camera

@@ -4,7 +4,8 @@ export const MATERIAL_TYPE = {
   DIFFUSE: 0,
   EMISSIVE: 1,
   TORRANCE_SPARROW: 2,
-  DIELECTRIC: 3
+  DIELECTRIC: 3,
+  EON_DIFFUSE: 4
 };
 
 export class Material {
@@ -48,6 +49,10 @@ export class Material {
 
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
           shadeDiffuse(ires, ray, reflectance, rad, tid, i);
+        }
+
+        if (materialType == ${MATERIAL_TYPE.EON_DIFFUSE}) {
+          shadeEONDiffuse(ires, ray, reflectance, rad, tid, i);
         }
 
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {

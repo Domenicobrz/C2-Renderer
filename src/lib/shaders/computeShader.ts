@@ -21,6 +21,7 @@ import { texturePart } from './parts/texture';
 import { shadingNormalsPart } from './parts/shadingNormal';
 import type { LUTManager } from '$lib/managers/lutManager';
 import { getRandomPart } from './parts/getRandom';
+import { EONDiffuse } from '$lib/materials/EONDiffuse';
 
 export function getComputeShader(lutManager: LUTManager) {
   return /* wgsl */ `
@@ -43,6 +44,9 @@ ${Emissive.shaderShadeEmissive()}
 ${Diffuse.shaderStruct()}
 ${Diffuse.shaderCreateStruct()}
 ${Diffuse.shaderShadeDiffuse()}
+${EONDiffuse.shaderStruct()}
+${EONDiffuse.shaderCreateStruct()}
+${EONDiffuse.shaderShadeEONDiffuse()}
 ${TorranceSparrow.shaderStruct()}
 ${TorranceSparrow.shaderCreateStruct()}
 ${TorranceSparrow.shaderBRDF()}

@@ -293,6 +293,10 @@ export class EONDiffuse extends Material {
         pdf: ptr<function, f32>,
         misWeight: ptr<function, f32>
       ) {
+        // *********************************************************************
+        // if you switch to another brdf pdf, remember to also update the light sample brdf's pdf
+        // *********************************************************************
+
         // // uniform hemisphere sampling:
         // let rand_1 = rands.x;
         // let rand_2 = rands.y;
@@ -302,9 +306,6 @@ export class EONDiffuse extends Material {
         // let newDir = vec3f(cos(phi) * root, sin(phi) * root, rand_2);
         // var brdfSamplePdf = 1 / (2 * PI);
 
-        // // *********************************************************************
-        // // if you switch to another brdf pdf, remember to also update the light sample brdf's pdf
-        // // *********************************************************************
         // // cosine-weighted hemisphere sampling:
         // let rand_1 = rands.x;
         // // if rand_2 is 0, both cosTheta and the pdf will be zero
@@ -330,40 +331,52 @@ export class EONDiffuse extends Material {
         *misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
       }
 
-      // fn shadeEONDiffuseSampleLight(
-      //   rands: vec4f, 
-      //   N: vec3f,
-      //   ray: ptr<function, Ray>, 
-      //   pdf: ptr<function, f32>,
-      //   misWeight: ptr<function, f32>,
-      //   lightSampleRadiance: ptr<function, vec3f>,
-      // ) {
-      //   let lightSample = getLightSample(ray.origin, rands);
-      //   *pdf = lightSample.pdf;
-      //   let backSideHit = lightSample.backSideHit;
+      fn shadeEONDiffuseSampleLight(
+        rands: vec4f, 
+        material: EONDiffuse,
+        wo: vec3f,
+        wi: ptr<function, vec3f>,
+        worldSpaceRay: ptr<function, Ray>, 
+        TBN: mat3x3f,
+        TBNinverse: mat3x3f,
+        brdf: ptr<function, vec3f>,
+        pdf: ptr<function, f32>,
+        misWeight: ptr<function, f32>,
+        lightSampleRadiance: ptr<function, vec3f>,
+      ) {
+        let lightSample = getLightSample(worldSpaceRay.origin, rands);
+        *pdf = lightSample.pdf;
+        let backSideHit = lightSample.backSideHit;
 
-      //   (*ray).direction = lightSample.direction;
+        // from world-space to tangent-space
+        *wi = TBNinverse * lightSample.direction;
+        *brdf = f_EON(material.color, material.roughness, *wi, wo, true);
 
-      //   let cosTheta = dot(lightSample.direction, N);
-      //   var brdfSamplePdf = cosTheta / PI;
-      //   // if the sampled ray sits below the hemisphere, brdfSamplePdf is zero,
-      //   // since diffuse materials never sample a direction under the hemisphere.
-      //   // However at this point, it doesn't even make sense to evaluate the 
-      //   // rest of this function since we would be wasting a sample, thus we'll return
-      //   // misWeight = 0 instead.
-      //   if (
-      //     dot((*ray).direction, N) < 0.0 ||
-      //     lightSample.pdf == 0.0
-      //   ) {
-      //     brdfSamplePdf = 0;
-      //     *misWeight = 0; *pdf = 1; 
-      //     *lightSampleRadiance = vec3f(0.0);
-      //     return;
-      //   }
+        // cosine-weighted pdf
+        // let cosTheta = dot(lightSample.direction, N);
+        // var brdfSamplePdf = cosTheta / PI;
+        
+        // CLTC pdf
+        var brdfSamplePdf = pdf_EON(wo, *wi, material.roughness);
 
-      //   *lightSampleRadiance = lightSample.radiance;
-      //   *misWeight = getMisWeight(lightSample.pdf, brdfSamplePdf);
-      // }
+        // if the sampled ray sits below the hemisphere, brdfSamplePdf is zero,
+        // since diffuse materials never sample a direction under the hemisphere.
+        // However at this point, it doesn't even make sense to evaluate the 
+        // rest of this function since we would be wasting a sample, thus we'll return
+        // misWeight = 0 instead.
+        if (
+          brdfSamplePdf == 0.0 ||
+          lightSample.pdf == 0.0
+        ) {
+          brdfSamplePdf = 0;
+          *misWeight = 0; *pdf = 1; 
+          *lightSampleRadiance = vec3f(0.0);
+          return;
+        }
+
+        *lightSampleRadiance = lightSample.radiance;
+        *misWeight = getMisWeight(lightSample.pdf, brdfSamplePdf);
+      }
 
       fn shadeEONDiffuse(
         ires: BVHIntersectionResult, 
@@ -425,42 +438,63 @@ export class EONDiffuse extends Material {
         let wo = TBNinverse * -(*ray).direction;
 
 
-        // if (config.MIS_TYPE == BRDF_ONLY) {
+        // to my understanding, this model includes the 
+        // reflectance *= material.color multiplication
+        // in the brdf itself. We'll use this convention everywhere else inside C2
+
+
+        if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32; var brdf: vec3f;
           shadeEONDiffuseSampleBRDF(rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &w);
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin += (*ray).direction * 0.001;
-          *reflectance *= (brdf / pdf) * material.color * max(dot(N, (*ray).direction), 0.0);
-        // }
+          *reflectance *= (brdf / pdf) * max(dot(N, (*ray).direction), 0.0);
+        }
 
-        // if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-        //   var pdf: f32; var misWeight: f32; var ls: vec3f;
-        //   let isBrdfSample = rands1.w < 0.5;
-        //   if (isBrdfSample) {
-        //     shadeEONDiffuseSampleBRDF(rands1, N, ray, &pdf, &misWeight, ires);
-        //   } else {
-        //     shadeEONDiffuseSampleLight(rands2, N, ray, &pdf, &misWeight, &ls);          
-        //   }
-        //   (*ray).origin += (*ray).direction * 0.001;
-        //   *reflectance *= brdf * (misWeight / pdf) * material.color * max(dot(N, (*ray).direction), 0.0);
-        // }
+        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
+          var pdf: f32; var misWeight: f32; var ls: vec3f; var brdf: vec3f;
+          let isBrdfSample = rands1.w < 0.5;
+          if (isBrdfSample) {
+            shadeEONDiffuseSampleBRDF(rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &misWeight);
+          } else {
+            shadeEONDiffuseSampleLight(
+              rands2, material, wo, &wi, ray, TBN, TBNinverse, &brdf, &pdf, &misWeight, &ls
+            );         
+          }
+          (*ray).direction = normalize(TBN * wi);
+          (*ray).origin += (*ray).direction * 0.001;
+          *reflectance *= brdf * (misWeight / pdf) * max(dot(N, (*ray).direction), 0.0);
+        }
 
-        // if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-        //   var brdfSamplePdf: f32; var brdfMisWeight: f32; 
-        //   var lightSamplePdf: f32; var lightMisWeight: f32; var lightSampleRadiance: vec3f;
-        //   var rayBrdf = Ray((*ray).origin, (*ray).direction);
-        //   var rayLight = Ray((*ray).origin, (*ray).direction);
+        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
+          var brdfSamplePdf: f32; var brdfMisWeight: f32; 
+          var brdfSampleBrdf: vec3f;
 
-        //   shadeEONDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight, ires);
-        //   shadeEONDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
+          var lightSampleBrdf: vec3f; var lightSamplePdf: f32; var lightMisWeight: f32;  
+          var lightRadiance: vec3f; var lightSampleWi: vec3f;
 
-        //   (*ray).origin += rayBrdf.direction * 0.001;
-        //   (*ray).direction = rayBrdf.direction;
+          var rayBrdf = Ray((*ray).origin, (*ray).direction);
+          var rayLight = Ray((*ray).origin, (*ray).direction);
 
-        //   // light contribution
-        //   *rad += material.color * brdf * lightSampleRadiance * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
-        //   *reflectance *= material.color * brdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);    
-        // }
+          shadeEONDiffuseSampleBRDF(
+            rands1, material, wo, &wi, ray, TBN, &brdfSampleBrdf, &brdfSamplePdf, 
+            &brdfMisWeight
+          );
+          shadeEONDiffuseSampleLight(
+            rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse,
+            &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
+          );
+
+          (*ray).direction = normalize(TBN * wi);
+          (*ray).origin += (*ray).direction * 0.001;
+          
+          // from tangent space to world space
+          lightSampleWi = normalize(TBN * lightSampleWi);
+
+          // light contribution
+          *rad += *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * max(dot(N, lightSampleWi), 0.0);
+          *reflectance *= brdfSampleBrdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);    
+        }
       }
     `;
   }

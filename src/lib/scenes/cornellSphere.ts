@@ -18,9 +18,12 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   let materials: Material[] = [
     new EONDiffuse({ color: new Color(0.95, 0.95, 0.95), roughness: 1 }),
     new EONDiffuse({ color: new Color(1, 0.05, 0.05), roughness: 1 }),
+    // new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
+    // new Diffuse({ color: new Color(1, 0.05, 0.05) }),
     new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), roughness: 0, anisotropy: 0 }),
     new Emissive({ color: new Color(1, 1, 1), intensity: 1 }),
     new EONDiffuse({ color: new Color(0.05, 1, 0.05), roughness: 1 }),
+    // new Diffuse({ color: new Color(0.05, 1, 0.05) }),
     new Dielectric({
       absorption: new Color(0.095, 0.195, 0.295),
       roughness: 0.05,

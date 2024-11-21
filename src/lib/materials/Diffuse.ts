@@ -231,13 +231,13 @@ export class Diffuse extends Material {
         let rands1 = vec4f(getRand2D(), getRand2D());
         let rands2 = vec4f(getRand2D(), getRand2D());
 
-        var brdf = 1 / PI;
+        var brdf = color / PI;
 
         if (config.MIS_TYPE == BRDF_ONLY) {
           var pdf: f32; var w: f32;
           shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &w, ires);
           (*ray).origin += (*ray).direction * 0.001;
-          *reflectance *= brdf * (1 / pdf) * color * max(dot(N, (*ray).direction), 0.0);
+          *reflectance *= brdf * (1 / pdf) * max(dot(N, (*ray).direction), 0.0);
         }
 
         if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
@@ -249,7 +249,7 @@ export class Diffuse extends Material {
             shadeDiffuseSampleLight(rands2, N, ray, &pdf, &misWeight, &ls);          
           }
           (*ray).origin += (*ray).direction * 0.001;
-          *reflectance *= brdf * (misWeight / pdf) * color * max(dot(N, (*ray).direction), 0.0);
+          *reflectance *= brdf * (misWeight / pdf) * max(dot(N, (*ray).direction), 0.0);
         }
 
         if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
@@ -265,8 +265,8 @@ export class Diffuse extends Material {
           (*ray).direction = rayBrdf.direction;
 
           // light contribution
-          *rad += color * brdf * lightSampleRadiance * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
-          *reflectance *= color * brdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);    
+          *rad += brdf * lightSampleRadiance * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
+          *reflectance *= brdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);    
         }
       }
     `;

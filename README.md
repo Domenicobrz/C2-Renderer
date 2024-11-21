@@ -9,7 +9,7 @@ A simple webgpu renderer implemented with javascript and svelte
 1. Anisotropic Torrance-Sparrow BRDFs for conductors and dielectrics
 2. Multi-scattering energy compensation LUTs for conductors and dielectrics
 3. Beer-lambert volume absorption for dielectric materials
-4. Simple Lambertian BRDF
+4. Simple Lambertian BRDF and Energy-preserving Oren Nayar diffuse BRDF model
 5. Multiple importance sampling with either one-sample model (OSM) or next-event estimation (NEE)
 6. Support for bump maps, albedo and roughness textures
 7. Importance-sampled environment-maps with PiecewiseConstant2D constructs from pbrt v4, including switch between standard and compensated distributions

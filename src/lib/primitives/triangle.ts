@@ -32,11 +32,22 @@ export class Triangle {
     uv2?: Vector2,
     tang0?: Vector3,
     tang1?: Vector3,
-    tang2?: Vector3
+    tang2?: Vector3,
+    matrixDeterminant?: number
   ) {
     let v1v0 = v1.clone().sub(v0);
     let v2v0 = v2.clone().sub(v0);
     this.geometricNormal = v1v0.cross(v2v0).normalize();
+
+    // some transformation matrices like
+    // scale (-1,1,1) can flip the handedness of the
+    // cross product used to calculate the geometric
+    // normal, in that case the determinant will be negative
+    // and it'll signal that we have to negate the
+    // resulting normal to keep it consistent
+    if (matrixDeterminant != undefined && matrixDeterminant < 0) {
+      this.geometricNormal.negate();
+    }
 
     if (norm0 && norm1 && norm2) {
       this.norm0 = norm0;

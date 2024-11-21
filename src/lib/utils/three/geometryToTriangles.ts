@@ -23,6 +23,8 @@ export function geometryToTriangles(
     geometry.applyMatrix4(matrix);
   }
 
+  let matrixDeterminant = matrix?.determinant();
+
   let posArray = geometry.attributes.position.array;
   let normArray = geometry.attributes.normal.array;
   let uvArray = geometry.attributes.uv?.array || [];
@@ -76,7 +78,8 @@ export function geometryToTriangles(
         hasUvs ? uv2 : undefined,
         hasTangents ? tg0 : undefined,
         hasTangents ? tg1 : undefined,
-        hasTangents ? tg2 : undefined
+        hasTangents ? tg2 : undefined,
+        matrixDeterminant
       )
     );
   }

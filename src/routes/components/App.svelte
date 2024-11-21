@@ -70,16 +70,16 @@
     <Folder name="Info">
       <Info />
     </Folder>
-    <Folder name="Camera" expanded={false}>
+    <Folder name="Camera">
       <CameraSettings {canvasRef} {renderer} />
     </Folder>
-    <Folder name="Envmap" disabled={!$configOptions.shaderConfig.HAS_ENVMAP} expanded={false}>
+    <Folder name="Envmap" disabled={!$configOptions.shaderConfig.HAS_ENVMAP}>
       <Envmap />
     </Folder>
     <Folder name="Sampling" roundBox>
       <Sampling />
     </Folder>
-    <Folder name="Performance" expanded={true}>
+    <Folder name="Performance" expanded={false}>
       <Performance />
     </Folder>
     <Folder name="Operate" roundBox>

@@ -9,6 +9,8 @@ import { Dielectric } from '$lib/materials/dielectric';
 import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 import type { C2Scene } from '$lib/createScene';
 import { Orbit } from '$lib/controls/Orbit';
+import { GLTFLoader } from 'three/examples/jsm/Addons.js';
+import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
 
 export async function cornellSphereScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -16,8 +18,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
     new Diffuse({ color: new Color(1, 0.05, 0.05) }),
     new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), roughness: 0, anisotropy: 0 }),
-    // new Emissive({ color: new Color(1, 1, 1), intensity: 10 }),
-    new Emissive({ color: new Color(1, 1, 1), intensity: 1 }),
+    new Emissive({ color: new Color(1, 1, 1), intensity: 10 }),
     new Diffuse({ color: new Color(0.05, 1, 0.05) }),
     new Dielectric({
       absorption: new Color(0.095, 0.195, 0.295),
@@ -28,79 +29,46 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   ];
 
   for (let i = 0; i < 5; i++) {
-    let ps = 4;
+    let s = 8;
+    let pg = new PlaneGeometry(s, s);
+    pg.translate(0, 0, -s * 0.5);
     let mi = 0;
 
-    let raxis = new Vector3(1, 0, 0),
-      rangle = 0;
-
     if (i == 0) {
-      mi = 0;
+      pg.rotateY(Math.PI);
+      pg.rotateX(0);
     }
-
     if (i == 1) {
-      raxis = new Vector3(0, 0, 1);
-      rangle = Math.PI * 0.5;
-      mi = 1;
+      pg.rotateY(Math.PI);
+      pg.rotateX(Math.PI * 0.5);
     }
     if (i == 2) {
-      raxis = new Vector3(0, 0, 1);
-      rangle = Math.PI * 1.0;
+      pg.rotateY(Math.PI);
+      pg.rotateX(-Math.PI * 0.5);
     }
-
     if (i == 3) {
-      raxis = new Vector3(0, 0, 1);
-      rangle = Math.PI * 1.5;
-      mi = 4; // diffuse green
+      pg.rotateY(Math.PI * 0.5);
+      mi = 4;
     }
-
     if (i == 4) {
-      raxis = new Vector3(-1, 0, 0);
-      rangle = Math.PI * 0.5;
+      pg.rotateY(-Math.PI * 0.5);
+      mi = 1;
     }
 
-    triangles.push(
-      new Triangle(
-        new Vector3(-1, -1, -1).multiplyScalar(ps).applyAxisAngle(raxis, rangle),
-        new Vector3(-1, -1, +1).multiplyScalar(ps).applyAxisAngle(raxis, rangle),
-        new Vector3(+1, -1, +1).multiplyScalar(ps).applyAxisAngle(raxis, rangle),
-        mi
-      )
-    );
-    triangles.push(
-      new Triangle(
-        new Vector3(+1, -1, +1).multiplyScalar(ps).applyAxisAngle(raxis, rangle),
-        new Vector3(-1, -1, -1).multiplyScalar(ps).applyAxisAngle(raxis, rangle),
-        new Vector3(+1, -1, -1).multiplyScalar(ps).applyAxisAngle(raxis, rangle),
-        mi
-      )
-    );
+    triangles = [...triangles, ...geometryToTriangles(pg, mi)];
   }
 
-  const ls = 5.75;
-  const lt = new Vector3(0, 3.9, 0);
-  triangles.push(
-    new Triangle(
-      new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
-      new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
-      new Vector3(-1, 0, +1).multiplyScalar(ls).add(lt),
-      3
-    )
-  );
-  triangles.push(
-    new Triangle(
-      new Vector3(-1, 0, -1).multiplyScalar(ls).add(lt),
-      new Vector3(+1, 0, -1).multiplyScalar(ls).add(lt),
-      new Vector3(+1, 0, +1).multiplyScalar(ls).add(lt),
-      3
-    )
-  );
+  const ls = 1.5;
+  let lpg = new PlaneGeometry(ls, ls);
+  lpg.rotateX(Math.PI * 0.5);
+  lpg.translate(0, 3.9, 0);
+  triangles = [...triangles, ...geometryToTriangles(lpg, 3)];
 
   let mesh = new Mesh(new SphereGeometry(1, 25, 25));
   mesh.scale.set(2, 2, 2);
   mesh.position.set(0, 0, 1);
 
-  let mat = new Diffuse({ color: new Color(0.99, 0.99, 0.99) });
+  let mat = new Diffuse({ color: new Color(0.95, 0.95, 0.95) });
   // let mat = new TorranceSparrow({
   //   color: new Color(0.99, 0.99, 0.99),
   //   roughness: 0.9,
@@ -114,6 +82,13 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   // });
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
+
+  // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue-uv.glb');
+  // let group = gltf.scene.children[0];
+  // group.scale.set(-2.15, 2.15, 2.15);
+  // group.position.set(0, -3.25, 1.5);
+  // // group.rotation.z = -1.4;
+  // triangles = [...triangles, ...meshToTriangles(group, materials.length - 1)];
 
   // create & set camera
   const camera = new Orbit();

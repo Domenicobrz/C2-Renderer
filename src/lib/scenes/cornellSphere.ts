@@ -21,7 +21,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     // new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
     // new Diffuse({ color: new Color(1, 0.05, 0.05) }),
     new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), roughness: 0, anisotropy: 0 }),
-    new Emissive({ color: new Color(1, 1, 1), intensity: 1 }),
+    new Emissive({ color: new Color(1, 1, 1), intensity: 20 }),
     new EONDiffuse({ color: new Color(0.05, 1, 0.05), roughness: 1 }),
     // new Diffuse({ color: new Color(0.05, 1, 0.05) }),
     new Dielectric({
@@ -62,7 +62,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
     triangles = [...triangles, ...geometryToTriangles(pg, mi)];
   }
 
-  const ls = 5;
+  const ls = 1;
   let lpg = new PlaneGeometry(ls, ls);
   lpg.rotateX(Math.PI * 0.5);
   lpg.translate(0, 3.9, 0);

@@ -22,3 +22,10 @@ A simple webgpu renderer implemented with javascript and svelte
 <img src="screenshots/1.png" width="90%" />
 <img src="screenshots/3.png" width="90%" />
 <img src="screenshots/2.png" width="90%" />
+
+###### C2 implements research from:
+
+1. [EON: A practical energy-preserving rough diffuse BRDF](https://arxiv.org/pdf/2410.18026)
+2. [Practical multiple scattering compensation for microfacet models](https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf)
+3. [R2 Low discrepancy sequence](https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/)
+4. [Multiple importance sampling](https://graphics.stanford.edu/courses/cs348b-03/papers/veach-chapter9.pdf)

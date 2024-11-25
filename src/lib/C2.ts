@@ -1,4 +1,4 @@
-import { TextureLoader, Vector2, Vector3 } from 'three';
+import { Vector2 } from 'three';
 import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
@@ -7,15 +7,13 @@ import { centralStatusMessage, renderView, samplesInfo } from '../routes/stores/
 import { createScene } from './createScene';
 import type { C2Scene } from './createScene';
 import { TileSequence } from './tile';
-import { RenderTextureSegment } from './segment/renderTextureSegment';
 import { PreviewSegment } from './segment/previewSegment';
 import { get } from 'svelte/store';
 import { tick } from './utils/tick';
 import { getDeviceAndContext } from './webgpu-utils/getDeviceAndContext';
-import { MultiScatterLUTSegment } from './segment/multiScatterLUTSegment';
-import { LUTManager, LUTtype } from './managers/lutManager';
+import { ReSTIRDLSegment } from './segment/ReSTIRDLSegment';
 
-let computeSegment: ComputeSegment;
+let computeSegment: ComputeSegment | ReSTIRDLSegment;
 let renderSegment: RenderSegment;
 let previewSegment: PreviewSegment;
 let scene: C2Scene;
@@ -54,7 +52,8 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
 
   // *************** compute & render segments ****************
   const tileSequence = new TileSequence();
-  computeSegment = new ComputeSegment(tileSequence);
+  // computeSegment = new ComputeSegment(tileSequence);
+  computeSegment = new ReSTIRDLSegment();
 
   centralStatusMessage.set('creating scene');
   // passed down to both compute and render segment
@@ -100,7 +99,7 @@ function onCanvasResize(
   canvas: HTMLCanvasElement,
   device: GPUDevice,
   scene: C2Scene,
-  computeSegment: ComputeSegment,
+  computeSegment: ComputeSegment | ReSTIRDLSegment,
   renderSegment: RenderSegment,
   previewSegment: PreviewSegment
 ) {
@@ -177,14 +176,18 @@ function computeRenderLoop() {
     .getDeltaInMilliseconds()
     .then((delta) => {
       if (delta < 25) {
-        computeSegment.increaseTileSize();
+        if ('increaseTileSize' in computeSegment) {
+          computeSegment.increaseTileSize();
+        }
       } else if (delta > 100) {
         // unfortunately some pixels in the long run might be computed much less than others
         // by following this approach of increasing / decreasing tile size.
         // I did find however that having a "range" of performance values helped with the issue
         // instead of having e.g. increase if < 30 or decrease if > 30, having a range
         // helped with dealing with the issue of some pixels not being computed as often as others
-        computeSegment.decreaseTileSize();
+        if ('decreaseTileSize' in computeSegment) {
+          computeSegment.decreaseTileSize();
+        }
       }
       samplesInfo.setPerformance(delta);
     })

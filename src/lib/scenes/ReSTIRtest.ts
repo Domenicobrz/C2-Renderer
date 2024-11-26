@@ -15,7 +15,7 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
     new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
     new Diffuse({ color: new Color(1, 0.05, 0.05) }),
     new Diffuse({ color: new Color(0.05, 1, 0.05) }),
-    new Emissive({ color: new Color(1, 1, 1), intensity: 20 })
+    new Emissive({ color: new Color(1, 1, 1), intensity: 30 })
   ];
 
   for (let i = 0; i < 5; i++) {

@@ -41,7 +41,7 @@ ${Emissive.shaderCreateStruct()}
 ${Emissive.shaderShadeEmissive()}
 ${Diffuse.shaderStruct()}
 ${Diffuse.shaderCreateStruct()}
-${Diffuse.shaderShadeDiffuse()}
+${'' /* Diffuse.shaderShadeDiffuse() */}
 ${'' /* EONDiffuse.shaderStruct() */}
 ${'' /* EONDiffuse.shaderCreateStruct() */}
 ${'' /* EONDiffuse.shaderShadeEONDiffuse() */}
@@ -122,6 +122,143 @@ fn debugLog(value: f32) {
   debugInfo.debugLogIndex++;
 }
 
+struct Reservoir {
+  Y: vec3f,
+  Wy: f32,
+  wSum: f32,
+  isNull: bool,
+}
+
+fn updateReservoir(reservoir: ptr<function, Reservoir>, Xi: vec3f, wi: f32) {
+  (*reservoir).wSum = (*reservoir).wSum + wi;
+  let prob = wi / (*reservoir).wSum;
+
+  if (getRand2D().x < prob) {
+    (*reservoir).Y = Xi;
+    (*reservoir).isNull = false;
+  }
+} 
+
+fn getLuminance(emission: vec3f) -> f32 {
+  return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
+}
+
+fn getDirectLightEmission(direction: vec3f, ray: ptr<function, Ray>) -> vec3f {
+  let ires = bvhIntersect(Ray(ray.origin + direction * 0.001, direction));
+  // this condition will never happen  
+  if (!ires.hit) {
+    return vec3f(0.0);
+  }
+  let material: Emissive = createEmissive(ires.triangle.materialOffset);
+  let sampleRadiance = material.color * material.intensity;
+  return sampleRadiance;
+}
+
+fn pHat(sampleDirection: vec3f, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> f32 {
+  let sampleRadiance = getDirectLightEmission(sampleDirection, ray);
+  return brdf * max(dot(N, sampleDirection), 0.0) * getLuminance(sampleRadiance);
+}
+
+// 6 random values used for each candidate, keep that in mind
+fn Resample(M: u32, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> Reservoir {
+  var r = Reservoir(vec3f(0.0), 0.0, 0.0, true);
+  let mi = 1.0 / f32(M);
+
+  for (var i: u32 = 0; i < M; i++) {
+    let rands = vec4f(getRand2D(), getRand2D());
+    let lightSample = getLightSample(ray.origin, rands);
+    let direction = lightSample.direction;
+    let radiance = lightSample.radiance;
+    // ****************************************************
+    // ****************************************************
+    // Our sampling routine "includes" the visibility test
+    // pdf will be zero if the ray was obstructed. 
+    // We're also repeating the bvh intersection inside pHat unfortunately
+    // ****************************************************
+    // ****************************************************
+    let pdf = lightSample.pdf;
+    var wi = 0.0;
+    if (pdf > 0.0) {
+      wi = mi * pHat(direction, ray, N, brdf) * (1.0 / pdf);
+    
+      updateReservoir(&r, direction, wi);
+    }
+  }
+
+  if (!r.isNull) {
+    r.Wy = 1 / pHat(r.Y, ray, N, brdf) * r.wSum;
+  }
+
+  return r;
+}
+
+fn shadeDiffuse(
+  ires: BVHIntersectionResult, 
+  ray: ptr<function, Ray>,
+  reflectance: ptr<function, vec3f>, 
+  rad: ptr<function, vec3f>,
+  tid: vec3u,
+  i: i32
+) {
+  let hitPoint = ires.hitPoint;
+  let material: Diffuse = createDiffuse(ires.triangle.materialOffset);
+
+  var color = material.color;
+  if (material.mapLocation.x > -1) {
+    color *= getTexelFromTextureArrays(material.mapLocation, ires.uv, material.mapUvRepeat).xyz;
+  }
+
+  var vertexNormal = ires.normal;
+  // the normal flip is calculated using the geometric normal to avoid
+  // black edges on meshes displaying strong smooth-shading via vertex normals
+  if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
+    vertexNormal = -vertexNormal;
+  }
+  var N = vertexNormal;
+  var bumpOffset: f32 = 0.0;
+  if (material.bumpMapLocation.x > -1) {
+    N = getShadingNormal(
+      material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
+      ires, &bumpOffset
+    );
+  }
+
+  // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
+  (*ray).origin = ires.hitPoint;
+  // in practice however, only for Dielectrics we need the exact origin, 
+  // for Diffuse we can apply the bump offset if necessary
+  if (bumpOffset > 0.0) {
+    (*ray).origin += vertexNormal * bumpOffset;
+  }
+
+  // rands1.w is used for ONE_SAMPLE_MODEL
+  // rands1.xy is used for brdf samples
+  // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
+  let rands1 = vec4f(getRand2D(), getRand2D());
+  let rands2 = vec4f(getRand2D(), getRand2D());
+
+  var brdf = color / PI;
+  var colorLessBrdf = 1.0 / PI;
+
+  let reservoir = Resample(30, ray, N, colorLessBrdf);
+
+  if (!reservoir.isNull) {
+    let newDirection = reservoir.Y;
+
+    (*ray).origin += newDirection * 0.001;
+    (*ray).direction = newDirection;
+  
+    let lightSampleRadiance = getDirectLightEmission(newDirection, ray);
+
+    // light contribution
+    *rad += brdf * lightSampleRadiance * reservoir.Wy * (*reflectance) * max(dot(N, (*ray).direction), 0.0);
+    *reflectance *= 0.0;    
+  } else {
+    *rad += vec3f(0.0);
+    *reflectance *= 0.0;    
+  }
+}
+
 // ***** Things to remember:  (https://webgpureport.org/)
 // maxStorageBuffersPerShaderStage = 8
 // maxUniformBuffersPerShaderStage = 12 (maxUniformBuffersPerShaderStage)
@@ -168,7 +305,8 @@ fn shade(
 
   var reflectance = vec3f(1.0);
   var rad = vec3f(0.0);
-  for (var i = 0; i < config.BOUNCES_COUNT; i++) {
+  // for (var i = 0; i < config.BOUNCES_COUNT; i++) {
+  for (var i = 0; i < 1; i++) {
     if (rayContribution == 0.0) { break; }
 
     debugInfo.bounce = i;

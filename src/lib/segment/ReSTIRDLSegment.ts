@@ -187,6 +187,7 @@ export class ReSTIRDLSegment {
 
   onUpdateCamera() {
     if (!this.camera) return;
+    this.resetSamplesAndTile();
 
     cameraMovementInfoStore.update((v) => {
       v.position = this.camera.position.clone();

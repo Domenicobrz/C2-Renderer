@@ -71,6 +71,7 @@ ${Envmap.shaderMethods()}
 ${Plane.shaderMethods()}
 
 @group(0) @binding(0) var<storage, read_write> radianceOutput: array<vec3f>;
+// @group(0) @binding(0) var<storage, read_write> restirPassOutput: array<ReSTIRPassData>;
 @group(0) @binding(1) var<storage, read_write> samplesCount: array<u32>;
 @group(0) @binding(2) var<uniform> canvasSize: vec2u;
 
@@ -123,19 +124,30 @@ fn debugLog(value: f32) {
 }
 
 struct Reservoir {
-  Y: vec3f,
+  Y: vec3f,  // x2, light sample hit point
+  Y1: i32,   // light sample triangle index
   Wy: f32,
   wSum: f32,
-  isNull: bool,
+  isNull: f32,
 }
 
-fn updateReservoir(reservoir: ptr<function, Reservoir>, Xi: vec3f, wi: f32) {
+struct ReSTIRPassData {
+  hit: f32,
+  x0: vec3f,
+  x1: vec3f,
+  normal: vec3f,
+  x1TriangleIndex: i32,  // (necessary for material data)
+  r: Reservoir,          // (contains x2 and x2TriangleIndex)
+}
+
+fn updateReservoir(reservoir: ptr<function, Reservoir>, Xi: vec3f, Xi1: i32, wi: f32) {
   (*reservoir).wSum = (*reservoir).wSum + wi;
   let prob = wi / (*reservoir).wSum;
 
   if (getRand2D().x < prob) {
     (*reservoir).Y = Xi;
-    (*reservoir).isNull = false;
+    (*reservoir).Y1 = Xi1;
+    (*reservoir).isNull = -1.0;
   }
 } 
 
@@ -162,13 +174,14 @@ fn pHat(samplePoint: vec3f, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> f32
 
 // 6 random values used for each candidate, keep that in mind
 fn Resample(M: u32, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> Reservoir {
-  var r = Reservoir(vec3f(0.0), 0.0, 0.0, true);
+  var r = Reservoir(vec3f(0.0), 0, 0.0, 0.0, 1.0);
   let mi = 1.0 / f32(M);
 
   for (var i: u32 = 0; i < M; i++) {
     let rands = vec4f(getRand2D(), getRand2D());
     let lightSample = getLightSample(ray.origin, rands);
     let point = lightSample.hitPoint;
+    let triangleIndex = lightSample.triangleIndex;
     let radiance = lightSample.radiance;
     // ****************************************************
     // ****************************************************
@@ -182,11 +195,11 @@ fn Resample(M: u32, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> Reservoir {
     if (pdf > 0.0) {
       wi = mi * pHat(point, ray, N, brdf) * (1.0 / pdf);
     
-      updateReservoir(&r, point, wi);
+      updateReservoir(&r, point, triangleIndex, wi);
     }
   }
 
-  if (!r.isNull) {
+  if (r.isNull <= 0.0) {
     r.Wy = 1 / pHat(r.Y, ray, N, brdf) * r.wSum;
   }
 
@@ -196,6 +209,7 @@ fn Resample(M: u32, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> Reservoir {
 fn shadeDiffuse(
   ires: BVHIntersectionResult, 
   ray: ptr<function, Ray>,
+  restirData: ptr<function, ReSTIRPassData>,
   reflectance: ptr<function, vec3f>, 
   rad: ptr<function, vec3f>,
   tid: vec3u,
@@ -224,6 +238,9 @@ fn shadeDiffuse(
     );
   }
 
+  let x0 = ray.origin;
+  let x1 = ires.hitPoint;
+
   // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
   (*ray).origin = ires.hitPoint;
   // in practice however, only for Dielectrics we need the exact origin, 
@@ -243,7 +260,16 @@ fn shadeDiffuse(
 
   let reservoir = Resample(30, ray, N, colorLessBrdf);
 
-  if (!reservoir.isNull) {
+  *restirData = ReSTIRPassData(
+    1.0,
+    x0,
+    x1,
+    N,
+    ires.triangleIndex,
+    reservoir
+  );
+
+  if (reservoir.isNull <= 0.0) {
     let newDirection = normalize(reservoir.Y - ray.origin);
 
     (*ray).origin += newDirection * 0.001;
@@ -270,6 +296,7 @@ fn shadeDiffuse(
 fn shade(
   ires: BVHIntersectionResult, 
   ray: ptr<function, Ray>,
+  restirData: ptr<function, ReSTIRPassData>,
   reflectance: ptr<function, vec3f>, 
   rad: ptr<function, vec3f>,
   tid: vec3u,
@@ -279,7 +306,7 @@ fn shade(
   let materialType = materialsData[materialOffset];
 
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-    shadeDiffuse(ires, ray, reflectance, rad, tid, i);
+    shadeDiffuse(ires, ray, restirData, reflectance, rad, tid, i);
   }
 }
 
@@ -304,6 +331,15 @@ fn shade(
   var rayContribution: f32;
   var ray = getCameraRay(tid, idx, &rayContribution);
 
+  var restirData = ReSTIRPassData(
+    -1.0,
+    vec3f(0),
+    vec3f(0),
+    vec3f(0),
+    -1,
+    Reservoir(vec3f(0.0), 0, 0, 0, 1.0),
+  );
+
   var reflectance = vec3f(1.0);
   var rad = vec3f(0.0);
   // for (var i = 0; i < config.BOUNCES_COUNT; i++) {
@@ -315,7 +351,7 @@ fn shade(
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
-      shade(ires, &ray, &reflectance, &rad, tid, i);
+      shade(ires, &ray, &restirData, &reflectance, &rad, tid, i);
     } else if (shaderConfig.HAS_ENVMAP) {
       // we bounced off into the envmap
       let envmapRad = getEnvmapRadiance(ray.direction);
@@ -335,6 +371,7 @@ fn shade(
     radianceOutput[idx] += rad * rayContribution;
   }
 
+  // restirPassOutput[idx] = restirData;
   samplesCount[idx] += 1;
 }
 `;

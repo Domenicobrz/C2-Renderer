@@ -154,7 +154,8 @@ fn getDirectLightEmission(direction: vec3f, ray: ptr<function, Ray>) -> vec3f {
   return sampleRadiance;
 }
 
-fn pHat(sampleDirection: vec3f, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> f32 {
+fn pHat(samplePoint: vec3f, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> f32 {
+  let sampleDirection = normalize(samplePoint - ray.origin);
   let sampleRadiance = getDirectLightEmission(sampleDirection, ray);
   return brdf * max(dot(N, sampleDirection), 0.0) * getLuminance(sampleRadiance);
 }
@@ -167,7 +168,7 @@ fn Resample(M: u32, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> Reservoir {
   for (var i: u32 = 0; i < M; i++) {
     let rands = vec4f(getRand2D(), getRand2D());
     let lightSample = getLightSample(ray.origin, rands);
-    let direction = lightSample.direction;
+    let point = lightSample.hitPoint;
     let radiance = lightSample.radiance;
     // ****************************************************
     // ****************************************************
@@ -179,9 +180,9 @@ fn Resample(M: u32, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> Reservoir {
     let pdf = lightSample.pdf;
     var wi = 0.0;
     if (pdf > 0.0) {
-      wi = mi * pHat(direction, ray, N, brdf) * (1.0 / pdf);
+      wi = mi * pHat(point, ray, N, brdf) * (1.0 / pdf);
     
-      updateReservoir(&r, direction, wi);
+      updateReservoir(&r, point, wi);
     }
   }
 
@@ -243,7 +244,7 @@ fn shadeDiffuse(
   let reservoir = Resample(30, ray, N, colorLessBrdf);
 
   if (!reservoir.isNull) {
-    let newDirection = reservoir.Y;
+    let newDirection = normalize(reservoir.Y - ray.origin);
 
     (*ray).origin += newDirection * 0.001;
     (*ray).direction = newDirection;

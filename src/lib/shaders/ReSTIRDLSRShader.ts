@@ -22,7 +22,7 @@ import type { LUTManager } from '$lib/managers/lutManager';
 import { getRandomPart } from './parts/getRandom';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
 
-export function getReSTIRDLShader(lutManager: LUTManager) {
+export function getReSTIRDLSRShader(lutManager: LUTManager) {
   return /* wgsl */ `
 // keep in mind that configManager.shaderPart() might return different shader code if the
 // internal shader configs have changed
@@ -70,9 +70,8 @@ ${Envmap.shaderStruct()}
 ${Envmap.shaderMethods()}
 ${Plane.shaderMethods()}
 
-// @group(0) @binding(0) var<storage, read_write> radianceOutput: array<vec3f>;
-@group(0) @binding(0) var<storage, read_write> restirPassOutput: array<ReSTIRPassData>;
-@group(0) @binding(1) var<storage, read_write> samplesCount: array<u32>;
+@group(0) @binding(0) var<storage, read_write> restirPassInput: array<ReSTIRPassData>;
+@group(0) @binding(1) var<storage, read_write> radianceOutput: array<vec3f>;
 @group(0) @binding(2) var<uniform> canvasSize: vec2u;
 
 // on a separate bind group since camera changes more often than data/canvasSize
@@ -143,8 +142,9 @@ struct ReSTIRPassData {
 fn updateReservoir(reservoir: ptr<function, Reservoir>, Xi: vec3f, Xi1: i32, wi: f32) {
   (*reservoir).wSum = (*reservoir).wSum + wi;
   let prob = wi / (*reservoir).wSum;
+  let rand = getRand2D().x;
 
-  if (getRand2D().x < prob) {
+  if (rand < prob) {
     (*reservoir).Y = Xi;
     (*reservoir).Y1 = Xi1;
     (*reservoir).isNull = -1.0;
@@ -155,10 +155,16 @@ fn getLuminance(emission: vec3f) -> f32 {
   return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
 }
 
-fn getDirectLightEmission(direction: vec3f, ray: ptr<function, Ray>) -> vec3f {
-  let ires = bvhIntersect(Ray(ray.origin + direction * 0.001, direction));
+fn getDirectLightEmission(direction: vec3f, origin: vec3f, x2TriangleIndex: i32) -> vec3f {
+  let ires = bvhIntersect(Ray(origin + direction * 0.001, direction));
   // this condition will never happen  
-  if (!ires.hit) {
+  if (!ires.hit) { 
+    return vec3f(0.0);
+  }
+  // however this one CAN happen because we're fixing x2
+  // but we're now changing x0 and x1 and that can lead to Visibility being 0 
+  // from that particular x1
+  if (ires.triangleIndex != x2TriangleIndex) {
     return vec3f(0.0);
   }
   let material: Emissive = createEmissive(ires.triangle.materialOffset);
@@ -166,147 +172,141 @@ fn getDirectLightEmission(direction: vec3f, ray: ptr<function, Ray>) -> vec3f {
   return sampleRadiance;
 }
 
-fn pHat(samplePoint: vec3f, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> f32 {
-  let sampleDirection = normalize(samplePoint - ray.origin);
-  let sampleRadiance = getDirectLightEmission(sampleDirection, ray);
-  return brdf * max(dot(N, sampleDirection), 0.0) * getLuminance(sampleRadiance);
+fn pHat(x0: vec3f, x1: vec3f, x2: vec3f, x2TriangleIndex: i32, N: vec3f) -> f32 {
+  let brdf = 1.0 / PI;
+  
+  let sampleDirection = normalize(x2 - x1);
+  let sampleRadiance = getDirectLightEmission(sampleDirection, x1, x2TriangleIndex);
+
+  let p = brdf * max(dot(N, sampleDirection), 0.0) * getLuminance(sampleRadiance);
+
+  return p;
 }
 
-// 6 random values used for each candidate, keep that in mind
-fn Resample(M: u32, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> Reservoir {
-  var r = Reservoir(vec3f(0.0), 0, 0.0, 0.0, 1.0);
-  let mi = 1.0 / f32(M);
+fn generalizedBalanceHeuristic(
+  x2: vec3f, x2TriangleIndex: i32, candidates: array<ReSTIRPassData, 5>, index: i32
+) -> f32 {
+  let M: i32 = 5;
 
-  for (var i: u32 = 0; i < M; i++) {
-    let rands = vec4f(getRand2D(), getRand2D());
-    let lightSample = getLightSample(ray.origin, rands);
-    let point = lightSample.hitPoint;
-    let triangleIndex = lightSample.triangleIndex;
-    let radiance = lightSample.radiance;
-    // ****************************************************
-    // ****************************************************
-    // Our sampling routine "includes" the visibility test
-    // pdf will be zero if the ray was obstructed. 
-    // We're also repeating the bvh intersection inside pHat unfortunately
-    // ****************************************************
-    // ****************************************************
-    let pdf = lightSample.pdf;
-    var wi = 0.0;
-    if (pdf > 0.0) {
-      wi = mi * pHat(point, ray, N, brdf) * (1.0 / pdf);
+  let xi0 = candidates[index].x0;
+  let xi1 = candidates[index].x1;
+  let Ni  = candidates[index].normal;
+  let pi = pHat(xi0, xi1, x2, x2TriangleIndex, Ni);
+  
+  var pjSum = 0.0;
+  
+  for (var i: i32 = 0; i < M; i++) {
+    let xj0 = candidates[i].x0;
+    let xj1 = candidates[i].x1;
+    let Nj  = candidates[i].normal;
     
-      updateReservoir(&r, point, triangleIndex, wi);
+    let pj = pHat(xj0, xj1, x2, x2TriangleIndex, Nj);
+    pjSum += pj;
+  }
+
+  return pi / pjSum;
+}
+
+fn SpatialResample(candidates: array<ReSTIRPassData, 5>) -> Reservoir {
+  // ******* important: first candidate is the current pixel's reservoir ***********
+  // ******* I should probably update this function to reflect that ***********
+  
+  var r = Reservoir(vec3f(0.0), 0, 0.0, 0.0, 1.0);
+  let M: i32 = 5;
+
+  let x0 = candidates[0].x0;
+  let x1 = candidates[0].x1;
+  let N = candidates[0].normal;
+
+  for (var i: i32 = 0; i < M; i++) {
+    let Xi = candidates[i].r.Y;
+    let Xi1 = candidates[i].r.Y1;
+    let Wxi = candidates[i].r.Wy;
+
+    let mi = generalizedBalanceHeuristic(Xi, Xi1, candidates, i);
+    let wi = mi * pHat(x0, x1, Xi, Xi1, N) * Wxi;
+
+    if (wi > 0.0) {
+      updateReservoir(&r, Xi, Xi1, wi);
     }
   }
 
   if (r.isNull <= 0.0) {
-    r.Wy = 1 / pHat(r.Y, ray, N, brdf) * r.wSum;
+    r.Wy = 1 / pHat(x0, x1, r.Y, r.Y1, N) * r.wSum;
   }
 
   return r;
 }
 
 fn shadeDiffuse(
-  ires: BVHIntersectionResult, 
-  ray: ptr<function, Ray>,
   restirData: ptr<function, ReSTIRPassData>,
-  reflectance: ptr<function, vec3f>, 
   rad: ptr<function, vec3f>,
   tid: vec3u,
   i: i32
 ) {
-  let hitPoint = ires.hitPoint;
-  let material: Diffuse = createDiffuse(ires.triangle.materialOffset);
+  let triangle = triangles[restirData.x1TriangleIndex];
+  let hitPoint = restirData.x1;
+  let material: Diffuse = createDiffuse(triangle.materialOffset);
 
   var color = material.color;
-  if (material.mapLocation.x > -1) {
-    color *= getTexelFromTextureArrays(material.mapLocation, ires.uv, material.mapUvRepeat).xyz;
-  }
+  // if (material.mapLocation.x > -1) {
+  //   color *= getTexelFromTextureArrays(material.mapLocation, ires.uv, material.mapUvRepeat).xyz;
+  // }
 
-  var vertexNormal = ires.normal;
-  // the normal flip is calculated using the geometric normal to avoid
-  // black edges on meshes displaying strong smooth-shading via vertex normals
-  if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
-    vertexNormal = -vertexNormal;
-  }
-  var N = vertexNormal;
-  var bumpOffset: f32 = 0.0;
-  if (material.bumpMapLocation.x > -1) {
-    N = getShadingNormal(
-      material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-      ires, &bumpOffset
-    );
-  }
+  // var vertexNormal = ires.normal;
+  // // the normal flip is calculated using the geometric normal to avoid
+  // // black edges on meshes displaying strong smooth-shading via vertex normals
+  // if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
+  //   vertexNormal = -vertexNormal;
+  // }
+  // var N = vertexNormal;
+  // var bumpOffset: f32 = 0.0;
+  // if (material.bumpMapLocation.x > -1) {
+  //   N = getShadingNormal(
+  //     material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
+  //     ires, &bumpOffset
+  //   );
+  // }
 
-  let x0 = ray.origin;
-  let x1 = ires.hitPoint;
+  var N = restirData.normal;
 
-  // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
-  (*ray).origin = ires.hitPoint;
-  // in practice however, only for Dielectrics we need the exact origin, 
-  // for Diffuse we can apply the bump offset if necessary
-  if (bumpOffset > 0.0) {
-    (*ray).origin += vertexNormal * bumpOffset;
-  }
-
-  // rands1.w is used for ONE_SAMPLE_MODEL
-  // rands1.xy is used for brdf samples
-  // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
-  let rands1 = vec4f(getRand2D(), getRand2D());
-  let rands2 = vec4f(getRand2D(), getRand2D());
+  // // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
+  // (*ray).origin = ires.hitPoint;
+  // // in practice however, only for Dielectrics we need the exact origin, 
+  // // for Diffuse we can apply the bump offset if necessary
+  // if (bumpOffset > 0.0) {
+  //   (*ray).origin += vertexNormal * bumpOffset;
+  // }
 
   var brdf = color / PI;
-  var colorLessBrdf = 1.0 / PI;
 
-  let reservoir = Resample(30, ray, N, colorLessBrdf);
+  let r = restirData.r;
+  if (r.isNull <= 0.0) {
+    let x2 = r.Y;
+    let x2TriangleIndex = r.Y1;
 
-  *restirData = ReSTIRPassData(
-    1.0,
-    x0,
-    x1,
-    N,
-    ires.triangleIndex,
-    reservoir
-  );
+    let lightDir = normalize(x2 - hitPoint);
 
-  if (reservoir.isNull <= 0.0) {
-    let newDirection = normalize(reservoir.Y - ray.origin);
+    let lightTriangle = triangles[x2TriangleIndex];
+    let material: Emissive = createEmissive(lightTriangle.materialOffset);
+    let sampleRadiance = material.color * material.intensity;
 
-    (*ray).origin += newDirection * 0.001;
-    (*ray).direction = newDirection;
-  
-    let lightSampleRadiance = getDirectLightEmission(newDirection, ray);
-
-    // light contribution
-    *rad += brdf * lightSampleRadiance * reservoir.Wy * (*reflectance) * max(dot(N, (*ray).direction), 0.0);
-    *reflectance *= 0.0;    
-  } else {
-    *rad += vec3f(0.0);
-    *reflectance *= 0.0;    
+    *rad += brdf * sampleRadiance * r.Wy * max(dot(N, lightDir), 0.0);
   }
 }
 
-// ***** Things to remember:  (https://webgpureport.org/)
-// maxStorageBuffersPerShaderStage = 8
-// maxUniformBuffersPerShaderStage = 12 (maxUniformBuffersPerShaderStage)
-// maxBindingsPerBindGroup = 1000
-// maxSampledTexturesPerShaderStage = 16
-// maxTextureDimension3D = 2048
-
 fn shade(
-  ires: BVHIntersectionResult, 
-  ray: ptr<function, Ray>,
   restirData: ptr<function, ReSTIRPassData>,
-  reflectance: ptr<function, vec3f>, 
   rad: ptr<function, vec3f>,
   tid: vec3u,
   i: i32) 
 {
-  let materialOffset = ires.triangle.materialOffset;
+  let triangle = triangles[restirData.x1TriangleIndex];
+  let materialOffset = triangle.materialOffset;
   let materialType = materialsData[materialOffset];
 
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-    shadeDiffuse(ires, ray, restirData, reflectance, rad, tid, i);
+    shadeDiffuse(restirData, rad, tid, i);
   }
 }
 
@@ -324,56 +324,58 @@ fn shade(
   if (debugPixelTarget.x == tid.x && debugPixelTarget.y == tid.y) {
     debugInfo.isSelectedPixel = true;
   }
-  debugInfo.sample = samplesCount[idx];
 
   initializeRandoms(tid, debugInfo.sample);
 
-  var rayContribution: f32;
-  var ray = getCameraRay(tid, idx, &rayContribution);
-
-  var restirData = ReSTIRPassData(
-    -1.0,
-    vec3f(0),
-    vec3f(0),
-    vec3f(0),
-    -1,
-    Reservoir(vec3f(0.0), 0, 0, 0, 1.0),
-  );
-
-  var reflectance = vec3f(1.0);
   var rad = vec3f(0.0);
-  // for (var i = 0; i < config.BOUNCES_COUNT; i++) {
-  for (var i = 0; i < 1; i++) {
-    if (rayContribution == 0.0) { break; }
+  var restirData = restirPassInput[idx];
 
-    debugInfo.bounce = i;
+  // pick 4 or 5 candidates, their restirPassData, and do the needful
+  // then modify restirData's reservoir such that it can be used on the shading routine
+  // actually the shading routine should not receive restirpass data, it's better if we 
+  // do something else once we figured out which sample we want to use
+  
+  // let's start with a total of 5 candidates
+  // ******* important: first candidate is current pixel's reservoir ***********
+  var candidates = array<ReSTIRPassData, 5>();
+  for (var i = 0; i < 5; i++) {
+    if (i == 0) {
+      candidates[i] = restirData;
+    } else {
+      // uniform circle sampling 
+      let circleRadiusInPixels = 5.0;
+      let rands = getRand2D();
+      let r = circleRadiusInPixels * sqrt(rands.x);
+      let theta = rands.y * 2.0 * PI;
 
-    let ires = bvhIntersect(ray);
+      let offx = i32(r * cos(theta));
+      let offy = i32(r * sin(theta));
 
-    if (ires.hit) {
-      shade(ires, &ray, &restirData, &reflectance, &rad, tid, i);
-    } 
-    // else if (shaderConfig.HAS_ENVMAP) {
-    //   // we bounced off into the envmap
-    //   let envmapRad = getEnvmapRadiance(ray.direction);
-    //   rad += reflectance * envmapRad;
-    //   break;
-    // }
-
-    // if (reflectance.x == 0.0 && reflectance.y == 0.0 && reflectance.z == 0.0) {
-    //   break;
-    // }
+      let ntid = vec3i(i32(tid.x) + offx, i32(tid.y) + offy, 0);
+      if (ntid.x >= 0 && ntid.y >= 0) {
+        let nidx = ntid.y * i32(canvasSize.x) + ntid.x;
+        candidates[i] = restirPassInput[nidx];
+      } else {
+        candidates[i] = ReSTIRPassData(
+          -1.0, vec3f(0), vec3f(0), vec3f(0), -1,
+          Reservoir(vec3f(0), -1, 0, 0, 1.0)
+        );
+      }
+    }
   }
 
-  // if (debugInfo.isSelectedPixel) {
-  //   // debugLog(999);
-  //   radianceOutput[idx] += vec3f(100, 0, 100);
-  // } else {
-  //   radianceOutput[idx] += rad * rayContribution;
-  // }
 
-  restirPassOutput[idx] = restirData;
-  samplesCount[idx] += 1;
+  let r = SpatialResample(candidates);
+  restirData.r = r;
+
+  shade(&restirData, &rad, tid, 0);
+
+  if (debugInfo.isSelectedPixel) {
+    // debugLog(999);
+    radianceOutput[idx] += vec3f(1, 0, 0);
+  } else {
+    radianceOutput[idx] += rad;
+  }
 }
 `;
 }

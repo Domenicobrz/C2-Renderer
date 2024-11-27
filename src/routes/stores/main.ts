@@ -21,7 +21,7 @@ type SamplesInfo = {
 };
 export const samplesInfo = (function createSamplesInfoStore() {
   let store = writable<SamplesInfo>({
-    limit: 8,
+    limit: 1,
     count: 0,
     ms: 0,
     tileSize: '',
@@ -107,7 +107,7 @@ export const configOptions = createConfigStore({
   forceMaxTileSize: false,
   BOUNCES_COUNT: 10,
   MIS_TYPE: 2,
-  SAMPLER_TYPE: 3,
+  SAMPLER_TYPE: 2,
   SAMPLER_DECORRELATION: 3,
   USE_POWER_HEURISTIC: 1,
   ENVMAP_SCALE: 1,

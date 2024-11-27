@@ -6,7 +6,12 @@ export async function getDeviceAndContext(canvas: HTMLCanvasElement) {
   try {
     const adapter = await navigator.gpu?.requestAdapter();
     const canTimestamp = adapter?.features.has('timestamp-query');
+    const requiredLimits: Partial<GPUSupportedLimits> = {
+      maxStorageBufferBindingSize: 268435456 // 256 mb
+    };
+
     const device = await (adapter as any)?.requestDevice({
+      requiredLimits,
       requiredFeatures: [
         ...(canTimestamp ? ['timestamp-query'] : []),
         'float32-filterable'

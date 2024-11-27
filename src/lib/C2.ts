@@ -63,7 +63,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   centralStatusMessage.set('processing bvh and materials');
   await tick(); // will give us the chance of showing the message above
   await computeSegment.updateScene(scene);
-  computeSegment.setDebugPixelTarget(54, 303);
+  computeSegment.setDebugPixelTarget(591, 248); // bright pixel
 
   renderSegment = new RenderSegment(context, presentationFormat);
   renderSegment.updateScene(scene);

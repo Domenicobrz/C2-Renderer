@@ -19,6 +19,7 @@ import { once } from '$lib/utils/once';
 import { loadTexture } from '$lib/webgpu-utils/getTexture';
 import { CustomR2Sampler } from '$lib/samplers/CustomR2';
 import { getReSTIRDLShader } from '$lib/shaders/ReSTIRDLShader';
+import { getReSTIRDLSRShader } from '$lib/shaders/ReSTIRDLSRShader';
 
 export class ReSTIRDLSegment {
   public passPerformance: ComputePassPerformance;
@@ -26,6 +27,7 @@ export class ReSTIRDLSegment {
   // private fields
   private device: GPUDevice;
   private pipeline: GPUComputePipeline | null = null;
+  private srPipeline: GPUComputePipeline | null = null;
   private bindGroupLayouts: GPUBindGroupLayout[];
   private layout: GPUPipelineLayout;
   private configManager = configManager;
@@ -36,10 +38,13 @@ export class ReSTIRDLSegment {
   private bindGroup1: GPUBindGroup | null = null;
   private bindGroup2: GPUBindGroup | null = null;
   private bindGroup3: GPUBindGroup | null = null;
+  private srBindGroup0: GPUBindGroup | null = null;
+  private srBindGroup1: GPUBindGroup | null = null;
 
   private canvasSize: Vector2 | null = null;
   private canvasSizeUniformBuffer: GPUBuffer;
   private randomsUniformBuffer: GPUBuffer;
+  private srRandomsUniformBuffer: GPUBuffer;
   private RANDOMS_BUFFER_COUNT = 200;
 
   private configUniformBuffer: GPUBuffer;
@@ -48,6 +53,8 @@ export class ReSTIRDLSegment {
   private debugBuffer: GPUBuffer;
   private debugPixelTargetBuffer: GPUBuffer;
   private debugReadBuffer: GPUBuffer;
+
+  private restirPassBuffer!: GPUBuffer;
 
   private trianglesBuffer: GPUBuffer | undefined;
   private materialsBuffer: GPUBuffer | undefined;
@@ -67,6 +74,7 @@ export class ReSTIRDLSegment {
 
   private haltonSampler = new HaltonSampler();
   private uniformSampler = new UniformSampler();
+  private srUniformSampler = new UniformSampler('seed-string-2');
   private blueNoiseSampler = new BlueNoiseSampler();
   private customR2Sampler = new CustomR2Sampler();
 
@@ -114,6 +122,11 @@ export class ReSTIRDLSegment {
 
     // create a typedarray to hold the values for the uniforms in JavaScript
     this.randomsUniformBuffer = device.createBuffer({
+      size: this.RANDOMS_BUFFER_COUNT * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    this.srRandomsUniformBuffer = device.createBuffer({
       size: this.RANDOMS_BUFFER_COUNT * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
@@ -308,6 +321,16 @@ export class ReSTIRDLSegment {
       ]
     });
 
+    this.srBindGroup1 = this.device.createBindGroup({
+      label: 'compute bindgroup - camera struct',
+      layout: this.bindGroupLayouts[1],
+      entries: [
+        { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
+        { binding: 1, resource: { buffer: this.srRandomsUniformBuffer } },
+        { binding: 2, resource: { buffer: this.configUniformBuffer } }
+      ]
+    });
+
     const bvh = new BVH(scene);
     this.bvh = bvh;
     let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
@@ -431,6 +454,12 @@ export class ReSTIRDLSegment {
     });
   }
 
+  resetRestirPassData() {
+    console.log('resetting restir pass data');
+    const restirPassInput = new Float32Array(this.canvasSize!.x * this.canvasSize!.y * 96);
+    this.device.queue.writeBuffer(this.restirPassBuffer, 0, restirPassInput);
+  }
+
   resize(canvasSize: Vector2, workBuffer: GPUBuffer, samplesCountBuffer: GPUBuffer) {
     this.resetSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
 
@@ -444,14 +473,35 @@ export class ReSTIRDLSegment {
       new Uint32Array([canvasSize.x, canvasSize.y])
     );
 
-    // we need to re-create the bindgroup since workBuffer
-    // is a new buffer
+    console.warn(
+      'This gets very close to the default size limit of 256mb, my GPU supports up to 2gb but needs to be requested separately on the adapter'
+    );
+    const restirPassInput = new Float32Array(canvasSize.x * canvasSize.y * 96);
+    this.restirPassBuffer = this.device.createBuffer({
+      label: 'restir pass data buffer',
+      size: restirPassInput.byteLength,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+    });
+    this.device.queue.writeBuffer(this.restirPassBuffer, 0, restirPassInput);
+
     this.bindGroup0 = this.device.createBindGroup({
       label: 'compute bindgroup',
       layout: this.bindGroupLayouts[0],
       entries: [
-        { binding: 0, resource: { buffer: workBuffer } },
+        { binding: 0, resource: { buffer: this.restirPassBuffer } },
         { binding: 1, resource: { buffer: samplesCountBuffer } },
+        { binding: 2, resource: { buffer: this.canvasSizeUniformBuffer } }
+      ]
+    });
+
+    // we need to re-create the bindgroup since workBuffer
+    // is a new buffer
+    this.srBindGroup0 = this.device.createBindGroup({
+      label: 'compute bindgroup',
+      layout: this.bindGroupLayouts[0],
+      entries: [
+        { binding: 0, resource: { buffer: this.restirPassBuffer } },
+        { binding: 1, resource: { buffer: workBuffer } },
         { binding: 2, resource: { buffer: this.canvasSizeUniformBuffer } }
       ]
     });
@@ -481,6 +531,9 @@ export class ReSTIRDLSegment {
       let arr = new Float32Array(this.customR2Sampler.getSamples(this.RANDOMS_BUFFER_COUNT));
       this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
     }
+
+    let arr = new Float32Array(this.srUniformSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+    this.device.queue.writeBuffer(this.srRandomsUniformBuffer, 0, arr);
   }
 
   createPipeline() {
@@ -490,10 +543,24 @@ export class ReSTIRDLSegment {
     });
 
     this.pipeline = this.device.createComputePipeline({
-      label: 'compute pipeline',
+      label: 'restir pipeline',
       layout: this.layout,
       compute: {
         module: computeModule,
+        entryPoint: 'compute'
+      }
+    });
+
+    const srComputeModule = this.device.createShaderModule({
+      label: 'spatial-reuse compute module',
+      code: getReSTIRDLSRShader(this.lutManager)
+    });
+
+    this.srPipeline = this.device.createComputePipeline({
+      label: 'restir spatial-reuse pipeline',
+      layout: this.layout,
+      compute: {
+        module: srComputeModule,
         entryPoint: 'compute'
       }
     });
@@ -507,6 +574,7 @@ export class ReSTIRDLSegment {
 
     if (
       !this.pipeline ||
+      !this.srPipeline ||
       !this.bindGroup0 ||
       !this.bindGroup1 ||
       !this.bindGroup2 ||
@@ -521,10 +589,14 @@ export class ReSTIRDLSegment {
 
     if (samplesInfo.count === 0) {
       this.resetSegment.reset();
+      this.resetRestirPassData();
       this.haltonSampler.reset();
       this.blueNoiseSampler.reset();
       this.uniformSampler.reset();
+      this.srUniformSampler.reset();
     }
+
+    this.updateRandomsBuffer();
 
     // work group size in the shader is set to 8,8
     const workGroupsCount = new Vector2(
@@ -549,6 +621,18 @@ export class ReSTIRDLSegment {
     pass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
     pass.end();
 
+    const srPassDescriptor = {
+      label: 'spatial-reuse pass'
+    };
+    const srPass = encoder.beginComputePass(srPassDescriptor);
+    srPass.setPipeline(this.srPipeline);
+    srPass.setBindGroup(0, this.srBindGroup0);
+    srPass.setBindGroup(1, this.srBindGroup1);
+    srPass.setBindGroup(2, this.bindGroup2);
+    srPass.setBindGroup(3, this.bindGroup3);
+    srPass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
+    srPass.end();
+
     this.passPerformance.resolve(encoder);
 
     encoder.copyBufferToBuffer(this.debugBuffer, 0, this.debugReadBuffer, 0, this.debugBuffer.size);
@@ -557,7 +641,6 @@ export class ReSTIRDLSegment {
     const computeCommandBuffer = encoder.finish();
     this.device.queue.submit([computeCommandBuffer]);
 
-    this.updateRandomsBuffer();
     samplesInfo.increment();
   }
 }

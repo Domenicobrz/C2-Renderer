@@ -17,7 +17,7 @@ fn getRand2D() -> vec2f {
     let currentSample = haltonSamples[randomsArrayIndex / 4];
     let modulo = mod1u(randomsArrayIndex, 4);
     let sample = selectRandomArraySampleComponent(currentSample, modulo);
-  
+
     randomsArrayIndex++;
     if (randomsArrayIndex >= RANDOMS_VEC4F_ARRAY_COUNT) {
       randomsArrayIndex = 0;

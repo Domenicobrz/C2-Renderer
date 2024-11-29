@@ -127,6 +127,7 @@ struct Reservoir {
   Y: vec3f,  // x2, light sample hit point
   Y1: i32,   // light sample triangle index
   Wy: f32,
+  c: f32,
   wSum: f32,
   isNull: f32,
 }
@@ -212,12 +213,16 @@ fn SpatialResample(candidates: array<ReSTIRPassData, 5>) -> Reservoir {
   // ******* important: first candidate is the current pixel's reservoir ***********
   // ******* I should probably update this function to reflect that ***********
   
-  var r = Reservoir(vec3f(0.0), 0, 0.0, 0.0, 1.0);
+  var r = Reservoir(vec3f(0.0), 0, 0.0, 0.0, 0.0, 1.0);
   let M: i32 = 5;
 
   let x0 = candidates[0].x0;
   let x1 = candidates[0].x1;
   let N = candidates[0].normal;
+
+  // spatial re-sampling for now just copies the confidence
+  let c = candidates[0].r.c;
+  r.c = c;
 
   for (var i: i32 = 0; i < M; i++) {
     let Xi = candidates[i].r.Y;
@@ -341,7 +346,7 @@ fn shade(
   var rad = vec3f(0.0);
   var restirData = ReSTIRPassData(
     -1.0, vec3f(0), vec3f(0), vec3f(0), -1,
-    Reservoir(vec3f(0), -1, 0, 0, 1.0)
+    Reservoir(vec3f(0), -1, 0, 0, 0, 1.0)
   );
   
   if (!isOutOfScreenBounds) {
@@ -377,7 +382,7 @@ fn shade(
         } else {
           candidates[i] = ReSTIRPassData(
             -1.0, vec3f(0), vec3f(0), vec3f(0), -1,
-            Reservoir(vec3f(0), -1, 0, 0, 1.0)
+            Reservoir(vec3f(0), -1, 0, 0, 0, 1.0)
           );
         }
       }

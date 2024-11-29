@@ -128,6 +128,7 @@ struct Reservoir {
   Y: vec3f,  // x2, light sample hit point
   Y1: i32,   // light sample triangle index
   Wy: f32,
+  c: f32,
   wSum: f32,
   isNull: f32,
 }
@@ -143,6 +144,20 @@ struct ReSTIRPassData {
 
 fn updateReservoir(reservoir: ptr<function, Reservoir>, Xi: vec3f, Xi1: i32, wi: f32) {
   (*reservoir).wSum = (*reservoir).wSum + wi;
+  let prob = wi / (*reservoir).wSum;
+
+  if (getRand2D().x < prob) {
+    (*reservoir).Y = Xi;
+    (*reservoir).Y1 = Xi1;
+    (*reservoir).isNull = -1.0;
+  }
+} 
+
+fn updateReservoirWithConfidence(
+  reservoir: ptr<function, Reservoir>, Xi: vec3f, Xi1: i32, wi: f32, ci: f32
+) {
+  (*reservoir).wSum = (*reservoir).wSum + wi;
+  (*reservoir).c = (*reservoir).c + ci;
   let prob = wi / (*reservoir).wSum;
 
   if (getRand2D().x < prob) {
@@ -173,9 +188,65 @@ fn pHat(samplePoint: vec3f, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> f32
   return brdf * max(dot(N, sampleDirection), 0.0) * getLuminance(sampleRadiance);
 }
 
+
+fn getDirectLightEmission2(direction: vec3f, origin: vec3f, x2TriangleIndex: i32) -> vec3f {
+  let ires = bvhIntersect(Ray(origin + direction * 0.001, direction));
+  // this condition will never happen  
+  if (!ires.hit) { 
+    return vec3f(0.0);
+  }
+  // however this one CAN happen because we're fixing x2
+  // but we're now changing x0 and x1 and that can lead to Visibility being 0 
+  // from that particular x1
+  if (ires.triangleIndex != x2TriangleIndex) {
+    return vec3f(0.0);
+  }
+  let material: Emissive = createEmissive(ires.triangle.materialOffset);
+  let sampleRadiance = material.color * material.intensity;
+  return sampleRadiance;
+}
+
+fn pHat2(x0: vec3f, x1: vec3f, x2: vec3f, x2TriangleIndex: i32, N: vec3f) -> f32 {
+  let brdf = 1.0 / PI;
+  
+  let sampleDirection = normalize(x2 - x1);
+  let sampleRadiance = getDirectLightEmission2(sampleDirection, x1, x2TriangleIndex);
+
+  let p = brdf * max(dot(N, sampleDirection), 0.0) * getLuminance(sampleRadiance);
+
+  return p;
+}
+
+fn generalizedConfidenceBalanceHeuristic(candidates: array<ReSTIRPassData, 2>, index: i32) -> f32 {
+  let M: i32 = 2;
+
+  let x2  = candidates[index].r.Y;
+  let x2TriangleIndex = candidates[index].r.Y1;
+
+  let xi0 = candidates[index].x0;
+  let xi1 = candidates[index].x1;
+  let Ni  = candidates[index].normal;
+  let ci  = candidates[index].r.c;
+  let pi = pHat2(xi0, xi1, x2, x2TriangleIndex, Ni) * ci;
+  
+  var pjSum = 0.0;
+  
+  for (var i: i32 = 0; i < M; i++) {
+    let xj0 = candidates[i].x0;
+    let xj1 = candidates[i].x1;
+    let Nj  = candidates[i].normal;
+    let cj  = candidates[i].r.c;
+    
+    let pj = pHat2(xj0, xj1, x2, x2TriangleIndex, Nj);
+    pjSum += pj * cj;
+  }
+
+  return pi / pjSum;
+}
+
 // 6 random values used for each candidate, keep that in mind
 fn Resample(M: u32, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> Reservoir {
-  var r = Reservoir(vec3f(0.0), 0, 0.0, 0.0, 1.0);
+  var r = Reservoir(vec3f(0.0), 0, 0.0, 0.0, 0.0, 1.0);
   let mi = 1.0 / f32(M);
 
   for (var i: u32 = 0; i < M; i++) {
@@ -203,6 +274,49 @@ fn Resample(M: u32, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> Reservoir {
   if (r.isNull <= 0.0) {
     r.Wy = 1 / pHat(r.Y, ray, N, brdf) * r.wSum;
   }
+
+  r.c = 1.0;
+
+  return r;
+}
+
+fn TemporalResample(candidates: array<ReSTIRPassData, 2>) -> Reservoir {
+  // ******* important: first candidate is the current pixel's reservoir ***********
+  // ******* second candidate is the temporal reservoir ***********
+  var r = Reservoir(vec3f(0.0), 0, 0.0, 0.0, 0.0, 1.0);
+  let M: i32 = 2;
+
+  let x0 = candidates[0].x0;
+  let x1 = candidates[0].x1;
+  let N = candidates[0].normal;
+
+  for (var i: i32 = 0; i < M; i++) {
+    let Xi  = candidates[i].r.Y;
+    let Xi1 = candidates[i].r.Y1;
+    let Wxi = candidates[i].r.Wy;
+    let ci  = candidates[i].r.c;
+
+    // remember that proper temporal resampling requires evaluating pHat's
+    // generated with a different scene, which might have a different BVH
+    // C2 only considers offline path-tracing so there's no difference in BVH
+    // structure between frames but if we were doing a re-projected 
+    // temporal resample, we would have to calculate the pHat's visibility tests
+    // with the old BVH
+    let mi = generalizedConfidenceBalanceHeuristic(candidates, i);
+    let wi = mi * pHat2(x0, x1, Xi, Xi1, N) * Wxi;
+
+    if (wi > 0.0) {
+      updateReservoirWithConfidence(&r, Xi, Xi1, wi, ci);
+    }
+  }
+
+  if (r.isNull <= 0.0) {
+    r.Wy = 1 / pHat2(x0, x1, r.Y, r.Y1, N) * r.wSum;
+  }
+
+  let TEMPORAL_RIS_CAP = 4.0;
+
+  r.c = min(r.c, TEMPORAL_RIS_CAP);
 
   return r;
 }
@@ -259,7 +373,7 @@ fn shadeDiffuse(
   var brdf = color / PI;
   var colorLessBrdf = 1.0 / PI;
 
-  let reservoir = Resample(30, ray, N, colorLessBrdf);
+  let reservoir = Resample(10, ray, N, colorLessBrdf);
 
   *restirData = ReSTIRPassData(
     1.0,
@@ -332,13 +446,15 @@ fn shade(
   var rayContribution: f32;
   var ray = getCameraRay(tid, idx, &rayContribution);
 
+  var prevRestirData = restirPassOutput[idx];
+
   var restirData = ReSTIRPassData(
     -1.0,
     vec3f(0),
     vec3f(0),
     vec3f(0),
     -1,
-    Reservoir(vec3f(0.0), 0, 0, 0, 1.0),
+    Reservoir(vec3f(0.0), 0, 0, 0, 0, 1.0),
   );
 
   var reflectance = vec3f(1.0);
@@ -364,6 +480,16 @@ fn shade(
     // if (reflectance.x == 0.0 && reflectance.y == 0.0 && reflectance.z == 0.0) {
     //   break;
     // }
+  }
+
+  // temporal resample if there's temporal data to reuse
+  if (prevRestirData.r.c > 0.0) {
+    var candidates = array<ReSTIRPassData, 2>();
+    candidates[0] = restirData;
+    candidates[1] = prevRestirData;
+    
+    let r = TemporalResample(candidates);
+    restirData.r = r;
   }
 
   // if (debugInfo.isSelectedPixel) {

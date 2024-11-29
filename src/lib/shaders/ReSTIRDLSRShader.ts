@@ -80,6 +80,7 @@ ${Plane.shaderMethods()}
 // unfortunately and I can't create a separate bindgroup for it
 @group(1) @binding(1) var<uniform> haltonSamples: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
 @group(1) @binding(2) var<uniform> config: Config;
+@group(1) @binding(3) var<uniform> finalPass: u32; // 1 if true, 0 otherwise
 
 @group(2) @binding(0) var<storage, read_write> debugBuffer: array<f32>;
 @group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;
@@ -314,8 +315,20 @@ fn shade(
   @builtin(global_invocation_id) gid: vec3<u32>,
   @builtin(local_invocation_id) lid: vec3<u32>,
 ) {
+  // **************** WARNING *****************
+  // **************** WARNING *****************
+  // **************** WARNING *****************
+  // without being able to use return; here, since we need uniformity 
+  // to use a storageBarrier(), we have to make sure that our tiles
+  // do not exceed the boundaries too much otherwise there can potentially
+  // be a gigantic amount of computation that is wasteful and that needs to 
+  // happen regardless since lines are executed in lockstep
+  var isOutOfScreenBounds = false;
   let tid = vec3u(gid.x, gid.y, 0);
-  if (tid.x >= canvasSize.x || tid.y >= canvasSize.y) { return; }
+  
+  if (tid.x >= canvasSize.x || tid.y >= canvasSize.y) { 
+    isOutOfScreenBounds = true;
+  }
 
   let idx = tid.y * canvasSize.x + tid.x;
 
@@ -325,56 +338,78 @@ fn shade(
     debugInfo.isSelectedPixel = true;
   }
 
-  initializeRandoms(tid, debugInfo.sample);
-
   var rad = vec3f(0.0);
-  var restirData = restirPassInput[idx];
-
-  // pick 4 or 5 candidates, their restirPassData, and do the needful
-  // then modify restirData's reservoir such that it can be used on the shading routine
-  // actually the shading routine should not receive restirpass data, it's better if we 
-  // do something else once we figured out which sample we want to use
+  var restirData = ReSTIRPassData(
+    -1.0, vec3f(0), vec3f(0), vec3f(0), -1,
+    Reservoir(vec3f(0), -1, 0, 0, 1.0)
+  );
   
-  // let's start with a total of 5 candidates
-  // ******* important: first candidate is current pixel's reservoir ***********
-  var candidates = array<ReSTIRPassData, 5>();
-  for (var i = 0; i < 5; i++) {
-    if (i == 0) {
-      candidates[i] = restirData;
-    } else {
-      // uniform circle sampling 
-      let circleRadiusInPixels = 5.0;
-      let rands = getRand2D();
-      let r = circleRadiusInPixels * sqrt(rands.x);
-      let theta = rands.y * 2.0 * PI;
+  if (!isOutOfScreenBounds) {
+    restirData = restirPassInput[idx];
 
-      let offx = i32(r * cos(theta));
-      let offy = i32(r * sin(theta));
+    initializeRandoms(tid, debugInfo.sample);
 
-      let ntid = vec3i(i32(tid.x) + offx, i32(tid.y) + offy, 0);
-      if (ntid.x >= 0 && ntid.y >= 0) {
-        let nidx = ntid.y * i32(canvasSize.x) + ntid.x;
-        candidates[i] = restirPassInput[nidx];
+    // pick 4 or 5 candidates, their restirPassData, and do the needful
+    // then modify restirData's reservoir such that it can be used on the shading routine
+    // actually the shading routine should not receive restirpass data, it's better if we 
+    // do something else once we figured out which sample we want to use
+    
+    // let's start with a total of 5 candidates
+    // ******* important: first candidate is current pixel's reservoir ***********
+    var candidates = array<ReSTIRPassData, 5>();
+    for (var i = 0; i < 5; i++) {
+      if (i == 0) {
+        candidates[i] = restirData;
       } else {
-        candidates[i] = ReSTIRPassData(
-          -1.0, vec3f(0), vec3f(0), vec3f(0), -1,
-          Reservoir(vec3f(0), -1, 0, 0, 1.0)
-        );
+        // uniform circle sampling 
+        let circleRadiusInPixels = 5.0;
+        let rands = getRand2D();
+        let r = circleRadiusInPixels * sqrt(rands.x);
+        let theta = rands.y * 2.0 * PI;
+
+        let offx = i32(r * cos(theta));
+        let offy = i32(r * sin(theta));
+
+        let ntid = vec3i(i32(tid.x) + offx, i32(tid.y) + offy, 0);
+        if (ntid.x >= 0 && ntid.y >= 0) {
+          let nidx = ntid.y * i32(canvasSize.x) + ntid.x;
+          candidates[i] = restirPassInput[nidx];
+        } else {
+          candidates[i] = ReSTIRPassData(
+            -1.0, vec3f(0), vec3f(0), vec3f(0), -1,
+            Reservoir(vec3f(0), -1, 0, 0, 1.0)
+          );
+        }
       }
     }
+  
+    let r = SpatialResample(candidates);
+    restirData.r = r;
   }
 
+  // https://www.w3.org/TR/WGSL/#storageBarrier-builtin
+  // https://stackoverflow.com/questions/72035548/what-does-storagebarrier-in-webgpu-actually-do
+  // "storageBarrier coordinates access by invocations in single workgroup 
+  // to buffers in 'storage' address space."
+  storageBarrier();
 
-  let r = SpatialResample(candidates);
-  restirData.r = r;
+  // every thread needs to be able to reach the storageBarrier for us to be able to use it,
+  // so early returns can only happen afterwards
+  if (isOutOfScreenBounds) {
+    return;
+  }
 
-  shade(&restirData, &rad, tid, 0);
+  restirPassInput[idx] = restirData;
 
-  if (debugInfo.isSelectedPixel) {
-    // debugLog(999);
-    radianceOutput[idx] += vec3f(1, 0, 0);
-  } else {
-    radianceOutput[idx] += rad;
+  if (finalPass == 1) {
+    shade(&restirData, &rad, tid, 0);
+
+    if (debugInfo.isSelectedPixel) {
+      // debugLog(999);
+      radianceOutput[idx] += vec3f(1, 0, 0);
+    } else {
+      radianceOutput[idx] += rad;
+    }
   }
 }
 `;

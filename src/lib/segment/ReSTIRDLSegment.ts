@@ -39,12 +39,15 @@ export class ReSTIRDLSegment {
   private bindGroup2: GPUBindGroup | null = null;
   private bindGroup3: GPUBindGroup | null = null;
   private srBindGroup0: GPUBindGroup | null = null;
-  private srBindGroup1: GPUBindGroup | null = null;
+  private srBindGroup1: GPUBindGroup[] = [];
+
+  private SPATIAL_REUSE_PASSES = 1;
 
   private canvasSize: Vector2 | null = null;
   private canvasSizeUniformBuffer: GPUBuffer;
+  private srPassUniformBuffer: GPUBuffer[] = [];
   private randomsUniformBuffer: GPUBuffer;
-  private srRandomsUniformBuffer: GPUBuffer;
+  private srRandomsUniformBuffer: GPUBuffer[] = [];
   private RANDOMS_BUFFER_COUNT = 200;
 
   private configUniformBuffer: GPUBuffer;
@@ -92,7 +95,7 @@ export class ReSTIRDLSegment {
 
     this.bindGroupLayouts = [
       getComputeBindGroupLayout(device, ['storage', 'storage', 'uniform']),
-      getComputeBindGroupLayout(device, ['uniform', 'uniform', 'uniform']),
+      getComputeBindGroupLayout(device, ['uniform', 'uniform', 'uniform', 'uniform']),
       getComputeBindGroupLayout(device, ['storage', 'uniform']),
       getComputeBindGroupLayout(device, [
         'read-only-storage',
@@ -126,10 +129,21 @@ export class ReSTIRDLSegment {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
-    this.srRandomsUniformBuffer = device.createBuffer({
-      size: this.RANDOMS_BUFFER_COUNT * 4,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
+    for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
+      this.srRandomsUniformBuffer.push(
+        device.createBuffer({
+          size: this.RANDOMS_BUFFER_COUNT * 4,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        })
+      );
+
+      this.srPassUniformBuffer.push(
+        device.createBuffer({
+          size: 1 * 4,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        })
+      );
+    }
 
     this.configUniformBuffer = device.createBuffer({
       size: configManager.bufferSize,
@@ -317,19 +331,14 @@ export class ReSTIRDLSegment {
       entries: [
         { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
         { binding: 1, resource: { buffer: this.randomsUniformBuffer } },
-        { binding: 2, resource: { buffer: this.configUniformBuffer } }
+        { binding: 2, resource: { buffer: this.configUniformBuffer } },
+        // v v v v v UNUSED IN THE COMPUTE PASS, ONLY IN SR PASS v v v v v v
+        // we're keeping it to avoid the creation of separate pipeline layouts for the two passes
+        { binding: 3, resource: { buffer: this.srPassUniformBuffer[0] } }
       ]
     });
 
-    this.srBindGroup1 = this.device.createBindGroup({
-      label: 'compute bindgroup - camera struct',
-      layout: this.bindGroupLayouts[1],
-      entries: [
-        { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
-        { binding: 1, resource: { buffer: this.srRandomsUniformBuffer } },
-        { binding: 2, resource: { buffer: this.configUniformBuffer } }
-      ]
-    });
+    this.updateSrBindGroup1();
 
     const bvh = new BVH(scene);
     this.bvh = bvh;
@@ -454,6 +463,31 @@ export class ReSTIRDLSegment {
     });
   }
 
+  updateSrBindGroup1() {
+    for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
+      const isFinalPass = i == this.SPATIAL_REUSE_PASSES - 1;
+
+      this.device.queue.writeBuffer(
+        this.srPassUniformBuffer[i],
+        0,
+        new Uint32Array([isFinalPass ? 1 : 0])
+      );
+
+      this.srBindGroup1.push(
+        this.device.createBindGroup({
+          label: 'compute bindgroup - camera struct',
+          layout: this.bindGroupLayouts[1],
+          entries: [
+            { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
+            { binding: 1, resource: { buffer: this.srRandomsUniformBuffer[i] } },
+            { binding: 2, resource: { buffer: this.configUniformBuffer } },
+            { binding: 3, resource: { buffer: this.srPassUniformBuffer[i] } }
+          ]
+        })
+      );
+    }
+  }
+
   resetRestirPassData() {
     console.log('resetting restir pass data');
     const restirPassInput = new Float32Array(this.canvasSize!.x * this.canvasSize!.y * 96);
@@ -532,8 +566,12 @@ export class ReSTIRDLSegment {
       this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
     }
 
-    let arr = new Float32Array(this.srUniformSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-    this.device.queue.writeBuffer(this.srRandomsUniformBuffer, 0, arr);
+    // for spatial reuse we're simply using uniform numbers since it makes it easier
+    // to create the 3 bind groups all at once
+    for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
+      let arr = new Float32Array(this.srUniformSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+      this.device.queue.writeBuffer(this.srRandomsUniformBuffer[i], 0, arr);
+    }
   }
 
   createPipeline() {
@@ -621,17 +659,19 @@ export class ReSTIRDLSegment {
     pass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
     pass.end();
 
-    const srPassDescriptor = {
-      label: 'spatial-reuse pass'
-    };
-    const srPass = encoder.beginComputePass(srPassDescriptor);
-    srPass.setPipeline(this.srPipeline);
-    srPass.setBindGroup(0, this.srBindGroup0);
-    srPass.setBindGroup(1, this.srBindGroup1);
-    srPass.setBindGroup(2, this.bindGroup2);
-    srPass.setBindGroup(3, this.bindGroup3);
-    srPass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
-    srPass.end();
+    for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
+      const srPassDescriptor = {
+        label: `spatial-reuse pass i: ${i}`
+      };
+      const srPass = encoder.beginComputePass(srPassDescriptor);
+      srPass.setPipeline(this.srPipeline);
+      srPass.setBindGroup(0, this.srBindGroup0);
+      srPass.setBindGroup(1, this.srBindGroup1[i]);
+      srPass.setBindGroup(2, this.bindGroup2);
+      srPass.setBindGroup(3, this.bindGroup3);
+      srPass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
+      srPass.end();
+    }
 
     this.passPerformance.resolve(encoder);
 

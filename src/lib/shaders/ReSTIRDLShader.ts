@@ -227,7 +227,7 @@ fn generalizedConfidenceBalanceHeuristic(candidates: array<ReSTIRPassData, 2>, i
   let xi1 = candidates[index].x1;
   let Ni  = candidates[index].normal;
   let ci  = candidates[index].r.c;
-  let pi = pHat2(xi0, xi1, x2, x2TriangleIndex, Ni) * ci;
+  let pi  = pHat2(xi0, xi1, x2, x2TriangleIndex, Ni) * ci;
   
   var pjSum = 0.0;
   
@@ -237,7 +237,7 @@ fn generalizedConfidenceBalanceHeuristic(candidates: array<ReSTIRPassData, 2>, i
     let Nj  = candidates[i].normal;
     let cj  = candidates[i].r.c;
     
-    let pj = pHat2(xj0, xj1, x2, x2TriangleIndex, Nj);
+    let pj  = pHat2(xj0, xj1, x2, x2TriangleIndex, Nj);
     pjSum += pj * cj;
   }
 
@@ -291,6 +291,10 @@ fn TemporalResample(candidates: array<ReSTIRPassData, 2>) -> Reservoir {
   let N = candidates[0].normal;
 
   for (var i: i32 = 0; i < M; i++) {
+    if (candidates[i].r.isNull > 0.5) {
+      continue;
+    }
+
     let Xi  = candidates[i].r.Y;
     let Xi1 = candidates[i].r.Y1;
     let Wxi = candidates[i].r.Wy;

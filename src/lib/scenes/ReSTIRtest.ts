@@ -1,4 +1,13 @@
-import { Color, Mesh, PlaneGeometry, SphereGeometry, TextureLoader, Vector2, Vector3 } from 'three';
+import {
+  BoxGeometry,
+  Color,
+  Mesh,
+  PlaneGeometry,
+  SphereGeometry,
+  TextureLoader,
+  Vector2,
+  Vector3
+} from 'three';
 import { Diffuse } from '../materials/diffuse';
 import { Emissive } from './../materials/emissive';
 import type { Material } from './../materials/material';
@@ -54,9 +63,9 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
   lpg.translate(0, 3.9, 0);
   triangles = [...triangles, ...geometryToTriangles(lpg, 3)];
 
-  let mesh = new Mesh(new SphereGeometry(1, 25, 25));
-  mesh.scale.set(2, 2, 2);
-  mesh.position.set(0, 0, 1);
+  let mesh = new Mesh(new BoxGeometry(3, 5, 3));
+  mesh.position.set(0, -2, 1.5);
+  mesh.rotation.y = -0.5;
 
   let mat = new Diffuse({ color: new Color(1, 1, 1) });
   materials.push(mat);

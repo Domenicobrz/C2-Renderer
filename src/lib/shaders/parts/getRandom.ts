@@ -47,9 +47,15 @@ fn getRand2D() -> vec2f {
 }
 
 fn initializeRandoms(tid: vec3u, sampleIndex: u32) {
+  // re-setting the variables, in ReSTIR PT we'll call initializeRandoms() more than once
+  randomsArrayIndex = 0;
+  randomsOffset = 0;
+  randomsOffsetsArray = array<f32, 8>(0,0,0,0,0,0,0,0);
+  randomsOffsetsArrayIndex = 0;
+
   // I think that if I also use sampleIndex below I'd thwart the halton sequence,
   // since successive samples will have random offsets compared to where they should
-  // have been had I simply used the sequence
+  // have been had I simply used the sequence itself
   // let pseudoRands = rand4(tid.x * 987657 + tid.y * 346799 + sampleIndex * 427693);
   let pseudoRands = rand4(tid.x * 987657 + tid.y * 346799);
 

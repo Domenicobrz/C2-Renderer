@@ -585,6 +585,12 @@ fn shade(
   if (reservoir.isNull <= 0.0) {
     reservoir.Wy = (1 / getLuminance(reservoir.Y.F)) * reservoir.wSum;
   }
+
+  // IMPORTANT NOTE:
+  // I think temporal resampling might require the *previous random numbers!*
+  // at the moment I don't have a function that generates the numbers, they are provided
+  // externally, and the "seed" is simply given by the "tid"s of the nearby pixels
+
   // let TEMPORAL_RIS_CAP = 4.0;
   // r.c = min(r.c, TEMPORAL_RIS_CAP);
 

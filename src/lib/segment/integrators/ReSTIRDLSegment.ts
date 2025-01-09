@@ -1,14 +1,14 @@
 import { BVH } from '$lib/bvh/bvh';
 import { Matrix4, Vector2, Vector3 } from 'three';
-import { cameraMovementInfoStore, configOptions, samplesInfo } from '../../routes/stores/main';
-import { ResetSegment } from './resetSegment';
+import { cameraMovementInfoStore, configOptions, samplesInfo } from '../../../routes/stores/main';
+import { ResetSegment } from '../resetSegment';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 import { configManager, SAMPLER_TYPE } from '$lib/config';
 import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
 import { globals } from '$lib/C2';
-import { TextureArraysSegment } from './textureArraysSegment';
+import { TextureArraysSegment } from '../textureArraysSegment';
 import { Orbit } from '$lib/controls/Orbit';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { LUTManager, LUTtype } from '$lib/managers/lutManager';
@@ -18,8 +18,8 @@ import { BlueNoiseSampler } from '$lib/samplers/BlueNoise';
 import { once } from '$lib/utils/once';
 import { loadTexture } from '$lib/webgpu-utils/getTexture';
 import { CustomR2Sampler } from '$lib/samplers/CustomR2';
-import { getReSTIRDLShader } from '$lib/shaders/ReSTIRDLShader';
-import { getReSTIRDLSRShader } from '$lib/shaders/ReSTIRDLSRShader';
+import { getReSTIRDLShader } from '$lib/shaders/integrators/ReSTIRDLShader';
+import { getReSTIRDLSRShader } from '$lib/shaders/integrators/ReSTIRDLSRShader';
 
 export class ReSTIRDLSegment {
   public passPerformance: ComputePassPerformance;

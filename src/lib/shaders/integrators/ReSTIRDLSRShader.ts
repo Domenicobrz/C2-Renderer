@@ -6,20 +6,20 @@ import { Emissive } from '$lib/materials/emissive';
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 import { Material, MATERIAL_TYPE } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
-import { mathUtilsPart } from './parts/mathUtils';
-import { pbrtMathUtilsPart } from './parts/pbrtMathUtils';
-import { randomPart } from './parts/random';
+import { mathUtilsPart } from '../parts/mathUtils';
+import { pbrtMathUtilsPart } from '../parts/pbrtMathUtils';
+import { randomPart } from '../parts/random';
 import { Dielectric } from '$lib/materials/dielectric';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import { PC1D } from '$lib/samplers/PiecewiseConstant1D';
 import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
 import { Plane } from '$lib/primitives/plane';
-import { misPart } from './parts/mis';
-import { texturePart } from './parts/texture';
-import { shadingNormalsPart } from './parts/shadingNormal';
+import { misPart } from '../parts/mis';
+import { texturePart } from '../parts/texture';
+import { shadingNormalsPart } from '../parts/shadingNormal';
 import type { LUTManager } from '$lib/managers/lutManager';
-import { getRandomPart } from './parts/getRandom';
+import { getRandomPart } from '../parts/getRandom';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
 
 export function getReSTIRDLSRShader(lutManager: LUTManager) {

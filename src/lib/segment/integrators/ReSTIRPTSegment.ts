@@ -46,6 +46,7 @@ export class ReSTIRPTSegment {
   private canvasSize: Vector2 | null = null;
   private canvasSizeUniformBuffer: GPUBuffer;
   private srPassUniformBuffer: GPUBuffer[] = [];
+  private sequenceUniformBuffer: GPUBuffer;
   private randomsUniformBuffer: GPUBuffer;
   private srRandomsUniformBuffer: GPUBuffer[] = [];
   private RANDOMS_BUFFER_COUNT = 200;
@@ -79,6 +80,7 @@ export class ReSTIRPTSegment {
   private haltonSampler = new HaltonSampler();
   private uniformSampler = new UniformSampler();
   private srUniformSampler = new UniformSampler('seed-string-2');
+  private uniformSampler2 = new UniformSampler('seed-string-3');
   private blueNoiseSampler = new BlueNoiseSampler();
   private customR2Sampler = new CustomR2Sampler();
 
@@ -96,7 +98,7 @@ export class ReSTIRPTSegment {
 
     this.bindGroupLayouts = [
       getComputeBindGroupLayout(device, ['storage', 'storage', 'uniform']),
-      getComputeBindGroupLayout(device, ['uniform', 'uniform', 'uniform', 'uniform']),
+      getComputeBindGroupLayout(device, ['uniform', 'uniform', 'uniform', 'uniform', 'uniform']),
       getComputeBindGroupLayout(device, ['storage', 'uniform']),
       getComputeBindGroupLayout(device, [
         'read-only-storage',
@@ -125,6 +127,11 @@ export class ReSTIRPTSegment {
     });
 
     // create a typedarray to hold the values for the uniforms in JavaScript
+    this.sequenceUniformBuffer = device.createBuffer({
+      size: this.RANDOMS_BUFFER_COUNT * 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
     this.randomsUniformBuffer = device.createBuffer({
       size: this.RANDOMS_BUFFER_COUNT * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
@@ -331,11 +338,12 @@ export class ReSTIRPTSegment {
       layout: this.bindGroupLayouts[1],
       entries: [
         { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
-        { binding: 1, resource: { buffer: this.randomsUniformBuffer } },
-        { binding: 2, resource: { buffer: this.configUniformBuffer } },
+        { binding: 1, resource: { buffer: this.sequenceUniformBuffer } },
+        { binding: 2, resource: { buffer: this.randomsUniformBuffer } },
+        { binding: 3, resource: { buffer: this.configUniformBuffer } },
         // v v v v v UNUSED IN THE COMPUTE PASS, ONLY IN SR PASS v v v v v v
         // we're keeping it to avoid the creation of separate pipeline layouts for the two passes
-        { binding: 3, resource: { buffer: this.srPassUniformBuffer[0] } }
+        { binding: 4, resource: { buffer: this.srPassUniformBuffer[0] } }
       ]
     });
 
@@ -480,9 +488,10 @@ export class ReSTIRPTSegment {
           layout: this.bindGroupLayouts[1],
           entries: [
             { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
-            { binding: 1, resource: { buffer: this.srRandomsUniformBuffer[i] } },
-            { binding: 2, resource: { buffer: this.configUniformBuffer } },
-            { binding: 3, resource: { buffer: this.srPassUniformBuffer[i] } }
+            { binding: 1, resource: { buffer: this.sequenceUniformBuffer } },
+            { binding: 2, resource: { buffer: this.srRandomsUniformBuffer[i] } },
+            { binding: 3, resource: { buffer: this.configUniformBuffer } },
+            { binding: 4, resource: { buffer: this.srPassUniformBuffer[i] } }
           ]
         })
       );
@@ -553,28 +562,30 @@ export class ReSTIRPTSegment {
 
     if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.HALTON) {
       arr = new Float32Array(this.haltonSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-      this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
+      this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
     }
 
     if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.UNIFORM) {
       arr = new Float32Array(this.uniformSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-      this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
+      this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
     }
 
     if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.BLUE_NOISE) {
       arr = new Float32Array(this.blueNoiseSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-      this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
+      this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
     }
 
     if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.CUSTOM_R2) {
       arr = new Float32Array(this.customR2Sampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-      this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, arr);
+      this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
     }
 
-    // TODO: with ReSTIR PT, it's useless to have 3 bindgroups for
-    //       random numbers
+    // ReSTIR random numbers, which have to be different from path-tracing random numbers
+    let rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
+    this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, rarr);
     for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
-      this.device.queue.writeBuffer(this.srRandomsUniformBuffer[i], 0, arr!);
+      rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
+      this.device.queue.writeBuffer(this.srRandomsUniformBuffer[i], 0, rarr);
     }
   }
 

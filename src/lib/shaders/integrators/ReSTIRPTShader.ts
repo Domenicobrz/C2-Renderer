@@ -19,7 +19,7 @@ import { misPart } from '../parts/mis';
 import { texturePart } from '../parts/texture';
 import { shadingNormalsPart } from '../parts/shadingNormal';
 import type { LUTManager } from '$lib/managers/lutManager';
-import { getRandomPart } from '../parts/getRandom';
+import { getRandomPart, getReSTIRRandomPart } from '../parts/getRandom';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
 
 export function getReSTIRPTShader(lutManager: LUTManager) {
@@ -35,6 +35,7 @@ ${misPart}
 ${texturePart}
 ${shadingNormalsPart}
 ${getRandomPart}
+${getReSTIRRandomPart}
 ${lutManager.getShaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
@@ -80,8 +81,9 @@ ${Plane.shaderMethods()}
 // seems like maximum bindgroup count is 4 so I need to add the camera sample here 
 // unfortunately and I can't create a separate bindgroup for it
 @group(1) @binding(1) var<uniform> haltonSamples: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
-@group(1) @binding(2) var<uniform> config: Config;
-@group(1) @binding(3) var<uniform> finalPass: u32; // UNUSED: USED ONLY IN SR PASS
+@group(1) @binding(2) var<uniform> uniformRandom: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
+@group(1) @binding(3) var<uniform> config: Config;
+@group(1) @binding(4) var<uniform> finalPass: u32; // UNUSED: USED ONLY IN SR PASS
 
 @group(2) @binding(0) var<storage, read_write> debugBuffer: array<f32>;
 @group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;
@@ -126,7 +128,7 @@ fn debugLog(value: f32) {
 
 struct PathInfo {
   F: vec3f,
-  seed: u32,
+  seed: vec2u,
   bounceCount: u32,
   // bit 0: path ends by NEE boolean
   // bit 1: path ends by BRDF sampling boolean (we found a light)
@@ -147,7 +149,7 @@ fn updateReservoir(reservoir: ptr<function, Reservoir>, Xi: PathInfo, wi: f32) {
   (*reservoir).wSum = (*reservoir).wSum + wi;
   let prob = wi / (*reservoir).wSum;
 
-  if (getRand2D().x < prob) {
+  if (getRand2D_2().x < prob) {
     (*reservoir).Y = Xi;
     (*reservoir).isNull = -1.0;
   }
@@ -160,7 +162,7 @@ fn updateReservoirWithConfidence(
   (*reservoir).c = (*reservoir).c + ci;
   let prob = wi / (*reservoir).wSum;
 
-  if (getRand2D().x < prob) {
+  if (getRand2D_2().x < prob) {
     (*reservoir).Y = Xi;
     (*reservoir).isNull = -1.0;
   }
@@ -169,162 +171,6 @@ fn updateReservoirWithConfidence(
 fn getLuminance(emission: vec3f) -> f32 {
   return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
 }
-
-// fn getDirectLightEmission(direction: vec3f, ray: ptr<function, Ray>) -> vec3f {
-//   let ires = bvhIntersect(Ray(ray.origin + direction * 0.001, direction));
-//   // this condition will never happen  
-//   if (!ires.hit) {
-//     return vec3f(0.0);
-//   }
-//   let material: Emissive = createEmissive(ires.triangle.materialOffset);
-//   let sampleRadiance = material.color * material.intensity;
-//   return sampleRadiance;
-// }
-
-// fn pHat(samplePoint: vec3f, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> f32 {
-//   let sampleDirection = normalize(samplePoint - ray.origin);
-//   let sampleRadiance = getDirectLightEmission(sampleDirection, ray);
-//   return brdf * max(dot(N, sampleDirection), 0.0) * getLuminance(sampleRadiance);
-// }
-
-// fn getDirectLightEmission2(direction: vec3f, origin: vec3f, x2TriangleIndex: i32) -> vec3f {
-//   let ires = bvhIntersect(Ray(origin + direction * 0.001, direction));
-//   // this condition will never happen  
-//   if (!ires.hit) { 
-//     return vec3f(0.0);
-//   }
-//   // however this one CAN happen because we're fixing x2
-//   // but we're now changing x0 and x1 and that can lead to Visibility being 0 
-//   // from that particular x1
-//   if (ires.triangleIndex != x2TriangleIndex) {
-//     return vec3f(0.0);
-//   }
-//   let material: Emissive = createEmissive(ires.triangle.materialOffset);
-//   let sampleRadiance = material.color * material.intensity;
-//   return sampleRadiance;
-// }
-
-// fn pHat2(x0: vec3f, x1: vec3f, x2: vec3f, x2TriangleIndex: i32, N: vec3f) -> f32 {
-//   let brdf = 1.0 / PI;
-  
-//   let sampleDirection = normalize(x2 - x1);
-//   let sampleRadiance = getDirectLightEmission2(sampleDirection, x1, x2TriangleIndex);
-
-//   let p = brdf * max(dot(N, sampleDirection), 0.0) * getLuminance(sampleRadiance);
-
-//   return p;
-// }
-
-// fn generalizedConfidenceBalanceHeuristic(candidates: array<ReSTIRPassData, 2>, index: i32) -> f32 {
-//   let M: i32 = 2;
-
-//   let x2  = candidates[index].r.Y;
-//   let x2TriangleIndex = candidates[index].r.Y1;
-
-//   let xi0 = candidates[index].x0;
-//   let xi1 = candidates[index].x1;
-//   let Ni  = candidates[index].normal;
-//   let ci  = candidates[index].r.c;
-//   let pi  = pHat2(xi0, xi1, x2, x2TriangleIndex, Ni) * ci;
-  
-//   var pjSum = 0.0;
-  
-//   for (var i: i32 = 0; i < M; i++) {
-//     let xj0 = candidates[i].x0;
-//     let xj1 = candidates[i].x1;
-//     let Nj  = candidates[i].normal;
-//     let cj  = candidates[i].r.c;
-    
-//     let pj  = pHat2(xj0, xj1, x2, x2TriangleIndex, Nj);
-//     pjSum += pj * cj;
-//   }
-
-//   return pi / pjSum;
-// }
-
-// 6 random values used for each candidate, keep that in mind
-// fn Resample(M: u32, ray: ptr<function, Ray>, N: vec3f, brdf: f32) -> Reservoir {
-//   var r = Reservoir(
-//     PathInfo(vec3f(0.0), 0, 0, 0),
-//     0.0, 0.0, 0.0, 1.0,
-//   );
-//   let mi = 1.0 / f32(M);
-
-//   for (var i: u32 = 0; i < M; i++) {
-//     let rands = vec4f(getRand2D(), getRand2D());
-//     let lightSample = getLightSample(ray.origin, rands);
-//     let point = lightSample.hitPoint;
-//     let triangleIndex = lightSample.triangleIndex;
-//     let radiance = lightSample.radiance;
-//     // ****************************************************
-//     // ****************************************************
-//     // Our sampling routine "includes" the visibility test
-//     // pdf will be zero if the ray was obstructed. 
-//     // We're also repeating the bvh intersection inside pHat unfortunately
-//     // ****************************************************
-//     // ****************************************************
-//     let pdf = lightSample.pdf;
-//     var wi = 0.0;
-//     if (pdf > 0.0) {
-//       wi = mi * pHat(point, ray, N, brdf) * (1.0 / pdf);
-    
-//       updateReservoir(&r, point, triangleIndex, wi);
-//     }
-//   }
-
-//   if (r.isNull <= 0.0) {
-//     r.Wy = 1 / pHat(r.Y, ray, N, brdf) * r.wSum;
-//   }
-
-//   r.c = 1.0;
-
-//   return r;
-// }
-
-// fn TemporalResample(candidates: array<ReSTIRPassData, 2>) -> Reservoir {
-//   // ******* important: first candidate is the current pixel's reservoir ***********
-//   // ******* second candidate is the temporal reservoir ***********
-//   var r = Reservoir(vec3f(0.0), 0, 0.0, 0.0, 0.0, 1.0);
-//   let M: i32 = 2;
-
-//   let x0 = candidates[0].x0;
-//   let x1 = candidates[0].x1;
-//   let N = candidates[0].normal;
-
-//   for (var i: i32 = 0; i < M; i++) {
-//     if (candidates[i].r.isNull > 0.5) {
-//       continue;
-//     }
-
-//     let Xi  = candidates[i].r.Y;
-//     let Xi1 = candidates[i].r.Y1;
-//     let Wxi = candidates[i].r.Wy;
-//     let ci  = candidates[i].r.c;
-
-//     // remember that proper temporal resampling requires evaluating pHat's
-//     // generated with a different scene, which might have a different BVH
-//     // C2 only considers offline path-tracing so there's no difference in BVH
-//     // structure between frames but if we were doing a re-projected 
-//     // temporal resample, we would have to calculate the pHat's visibility tests
-//     // with the old BVH
-//     let mi = generalizedConfidenceBalanceHeuristic(candidates, i);
-//     let wi = mi * pHat2(x0, x1, Xi, Xi1, N) * Wxi;
-
-//     if (wi > 0.0) {
-//       updateReservoirWithConfidence(&r, Xi, Xi1, wi, ci);
-//     }
-//   }
-
-//   if (r.isNull <= 0.0) {
-//     r.Wy = 1 / pHat2(x0, x1, r.Y, r.Y1, N) * r.wSum;
-//   }
-
-//   let TEMPORAL_RIS_CAP = 4.0;
-
-//   r.c = min(r.c, TEMPORAL_RIS_CAP);
-
-//   return r;
-// }
 
 fn shadeDiffuseSampleBRDF(
   rands: vec4f, 
@@ -490,14 +336,12 @@ fn shadeDiffuse(
 
     let pathInfo = PathInfo(
       pHat,
-      0,
+      tid.xy,
       u32(debugInfo.bounce),
       1   // always set flags to "path ends by NEE"
     );
 
-    // qui però uso due randoms... comu a mentimu??
-    // qui però uso due randoms... comu a mentimu??
-    // qui però uso due randoms... comu a mentimu??
+    // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
     updateReservoir(reservoir, pathInfo, wi);
   }
 
@@ -545,17 +389,16 @@ fn shade(
   }
   debugInfo.sample = samplesCount[idx];
 
+  var prevReservoir = restirPassOutput[idx];
+  var reservoir = Reservoir(
+    PathInfo(vec3f(0.0), vec2u(0), 0, 0),
+    0.0, 0.0, 0.0, 1.0,
+  );
+
   initializeRandoms(tid, debugInfo.sample);
 
   var rayContribution: f32;
   var ray = getCameraRay(tid, idx, &rayContribution);
-
-  var prevReservoir = restirPassOutput[idx];
-
-  var reservoir = Reservoir(
-    PathInfo(vec3f(0.0), 0, 0, 0),
-    0.0, 0.0, 0.0, 1.0,
-  );
 
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);

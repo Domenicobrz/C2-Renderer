@@ -19,8 +19,9 @@ import { misPart } from '../parts/mis';
 import { texturePart } from '../parts/texture';
 import { shadingNormalsPart } from '../parts/shadingNormal';
 import type { LUTManager } from '$lib/managers/lutManager';
-import { getRandomPart } from '../parts/getRandom';
+import { getRandomPart, getReSTIRRandomPart } from '../parts/getRandom';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
+import { tempShadCopy } from './tempShadCopy';
 
 export function getReSTIRPTSRShader(lutManager: LUTManager) {
   return /* wgsl */ `
@@ -35,6 +36,7 @@ ${misPart}
 ${texturePart}
 ${shadingNormalsPart}
 ${getRandomPart}
+${getReSTIRRandomPart}
 ${lutManager.getShaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
@@ -79,8 +81,9 @@ ${Plane.shaderMethods()}
 // seems like maximum bindgroup count is 4 so I need to add the camera sample here 
 // unfortunately and I can't create a separate bindgroup for it
 @group(1) @binding(1) var<uniform> haltonSamples: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
-@group(1) @binding(2) var<uniform> config: Config;
-@group(1) @binding(3) var<uniform> finalPass: u32; // 1 if true, 0 otherwise
+@group(1) @binding(2) var<uniform> uniformRandom: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
+@group(1) @binding(3) var<uniform> config: Config;
+@group(1) @binding(4) var<uniform> finalPass: u32; // 1 if true, 0 otherwise
 
 @group(2) @binding(0) var<storage, read_write> debugBuffer: array<f32>;
 @group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;
@@ -125,7 +128,7 @@ fn debugLog(value: f32) {
 
 struct PathInfo {
   F: vec3f,
-  seed: u32,
+  seed: vec2u,
   bounceCount: u32,
   // bit 0: path ends by NEE boolean
   // bit 1: path ends by BRDF sampling boolean (we found a light)
@@ -142,8 +145,232 @@ struct Reservoir {
   isNull: f32,
 }
 
+struct RandomReplayResult {
+  valid: u32,
+  pHat: vec3f,
+}
+
+struct RandomReplayStepResult {
+  terminatedByNEE: bool,
+  pHat: vec3f,
+}
+
+const SR_CANDIDATES_COUNT = 3;
+
 fn getLuminance(emission: vec3f) -> f32 {
   return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
+}
+
+${tempShadCopy}
+
+fn shadeDiffuse(
+  ires: BVHIntersectionResult, 
+  ray: ptr<function, Ray>,
+  pi: PathInfo,
+  throughput: ptr<function, vec3f>, 
+  wxi: ptr<function, f32>,
+  tid: vec3u,
+  i: i32
+) -> RandomReplayStepResult {
+  let hitPoint = ires.hitPoint;
+  let material: Diffuse = createDiffuse(ires.triangle.materialOffset);
+
+  var color = material.color;
+  if (material.mapLocation.x > -1) {
+    color *= getTexelFromTextureArrays(material.mapLocation, ires.uv, material.mapUvRepeat).xyz;
+  }
+
+  var vertexNormal = ires.normal;
+  // the normal flip is calculated using the geometric normal to avoid
+  // black edges on meshes displaying strong smooth-shading via vertex normals
+  if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
+    vertexNormal = -vertexNormal;
+  }
+  var N = vertexNormal;
+  var bumpOffset: f32 = 0.0;
+  if (material.bumpMapLocation.x > -1) {
+    N = getShadingNormal(
+      material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
+      ires, &bumpOffset
+    );
+  }
+
+  let x0 = ray.origin;
+  let x1 = ires.hitPoint;
+
+  // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
+  (*ray).origin = ires.hitPoint;
+  // in practice however, only for Dielectrics we need the exact origin, 
+  // for Diffuse we can apply the bump offset if necessary
+  if (bumpOffset > 0.0) {
+    (*ray).origin += vertexNormal * bumpOffset;
+  }
+
+  // rands1.w is used for ONE_SAMPLE_MODEL
+  // rands1.xy is used for brdf samples
+  // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
+  let rands1 = vec4f(getRand2D(), getRand2D());
+  let rands2 = vec4f(getRand2D(), getRand2D());
+
+  var brdf = color / PI;
+  var colorLessBrdf = 1.0 / PI;
+
+  var brdfSamplePdf: f32; var brdfMisWeight: f32; 
+  var lightSamplePdf: f32; var lightMisWeight: f32; var lightSampleRadiance: vec3f;
+  var rayBrdf = Ray((*ray).origin, (*ray).direction);
+  var rayLight = Ray((*ray).origin, (*ray).direction);
+
+  shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight, ires);
+  shadeDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
+
+  (*ray).origin += rayBrdf.direction * 0.001;
+  (*ray).direction = rayBrdf.direction;
+
+  var rrStepResult = RandomReplayStepResult(false, vec3f(0.0));
+
+  if (length(lightSampleRadiance) > 0.0) {
+    let mi = 1.0;
+    // for now it's easier to only consider NEE - we avoid having to deal with Emissive materials
+    let pHat = lightSampleRadiance * *throughput * brdf * max(dot(N, rayLight.direction), 0.0);
+    // let Wxi = *wxi * (1.0 / lightSamplePdf);
+    // let wi = mi * getLuminance(pHat) * Wxi;
+
+    if (pi.bounceCount == u32(debugInfo.bounce)) {
+      rrStepResult.terminatedByNEE = true;
+      rrStepResult.pHat = pHat;
+    }
+
+    // updateReservoir uses a different set of random numbers, exclusive for ReSTIR,
+    // no need to skip numbers here
+    // updateReservoir(reservoir, pathInfo, wi);
+  }
+
+  *wxi *= (1.0 / brdfSamplePdf);
+  *throughput *= brdf * max(dot(N, rayBrdf.direction), 0.0); 
+
+  return rrStepResult;
+}
+
+fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
+  let idx = tid.y * canvasSize.x + tid.x;
+
+  // debugInfo.tid = tid;
+  // debugInfo.isSelectedPixel = false;
+  // if (debugPixelTarget.x == tid.x && debugPixelTarget.y == tid.y) {
+  //   debugInfo.isSelectedPixel = true;
+  // }
+
+  initializeRandoms(vec3u(pi.seed, 0), 0);
+
+  var rayContribution: f32;
+  var ray = getCameraRay(tid, idx, &rayContribution);
+
+  var throughput = vec3f(1.0);
+  var rad = vec3f(0.0);
+  var wxi = 1.0;
+  for (var i = 0; i < config.BOUNCES_COUNT; i++) {
+    if (rayContribution == 0.0) { break; }
+
+    debugInfo.bounce = i;
+
+    let ires = bvhIntersect(ray);
+
+    if (ires.hit) {
+      let rrStepResult = shadeDiffuse(ires, &ray, pi, &throughput, &wxi, tid, i);
+      
+      if (pi.bounceCount == u32(debugInfo.bounce) && rrStepResult.terminatedByNEE) {
+        return RandomReplayResult(1, rrStepResult.pHat);
+      }
+    } 
+    // ..... missing stuff .....
+  }
+
+  return RandomReplayResult(0, vec3f(0));
+}
+
+fn generalizedBalanceHeuristic(
+  XiPi: PathInfo, pHatXi: vec3f, idx: i32, candidates: array<Reservoir, SR_CANDIDATES_COUNT>
+) -> f32 {
+  let numerator = getLuminance(pHatXi);
+  var denominator = getLuminance(pHatXi);
+
+  for (var i = 0; i < SR_CANDIDATES_COUNT; i++) {
+    if (i == idx) { continue; }
+
+    let Xj = candidates[i];
+    // shift the Xi path into Xj's pixel (seed is effectively tid.xy)
+    let randomReplayResult = randomReplay(XiPi, vec3u(Xj.Y.seed, 0));
+
+    if (randomReplayResult.valid > 0) {
+      denominator += getLuminance(randomReplayResult.pHat);
+    }
+  }
+
+  return numerator / denominator;
+}
+
+fn updateReservoir(reservoir: ptr<function, Reservoir>, Xi: PathInfo, wi: f32) -> bool {
+  (*reservoir).wSum = (*reservoir).wSum + wi;
+  let prob = wi / (*reservoir).wSum;
+
+  if (getRand2D_2().x < prob) {
+    (*reservoir).Y = Xi;
+    (*reservoir).isNull = -1.0;
+  
+    return true;
+  }
+
+  return false;
+} 
+
+fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u) -> Reservoir {
+  // ******* important: first candidate is the current pixel's reservoir ***********
+  // ******* I should probably update this function to reflect that ***********
+  
+  var r = Reservoir(
+    PathInfo(vec3f(0.0), vec2u(0), 0, 0),
+    0.0, 0.0, 0.0, 1.0,
+  );
+  let M: i32 = SR_CANDIDATES_COUNT;
+
+  var YpHat = vec3f(0.0); 
+
+  for (var i: i32 = 0; i < M; i++) {
+    /* 
+      since the very first candidate is this pixel's reservoir, 
+      I can probably avoid the random replay
+      and optimize that part away
+    */
+
+      // cerca di capire da dove arriva questo strano energy gain
+
+    let Xi = candidates[i];
+    let Wxi = Xi.Wy;
+    let randomReplayResult = randomReplay(Xi.Y, tid);
+    var wi = 0.0;
+
+    if (randomReplayResult.valid > 0) {
+      let mi = generalizedBalanceHeuristic(Xi.Y, Xi.Y.F, i, candidates);
+      wi = mi * getLuminance(randomReplayResult.pHat) * Wxi;
+      // wi = 0.333 * getLuminance(randomReplayResult.pHat) * Wxi;
+    }
+
+    if (wi > 0.0) {
+      // I need rands here... how are we doing it?
+      let updated = updateReservoir(&r, Xi.Y, wi);
+      if (updated) {
+        YpHat = randomReplayResult.pHat;
+      }
+    }
+  }
+
+  if (r.isNull <= 0.0) {
+    r.Wy = 1 / getLuminance(YpHat) * r.wSum;
+    // theoretically we shouldn't re-use Y.F but for now we'll do it
+    r.Y.F = YpHat;
+  }
+
+  return r;
 }
 
 @compute @workgroup_size(8, 8) fn compute(
@@ -174,59 +401,55 @@ fn getLuminance(emission: vec3f) -> f32 {
   }
 
   var rad = vec3f(0.0);
+  var reservoir: Reservoir;
   
   if (!isOutOfScreenBounds) {
-    var reservoir = restirPassInput[idx];
+    // var reservoir = restirPassInput[idx];
+    // if (reservoir.isNull < 0.0) {
+    //   // pHat(Y) * Wy
+    //   rad = reservoir.Y.F * reservoir.Wy;
+    // }
+
+    // ******* important: first candidate is current pixel's reservoir ***********
+    var candidates = array<Reservoir, SR_CANDIDATES_COUNT>();
+    for (var i = 0; i < SR_CANDIDATES_COUNT; i++) {
+      if (i == 0) {
+        candidates[i] = restirPassInput[idx];
+      } else {
+        // uniform circle sampling 
+        let circleRadiusInPixels = 5.0;
+        let rands = getRand2D_2();
+        let r = circleRadiusInPixels * sqrt(rands.x);
+        let theta = rands.y * 2.0 * PI;
+
+        let offx = i32(r * cos(theta));
+        let offy = i32(r * sin(theta));
+
+        let ntid = vec3i(i32(tid.x) + offx, i32(tid.y) + offy, 0);
+        if (ntid.x >= 0 && ntid.y >= 0 && ntid.x < i32(canvasSize.x) && ntid.y < i32(canvasSize.y)) {
+          let nidx = ntid.y * i32(canvasSize.x) + ntid.x;
+          candidates[i] = restirPassInput[nidx];
+        } else {
+          candidates[i] = Reservoir(
+            PathInfo(vec3f(0.0), vec2u(0), 0, 0),
+            0.0, 0.0, 0.0, 1.0,
+          );
+        }
+      }
+    }
+  
+    reservoir = SpatialResample(candidates, tid);
     if (reservoir.isNull < 0.0) {
-      // pHat(Y) * Wy
+      // theoretically we shouldn't re-use Y.F but for now we'll do it
       rad = reservoir.Y.F * reservoir.Wy;
     }
-
-    initializeRandoms(tid, debugInfo.sample);
-
-    // // pick 4 or 5 candidates, their restirPassData,
-    // // then modify restirData's reservoir such that it can be used on the shading routine
-    // // actually the shading routine should not receive restirpass data, it's better if we 
-    // // do something else once we figured out which sample we want to use
-    
-    // // let's start with a total of 5 candidates
-    // // ******* important: first candidate is current pixel's reservoir ***********
-    // var candidates = array<ReSTIRPassData, 5>();
-    // for (var i = 0; i < 5; i++) {
-    //   if (i == 0) {
-    //     candidates[i] = restirData;
-    //   } else {
-    //     // uniform circle sampling 
-    //     let circleRadiusInPixels = 5.0;
-    //     let rands = getRand2D();
-    //     let r = circleRadiusInPixels * sqrt(rands.x);
-    //     let theta = rands.y * 2.0 * PI;
-
-    //     let offx = i32(r * cos(theta));
-    //     let offy = i32(r * sin(theta));
-
-    //     let ntid = vec3i(i32(tid.x) + offx, i32(tid.y) + offy, 0);
-    //     if (ntid.x >= 0 && ntid.y >= 0) {
-    //       let nidx = ntid.y * i32(canvasSize.x) + ntid.x;
-    //       candidates[i] = restirPassInput[nidx];
-    //     } else {
-    //       candidates[i] = ReSTIRPassData(
-    //         -1.0, vec3f(0), vec3f(0), vec3f(0), -1,
-    //         Reservoir(vec3f(0), -1, 0, 0, 0, 1.0)
-    //       );
-    //     }
-    //   }
-    // }
-  
-    // let r = SpatialResample(candidates);
-    // restirData.r = r;
   }
 
-  // // https://www.w3.org/TR/WGSL/#storageBarrier-builtin
-  // // https://stackoverflow.com/questions/72035548/what-does-storagebarrier-in-webgpu-actually-do
-  // // "storageBarrier coordinates access by invocations in single workgroup 
-  // // to buffers in 'storage' address space."
-  // storageBarrier();
+  // https://www.w3.org/TR/WGSL/#storageBarrier-builtin
+  // https://stackoverflow.com/questions/72035548/what-does-storagebarrier-in-webgpu-actually-do
+  // "storageBarrier coordinates access by invocations in single workgroup 
+  // to buffers in 'storage' address space."
+  storageBarrier();
 
   // every thread needs to be able to reach the storageBarrier for us to be able to use it,
   // so early returns can only happen afterwards
@@ -234,7 +457,7 @@ fn getLuminance(emission: vec3f) -> f32 {
     return;
   }
 
-  // restirPassInput[idx] = restirData;
+  restirPassInput[idx] = reservoir;
 
   if (finalPass == 1) {
     // shade(&restirData, &rad, tid, 0);

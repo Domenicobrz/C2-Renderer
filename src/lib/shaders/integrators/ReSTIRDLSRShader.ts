@@ -376,7 +376,8 @@ fn shade(
         let offy = i32(r * sin(theta));
 
         let ntid = vec3i(i32(tid.x) + offx, i32(tid.y) + offy, 0);
-        if (ntid.x >= 0 && ntid.y >= 0) {
+        // if (ntid.x >= 0 && ntid.y >= 0) {
+        if (ntid.x >= 0 && ntid.y >= 0 && ntid.x < canvasSize.x && ntid.y < canvasSize.y) {
           let nidx = ntid.y * i32(canvasSize.x) + ntid.x;
           candidates[i] = restirPassInput[nidx];
         } else {

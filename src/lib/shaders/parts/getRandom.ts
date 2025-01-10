@@ -1,5 +1,6 @@
 export const getRandomPart = /* wgsl */ `
 const RANDOMS_VEC4F_ARRAY_COUNT = 50;
+const RANDOMS_SAMPLES_COUNT = RANDOMS_VEC4F_ARRAY_COUNT * 4;
 var<private> randomsArrayIndex: u32 = 0;
 var<private> randomsOffset: f32 = 0;
 var<private> randomsOffsetsArray = array<f32, 8>(0,0,0,0,0,0,0,0);
@@ -104,4 +105,33 @@ fn selectRandomArraySampleComponent(sample: vec4f, index: u32) -> f32 {
     default: { return 0.0; } 
   }
 }
+`;
+
+export const getReSTIRRandomPart = /* wgsl */ `
+var<private> randomsArrayIndex2: u32 = 0;
+
+fn getRand2D_2() -> vec2f {
+  var rands = vec2f(0.0);
+
+  for (var i = 0; i < 2; i++) {
+    let currentSample = uniformRandom[randomsArrayIndex2 / 4];
+    let modulo = mod1u(randomsArrayIndex2, 4);
+    let sample = selectRandomArraySampleComponent(currentSample, modulo);
+
+    randomsArrayIndex2++;
+    if (randomsArrayIndex2 >= RANDOMS_VEC4F_ARRAY_COUNT) {
+      randomsArrayIndex2 = 0;
+    }
+
+    let value = min(fract(sample), 0.99999999);
+
+    if (i == 0) {
+      rands.x = value;
+    } else {
+      rands.y = value;
+    }
+  }
+
+  return rands;
+};
 `;

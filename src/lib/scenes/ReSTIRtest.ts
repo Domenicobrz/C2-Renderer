@@ -67,6 +67,9 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
   mesh.position.set(0, -2, 1.5);
   mesh.rotation.y = -0.5;
 
+  // let mesh = new Mesh(new PlaneGeometry(4, 4));
+  // mesh.position.set(0, -2, 0);
+
   let mat = new Diffuse({ color: new Color(1, 1, 1) });
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];

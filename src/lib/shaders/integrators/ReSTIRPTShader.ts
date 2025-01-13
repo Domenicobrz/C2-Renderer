@@ -128,7 +128,7 @@ fn debugLog(value: f32) {
 
 struct PathInfo {
   F: vec3f,
-  seed: vec2u,
+  seed: vec2i,
   bounceCount: u32,
   // bit 0: path ends by NEE boolean
   // bit 1: path ends by BRDF sampling boolean (we found a light)
@@ -336,7 +336,7 @@ fn shadeDiffuse(
 
     let pathInfo = PathInfo(
       pHat,
-      tid.xy,
+      vec2i(tid.xy),
       u32(debugInfo.bounce),
       1   // always set flags to "path ends by NEE"
     );
@@ -391,7 +391,7 @@ fn shade(
 
   var prevReservoir = restirPassOutput[idx];
   var reservoir = Reservoir(
-    PathInfo(vec3f(0.0), vec2u(0), 0, 0),
+    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0),
     0.0, 0.0, 0.0, 1.0,
   );
 

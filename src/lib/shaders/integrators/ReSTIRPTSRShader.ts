@@ -128,7 +128,7 @@ fn debugLog(value: f32) {
 
 struct PathInfo {
   F: vec3f,
-  seed: vec2u,
+  seed: vec2i,
   bounceCount: u32,
   // bit 0: path ends by NEE boolean
   // bit 1: path ends by BRDF sampling boolean (we found a light)
@@ -155,7 +155,7 @@ struct RandomReplayStepResult {
   pHat: vec3f,
 }
 
-const SR_CANDIDATES_COUNT = 5;
+const SR_CANDIDATES_COUNT = 3;
 
 fn getLuminance(emission: vec3f) -> f32 {
   return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
@@ -238,6 +238,10 @@ fn shadeDiffuse(
     if (pi.bounceCount == u32(debugInfo.bounce)) {
       rrStepResult.terminatedByNEE = true;
       rrStepResult.pHat = pHat;
+
+      // if (debugInfo.isSelectedPixel) {
+      //   debugLog(getLuminance(pHat));
+      // }
     }
 
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR,
@@ -260,7 +264,7 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
   //   debugInfo.isSelectedPixel = true;
   // }
 
-  initializeRandoms(vec3u(pi.seed, 0), 0);
+  initializeRandoms(vec3u(vec2u(pi.seed), 0), 0);
 
   var rayContribution: f32;
   var ray = getCameraRay(tid, idx, &rayContribution);
@@ -298,10 +302,24 @@ fn generalizedBalanceHeuristic(
     if (i == idx) { continue; }
 
     let Xj = candidates[i];
-    if (Xj.isNull > 0) { continue; }
+
+    // there's a big difference between a null candidate path, and a null candidate
+    // if one of the ""candidates"" is outside of the screen boundaries, we're not simply
+    // stating that the reservoir is null. It's just totally unuseable, there can't be any path
+    // associated with a pixel outside the screen boundaries. Nothing at all, none.
+    // However, some nearby pixels might have been unable to find a candidate path Y, but *must* still
+    // be tested in the generalized balance heuristic. They may have failed to generate a candidate
+    // path, but they may be able to successfully random replay the path we're testing here with XiPi
+    // Thus they must be considered and used here otherwise we'll gain energy where we shouldn't.
+    // This is the reason why we're only checking if the candidate has a negative seed, that means
+    // that the ""candidate"" is one of those samples that fell outside the screen boundaries and is thus 
+    // unuseable. This would have been easier if we had access to a dynamic array but sadly we can't
+
+    // if (Xj.isNull > 0) { continue; }
+    if (Xj.Y.seed.x < 0) { continue; }
 
     // shift the Xi path into Xj's pixel (seed is effectively tid.xy)
-    let randomReplayResult = randomReplay(XiPi, vec3u(Xj.Y.seed, 0));
+    let randomReplayResult = randomReplay(XiPi, vec3u(vec2u(Xj.Y.seed), 0));
 
     if (randomReplayResult.valid > 0) {
       let res = getLuminance(randomReplayResult.pHat);
@@ -334,12 +352,16 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
   // ******* I should probably update this function to reflect that ***********
   
   var r = Reservoir(
-    PathInfo(vec3f(0.0), vec2u(0), 0, 0),
+    PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0),
     0.0, 0.0, 0.0, 1.0,
   );
   let M: i32 = SR_CANDIDATES_COUNT;
 
   var YpHat = vec3f(0.0); 
+
+  if (debugInfo.isSelectedPixel) {
+    debugLog(1112.0);
+  }
 
   for (var i: i32 = 0; i < M; i++) {
     /* 
@@ -349,7 +371,13 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     */
 
     let Xi = candidates[i];
-    if (Xi.isNull > 0) { continue; }
+    if (Xi.isNull > 0) { 
+      if (debugInfo.isSelectedPixel) {
+        debugLog(555.0);
+      }
+      // we weren't able to generate a path for this candidate, thus skip it
+      continue; 
+    }
 
     let Wxi = Xi.Wy;
     let randomReplayResult = randomReplay(Xi.Y, tid);
@@ -357,10 +385,16 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
     if (randomReplayResult.valid > 0) {
       let mi = generalizedBalanceHeuristic(Xi.Y, Xi.Y.F, i, candidates);
-      wi = mi * getLuminance(randomReplayResult.pHat) * Wxi;
-      // wi = 0.333 * getLuminance(randomReplayResult.pHat) * Wxi;
-    } else {
+      if (debugInfo.isSelectedPixel) {
+        debugLog(mi);
+      }
 
+      wi = mi * getLuminance(randomReplayResult.pHat) * Wxi;
+      // wi = 0.5 * getLuminance(randomReplayResult.pHat) * Wxi;
+    } else {
+      if (debugInfo.isSelectedPixel) {
+        debugLog(888.0);
+      }
     }
 
     if (wi > 0.0) {
@@ -371,8 +405,21 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     }
   }
 
+  if (debugInfo.isSelectedPixel) {
+    debugLog(2222.0);
+  }
+
   if (r.isNull <= 0.0) {
     r.Wy = 1 / getLuminance(YpHat) * r.wSum;
+
+    // if (debugInfo.isSelectedPixel) {
+    //   debugLog(3333);
+    //   debugLog(getLuminance(YpHat));
+    //   debugLog(r.wSum);
+    //   debugLog(r.Wy);
+    //   debugLog(3333);
+    // }
+
     // theoretically we shouldn't re-use Y.F but for now we'll do it
     r.Y.F = YpHat;
   }
@@ -438,7 +485,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
           candidates[i] = restirPassInput[nidx];
         } else {
           candidates[i] = Reservoir(
-            PathInfo(vec3f(0.0), vec2u(0), 0, 0),
+            PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0),
             0.0, 0.0, 0.0, 1.0,
           );
         }

@@ -105,7 +105,7 @@ export const cameraMovementInfoStore = writable<CameraMovementInfo>({
 
 export const configOptions = createConfigStore({
   forceMaxTileSize: false,
-  BOUNCES_COUNT: 1, // was 10
+  BOUNCES_COUNT: 7, // was 10
   MIS_TYPE: 2,
   SAMPLER_TYPE: 2,
   SAMPLER_DECORRELATION: 3,

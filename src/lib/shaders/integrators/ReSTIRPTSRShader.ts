@@ -155,7 +155,7 @@ struct RandomReplayStepResult {
   pHat: vec3f,
 }
 
-const SR_CANDIDATES_COUNT = 3;
+const SR_CANDIDATES_COUNT = 5;
 
 fn getLuminance(emission: vec3f) -> f32 {
   return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
@@ -298,13 +298,19 @@ fn generalizedBalanceHeuristic(
     if (i == idx) { continue; }
 
     let Xj = candidates[i];
+    if (Xj.isNull > 0) { continue; }
+
     // shift the Xi path into Xj's pixel (seed is effectively tid.xy)
     let randomReplayResult = randomReplay(XiPi, vec3u(Xj.Y.seed, 0));
 
     if (randomReplayResult.valid > 0) {
-      denominator += getLuminance(randomReplayResult.pHat);
+      let res = getLuminance(randomReplayResult.pHat);
+      denominator += res;
     }
   }
+
+  //  TODO: what to do in this case? it did happen
+  if (numerator == 0 && denominator == 0) { return 0; }
 
   return numerator / denominator;
 }
@@ -342,9 +348,9 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
       and optimize that part away
     */
 
-      // cerca di capire da dove arriva questo strano energy gain
-
     let Xi = candidates[i];
+    if (Xi.isNull > 0) { continue; }
+
     let Wxi = Xi.Wy;
     let randomReplayResult = randomReplay(Xi.Y, tid);
     var wi = 0.0;
@@ -353,10 +359,11 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
       let mi = generalizedBalanceHeuristic(Xi.Y, Xi.Y.F, i, candidates);
       wi = mi * getLuminance(randomReplayResult.pHat) * Wxi;
       // wi = 0.333 * getLuminance(randomReplayResult.pHat) * Wxi;
+    } else {
+
     }
 
     if (wi > 0.0) {
-      // I need rands here... how are we doing it?
       let updated = updateReservoir(&r, Xi.Y, wi);
       if (updated) {
         YpHat = randomReplayResult.pHat;

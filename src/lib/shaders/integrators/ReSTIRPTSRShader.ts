@@ -352,6 +352,11 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
   // ******* I should probably update this function to reflect that ***********
   
   var r = Reservoir(
+    // it's important that we set tid.xy as the path seed here, read
+    // the note inside generalizedBalanceHeuristic to understand why.
+    // In this case, it's important because for next spatial iterations
+    // when we return the reservoir, we have to set it as a valid pixel, by
+    // assigning something other that -1,-1 to the seed value
     PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0),
     0.0, 0.0, 0.0, 1.0,
   );

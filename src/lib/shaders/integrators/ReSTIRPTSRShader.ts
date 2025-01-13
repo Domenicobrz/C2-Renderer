@@ -352,7 +352,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
   // ******* I should probably update this function to reflect that ***********
   
   var r = Reservoir(
-    PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0),
+    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0),
     0.0, 0.0, 0.0, 1.0,
   );
   let M: i32 = SR_CANDIDATES_COUNT;

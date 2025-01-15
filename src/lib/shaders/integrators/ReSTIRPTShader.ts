@@ -139,6 +139,7 @@ struct PathInfo {
 
 struct Reservoir {
   Y: PathInfo,
+  Gbuffer: vec4f, // normal.xyz, depth at first bounce. depth = -1 if no intersection was found
   Wy: f32,  // probability chain
   c: f32,
   wSum: f32,
@@ -289,6 +290,10 @@ fn shadeDiffuse(
 
   let x0 = ray.origin;
   let x1 = ires.hitPoint;
+  
+  if (debugInfo.bounce == 0) {
+    reservoir.Gbuffer = vec4f(vertexNormal, length((*ray).origin - ires.hitPoint));
+  }
 
   // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
   (*ray).origin = ires.hitPoint;
@@ -392,7 +397,7 @@ fn shade(
   var prevReservoir = restirPassOutput[idx];
   var reservoir = Reservoir(
     PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0),
-    0.0, 0.0, 0.0, 1.0,
+    vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
   );
 
   initializeRandoms(tid, debugInfo.sample);

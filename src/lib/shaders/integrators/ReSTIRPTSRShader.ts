@@ -126,6 +126,7 @@ fn debugLog(value: f32) {
   debugInfo.debugLogIndex++;
 }
 
+
 struct PathInfo {
   F: vec3f,
   seed: vec2i,
@@ -139,6 +140,7 @@ struct PathInfo {
 
 struct Reservoir {
   Y: PathInfo,
+  Gbuffer: vec4f, // normal.xyz, depth at first bounce. depth = -1 if no intersection was found
   Wy: f32,  // probability chain
   c: f32,
   wSum: f32,
@@ -314,6 +316,7 @@ fn generalizedBalanceHeuristic(
     // This is the reason why we're only checking if the candidate has a negative seed, that means
     // that the ""candidate"" is one of those samples that fell outside the screen boundaries and is thus 
     // unuseable. This would have been easier if we had access to a dynamic array but sadly we can't
+    // same applies for candidates that have been removed because of Gbuffer differences
 
     // if (Xj.isNull > 0) { continue; }
     if (Xj.Y.seed.x < 0) { continue; }
@@ -358,15 +361,11 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the seed value
     PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0),
-    0.0, 0.0, 0.0, 1.0,
+    candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0,
   );
   let M: i32 = SR_CANDIDATES_COUNT;
 
   var YpHat = vec3f(0.0); 
-
-  if (debugInfo.isSelectedPixel) {
-    debugLog(1112.0);
-  }
 
   for (var i: i32 = 0; i < M; i++) {
     /* 
@@ -377,9 +376,6 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
     let Xi = candidates[i];
     if (Xi.isNull > 0) { 
-      if (debugInfo.isSelectedPixel) {
-        debugLog(555.0);
-      }
       // we weren't able to generate a path for this candidate, thus skip it
       continue; 
     }
@@ -390,16 +386,10 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
     if (randomReplayResult.valid > 0) {
       let mi = generalizedBalanceHeuristic(Xi.Y, Xi.Y.F, i, candidates);
-      if (debugInfo.isSelectedPixel) {
-        debugLog(mi);
-      }
-
       wi = mi * getLuminance(randomReplayResult.pHat) * Wxi;
       // wi = 0.5 * getLuminance(randomReplayResult.pHat) * Wxi;
     } else {
-      if (debugInfo.isSelectedPixel) {
-        debugLog(888.0);
-      }
+      
     }
 
     if (wi > 0.0) {
@@ -410,21 +400,8 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     }
   }
 
-  if (debugInfo.isSelectedPixel) {
-    debugLog(2222.0);
-  }
-
   if (r.isNull <= 0.0) {
     r.Wy = 1 / getLuminance(YpHat) * r.wSum;
-
-    // if (debugInfo.isSelectedPixel) {
-    //   debugLog(3333);
-    //   debugLog(getLuminance(YpHat));
-    //   debugLog(r.wSum);
-    //   debugLog(r.Wy);
-    //   debugLog(3333);
-    // }
-
     // theoretically we shouldn't re-use Y.F but for now we'll do it
     r.Y.F = YpHat;
   }
@@ -471,9 +448,13 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
     // ******* important: first candidate is current pixel's reservoir ***********
     var candidates = array<Reservoir, SR_CANDIDATES_COUNT>();
+    var normal0 = vec3f(0.0);
+    var depth0 = 0.0;
     for (var i = 0; i < SR_CANDIDATES_COUNT; i++) {
       if (i == 0) {
         candidates[i] = restirPassInput[idx];
+        normal0 = candidates[0].Gbuffer.xyz;
+        depth0 = candidates[0].Gbuffer.w;
       } else {
         // uniform circle sampling 
         let circleRadiusInPixels = 5.0;
@@ -488,10 +469,22 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
         if (ntid.x >= 0 && ntid.y >= 0 && ntid.x < i32(canvasSize.x) && ntid.y < i32(canvasSize.y)) {
           let nidx = ntid.y * i32(canvasSize.x) + ntid.x;
           candidates[i] = restirPassInput[nidx];
+
+          // GBuffer test
+          let normal1 = candidates[i].Gbuffer.xyz;
+          let depth1 = candidates[i].Gbuffer.w;
+
+          if (dot(normal1, normal0) < 0.9) {
+            candidates[i] = Reservoir(
+              PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0),
+              vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
+            );
+          }
+
         } else {
           candidates[i] = Reservoir(
             PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0),
-            0.0, 0.0, 0.0, 1.0,
+            vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
           );
         }
       }

@@ -292,7 +292,7 @@ fn shadeDiffuse(
   let x1 = ires.hitPoint;
   
   if (debugInfo.bounce == 0) {
-    reservoir.Gbuffer = vec4f(vertexNormal, length((*ray).origin - ires.hitPoint));
+    (*reservoir).Gbuffer = vec4f(vertexNormal, length((*ray).origin - ires.hitPoint));
   }
 
   // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 

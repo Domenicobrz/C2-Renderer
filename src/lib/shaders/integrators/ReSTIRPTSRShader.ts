@@ -266,10 +266,29 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
   //   debugInfo.isSelectedPixel = true;
   // }
 
-  initializeRandoms(vec3u(vec2u(pi.seed), 0), 0);
+  // initializeRandoms(vec3u(vec2u(pi.seed), 0), 0);
 
+  // the initial camera ray should be the same of the pixel we are shading,
+  // to make sure we'll always hit the same surface point x1, and avoid
+  // running the risk of one of the random replays to get a camera ray that lands
+  // on an x1 with an invalid gbuffer
+  initializeRandoms(tid, 0);
   var rayContribution: f32;
   var ray = getCameraRay(tid, idx, &rayContribution);
+
+  // then we'll use the path-info seed number, and also have to remember to
+  // skip the camera randoms
+  initializeRandoms(vec3u(vec2u(pi.seed), 0), 0);
+  getRand2D(); getRand2D();
+  if (camera.catsEyeBokehEnabled > 0) {
+    // *********** ERROR ************
+    // *********** ERROR ************
+    // *********** ERROR ************
+    // This wasn't implemented since the catseyedbokeh routine asks for 
+    // rand 2ds in a for loop and then uses those rands to decide where to 
+    // continue the for loop or not
+    return RandomReplayResult(0, vec3f(0));
+  }
 
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);
@@ -453,8 +472,8 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     for (var i = 0; i < SR_CANDIDATES_COUNT; i++) {
       if (i == 0) {
         candidates[i] = restirPassInput[idx];
-        normal0 = candidates[0].Gbuffer.xyz;
-        depth0 = candidates[0].Gbuffer.w;
+        normal0 = candidates[i].Gbuffer.xyz;
+        depth0 = candidates[i].Gbuffer.w;
       } else {
         // uniform circle sampling 
         let circleRadiusInPixels = 5.0;
@@ -480,7 +499,6 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
               vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
             );
           }
-
         } else {
           candidates[i] = Reservoir(
             PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0),

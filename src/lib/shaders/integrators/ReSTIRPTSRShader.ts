@@ -278,6 +278,7 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
 
   // then we'll use the path-info seed number, and also have to remember to
   // skip the camera randoms
+  // read segments/integrators/doc1.png to understand why this is necessary
   initializeRandoms(vec3u(vec2u(pi.seed), 0), 0);
   getRand2D(); getRand2D();
   if (camera.catsEyeBokehEnabled > 0) {

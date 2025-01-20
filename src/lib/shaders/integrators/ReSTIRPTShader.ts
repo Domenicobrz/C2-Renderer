@@ -261,7 +261,6 @@ fn shadeDiffuse(
   ray: ptr<function, Ray>,
   reservoir: ptr<function, Reservoir>,
   throughput: ptr<function, vec3f>, 
-  wxi: ptr<function, f32>,
   tid: vec3u,
   i: i32
 ) {
@@ -334,8 +333,9 @@ fn shadeDiffuse(
   if (length(lightSampleRadiance) > 0.0) {
     let mi = 1.0;
     // for now it's easier to only consider NEE - we avoid having to deal with Emissive materials
-    let pHat = lightSampleRadiance * *throughput * brdf * max(dot(N, rayLight.direction), 0.0);
-    let Wxi = *wxi * (1.0 / lightSamplePdf);
+    let pHat = lightSampleRadiance * (/*lightMisWeight*/ 1.0 / lightSamplePdf) * *throughput * 
+               brdf * max(dot(N, rayLight.direction), 0.0);
+    let Wxi = 1.0; // *wxi * (1.0 / lightSamplePdf);
 
     let wi = mi * getLuminance(pHat) * Wxi;
 
@@ -350,8 +350,7 @@ fn shadeDiffuse(
     updateReservoir(reservoir, pathInfo, wi);
   }
 
-  *wxi *= (1.0 / brdfSamplePdf);
-  *throughput *= brdf * max(dot(N, rayBrdf.direction), 0.0); 
+  *throughput *= brdf * (/* mis weight */ 1.0 / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0); 
 }
 
 // ***** Things to remember:  (https://webgpureport.org/)
@@ -366,7 +365,6 @@ fn shade(
   ray: ptr<function, Ray>,
   reservoir: ptr<function, Reservoir>,
   throughput: ptr<function, vec3f>, 
-  wxi: ptr<function, f32>,
   tid: vec3u,
   i: i32) 
 {
@@ -374,7 +372,7 @@ fn shade(
   let materialType = materialsData[materialOffset];
 
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-    shadeDiffuse(ires, ray, reservoir, throughput, wxi, tid, i);
+    shadeDiffuse(ires, ray, reservoir, throughput, tid, i);
   }
 }
 
@@ -407,7 +405,6 @@ fn shade(
 
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);
-  var wxi = 1.0;
   for (var i = 0; i < config.BOUNCES_COUNT; i++) {
     if (rayContribution == 0.0) { break; }
 
@@ -416,7 +413,7 @@ fn shade(
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
-      shade(ires, &ray, &reservoir, &throughput, &wxi, tid, i);
+      shade(ires, &ray, &reservoir, &throughput, tid, i);
     } 
     // else if (shaderConfig.HAS_ENVMAP) {
     //   // we bounced off into the envmap

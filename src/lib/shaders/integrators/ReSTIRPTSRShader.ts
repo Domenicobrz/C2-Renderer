@@ -170,7 +170,6 @@ fn shadeDiffuse(
   ray: ptr<function, Ray>,
   pi: PathInfo,
   throughput: ptr<function, vec3f>, 
-  wxi: ptr<function, f32>,
   tid: vec3u,
   i: i32
 ) -> RandomReplayStepResult {
@@ -233,17 +232,14 @@ fn shadeDiffuse(
   if (length(lightSampleRadiance) > 0.0) {
     let mi = 1.0;
     // for now it's easier to only consider NEE - we avoid having to deal with Emissive materials
-    let pHat = lightSampleRadiance * *throughput * brdf * max(dot(N, rayLight.direction), 0.0);
-    // let Wxi = *wxi * (1.0 / lightSamplePdf);
+    let pHat = lightSampleRadiance * (/*lightMisWeight*/ 1.0 / lightSamplePdf) * *throughput * 
+               brdf * max(dot(N, rayLight.direction), 0.0);
+    // let Wxi = 1.0; // *wxi * (1.0 / lightSamplePdf);
     // let wi = mi * getLuminance(pHat) * Wxi;
 
     if (pi.bounceCount == u32(debugInfo.bounce)) {
       rrStepResult.terminatedByNEE = true;
       rrStepResult.pHat = pHat;
-
-      // if (debugInfo.isSelectedPixel) {
-      //   debugLog(getLuminance(pHat));
-      // }
     }
 
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR,
@@ -251,8 +247,7 @@ fn shadeDiffuse(
     // updateReservoir(reservoir, pathInfo, wi);
   }
 
-  *wxi *= (1.0 / brdfSamplePdf);
-  *throughput *= brdf * max(dot(N, rayBrdf.direction), 0.0); 
+  *throughput *= brdf * (/* mis weight */ 1.0 / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0); 
 
   return rrStepResult;
 }
@@ -293,7 +288,6 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
 
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);
-  var wxi = 1.0;
   for (var i = 0; i < config.BOUNCES_COUNT; i++) {
     if (rayContribution == 0.0) { break; }
 
@@ -302,7 +296,7 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
-      let rrStepResult = shadeDiffuse(ires, &ray, pi, &throughput, &wxi, tid, i);
+      let rrStepResult = shadeDiffuse(ires, &ray, pi, &throughput, tid, i);
       
       if (pi.bounceCount == u32(debugInfo.bounce) && rrStepResult.terminatedByNEE) {
         return RandomReplayResult(1, rrStepResult.pHat);
@@ -477,7 +471,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
         depth0 = candidates[i].Gbuffer.w;
       } else {
         // uniform circle sampling 
-        let circleRadiusInPixels = 5.0;
+        let circleRadiusInPixels = 25.0;
         let rands = getRand2D_2();
         let r = circleRadiusInPixels * sqrt(rands.x);
         let theta = rands.y * 2.0 * PI;

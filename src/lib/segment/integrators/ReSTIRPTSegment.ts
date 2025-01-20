@@ -41,7 +41,7 @@ export class ReSTIRPTSegment {
   private srBindGroup0: GPUBindGroup | null = null;
   private srBindGroup1: GPUBindGroup[] = [];
 
-  private SPATIAL_REUSE_PASSES = 3;
+  private SPATIAL_REUSE_PASSES = 1;
 
   private canvasSize: Vector2 | null = null;
   private canvasSizeUniformBuffer: GPUBuffer;

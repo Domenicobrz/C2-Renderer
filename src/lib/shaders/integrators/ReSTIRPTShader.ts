@@ -400,6 +400,7 @@ fn shade(
   );
 
   initializeRandoms(tid, debugInfo.sample);
+  initializeRandoms2(tid);
 
   var rayContribution: f32;
   var ray = getCameraRay(tid, idx, &rayContribution);

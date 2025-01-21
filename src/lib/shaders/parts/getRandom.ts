@@ -109,6 +109,16 @@ fn selectRandomArraySampleComponent(sample: vec4f, index: u32) -> f32 {
 
 export const getReSTIRRandomPart = /* wgsl */ `
 var<private> randomsArrayIndex2: u32 = 0;
+var<private> randomsOffset2: f32 = 0.0;
+
+fn initializeRandoms2(tid: vec3u) {
+  randomsArrayIndex2 = 0;
+  randomsOffset2 = 0.0;
+  let pseudoRands = rand4(tid.x * 7189357 + tid.y * 5839261);
+
+  randomsOffset2 = pseudoRands.x;
+  randomsArrayIndex2 = u32(pseudoRands.y * 0.5 * f32(RANDOMS_VEC4F_ARRAY_COUNT-1)) * 2;
+}
 
 fn getRand2D_2() -> vec2f {
   var rands = vec2f(0.0);
@@ -123,7 +133,8 @@ fn getRand2D_2() -> vec2f {
       randomsArrayIndex2 = 0;
     }
 
-    let value = min(fract(sample), 0.99999999);
+    var offset = randomsOffset2;
+    let value = min(fract(sample + offset), 0.99999999);
 
     if (i == 0) {
       rands.x = value;

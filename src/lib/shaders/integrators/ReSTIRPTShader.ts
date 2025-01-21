@@ -122,8 +122,10 @@ struct DebugInfo {
 // https://www.w3.org/TR/WGSL/#address-spaces-private
 var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0, 0);
 fn debugLog(value: f32) {
-  debugBuffer[debugInfo.debugLogIndex] = value;
-  debugInfo.debugLogIndex++;
+  if (debugInfo.isSelectedPixel) {
+    debugBuffer[debugInfo.debugLogIndex] = value;
+    debugInfo.debugLogIndex++;
+  }
 }
 
 struct PathInfo {

@@ -337,7 +337,8 @@ fn shadeDiffuse(
                brdf * max(dot(N, rayLight.direction), 0.0);
     let Wxi = 1.0; // *wxi * (1.0 / lightSamplePdf);
 
-    let wi = mi * getLuminance(pHat) * Wxi;
+    // let wi = mi * getLuminance(pHat) * Wxi;
+    let wi = mi * length(pHat) * Wxi;
 
     let pathInfo = PathInfo(
       pHat,
@@ -428,7 +429,7 @@ fn shade(
   }
 
   if (reservoir.isNull <= 0.0) {
-    reservoir.Wy = (1 / getLuminance(reservoir.Y.F)) * reservoir.wSum;
+    reservoir.Wy = (1 / length(reservoir.Y.F)) * reservoir.wSum;
   }
 
   // IMPORTANT NOTE:

@@ -235,7 +235,7 @@ fn shadeDiffuse(
     let pHat = lightSampleRadiance * (/*lightMisWeight*/ 1.0 / lightSamplePdf) * *throughput * 
                brdf * max(dot(N, rayLight.direction), 0.0);
     // let Wxi = 1.0; // *wxi * (1.0 / lightSamplePdf);
-    // let wi = mi * getLuminance(pHat) * Wxi;
+    // let wi = mi * length(pHat) * Wxi;
 
     if (pi.bounceCount == u32(debugInfo.bounce)) {
       rrStepResult.terminatedByNEE = true;
@@ -311,8 +311,8 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
 fn generalizedBalanceHeuristic(
   XiPi: PathInfo, pHatXi: vec3f, idx: i32, candidates: array<Reservoir, SR_CANDIDATES_COUNT>
 ) -> f32 {
-  let numerator = getLuminance(pHatXi);
-  var denominator = getLuminance(pHatXi);
+  let numerator = length(pHatXi);
+  var denominator = length(pHatXi);
 
   for (var i = 0; i < SR_CANDIDATES_COUNT; i++) {
     if (i == idx) { continue; }
@@ -339,7 +339,7 @@ fn generalizedBalanceHeuristic(
     let randomReplayResult = randomReplay(XiPi, vec3u(vec2u(Xj.Y.seed), 0));
 
     if (randomReplayResult.valid > 0) {
-      let res = getLuminance(randomReplayResult.pHat);
+      let res = length(randomReplayResult.pHat);
       denominator += res;
     }
   }
@@ -400,8 +400,8 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
     if (randomReplayResult.valid > 0) {
       let mi = generalizedBalanceHeuristic(Xi.Y, Xi.Y.F, i, candidates);
-      wi = mi * getLuminance(randomReplayResult.pHat) * Wxi;
-      // wi = 0.5 * getLuminance(randomReplayResult.pHat) * Wxi;
+      wi = mi * length(randomReplayResult.pHat) * Wxi;
+      // wi = 0.5 * length(randomReplayResult.pHat) * Wxi;
     } else {
       
     }
@@ -415,7 +415,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
   }
 
   if (r.isNull <= 0.0) {
-    r.Wy = 1 / getLuminance(YpHat) * r.wSum;
+    r.Wy = 1 / length(YpHat) * r.wSum;
     // theoretically we shouldn't re-use Y.F but for now we'll do it
     r.Y.F = YpHat;
   }
@@ -525,8 +525,6 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
   restirPassInput[idx] = reservoir;
 
   if (finalPass == 1) {
-    // shade(&restirData, &rad, tid, 0);
-
     if (debugInfo.isSelectedPixel) {
       // debugLog(999);
       radianceOutput[idx] += vec3f(1, 0, 0);

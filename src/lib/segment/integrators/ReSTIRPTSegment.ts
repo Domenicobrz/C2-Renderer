@@ -41,7 +41,7 @@ export class ReSTIRPTSegment {
   private srBindGroup0: GPUBindGroup | null = null;
   private srBindGroup1: GPUBindGroup[] = [];
 
-  private SPATIAL_REUSE_PASSES = 1;
+  private SPATIAL_REUSE_PASSES = 2;
 
   private canvasSize: Vector2 | null = null;
   private canvasSizeUniformBuffer: GPUBuffer;
@@ -79,8 +79,8 @@ export class ReSTIRPTSegment {
 
   private haltonSampler = new HaltonSampler();
   private uniformSampler = new UniformSampler();
-  private srUniformSampler = new UniformSampler('seed-string-2');
-  private uniformSampler2 = new UniformSampler('seed-string-3');
+  private srUniformSampler = new UniformSampler('seed-string-7'); // was -2
+  private uniformSampler2 = new UniformSampler('seed-string-8'); // was -3
   private blueNoiseSampler = new BlueNoiseSampler();
   private customR2Sampler = new CustomR2Sampler();
 

@@ -24,7 +24,8 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
     new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
     new Diffuse({ color: new Color(1, 0.05, 0.05) }),
     new Diffuse({ color: new Color(0.05, 1, 0.05) }),
-    new Emissive({ color: new Color(1, 1, 1), intensity: 30 })
+    // new Emissive({ color: new Color(1, 1, 1), intensity: 30 })
+    new Emissive({ color: new Color(1, 1, 1), intensity: 5000 })
   ];
 
   for (let i = 0; i < 5; i++) {
@@ -57,7 +58,8 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
     triangles = [...triangles, ...geometryToTriangles(pg, mi)];
   }
 
-  const ls = 1;
+  // const ls = 1;
+  const ls = 0.05;
   let lpg = new PlaneGeometry(ls, ls);
   lpg.rotateX(Math.PI * 0.5);
   // lpg.translate(0, 3.9, 0);
@@ -73,7 +75,7 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
 
   let mat = new Diffuse({ color: new Color(1, 1, 1) });
   materials.push(mat);
-  // triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
+  triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
 
   // create & set camera
   const camera = new Orbit();

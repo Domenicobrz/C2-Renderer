@@ -380,7 +380,6 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
   let M: i32 = SR_CANDIDATES_COUNT;
 
   var YpHat = vec3f(0.0); 
-  var miSum = 0.0;
 
   for (var i: i32 = 0; i < M; i++) {
     /* 
@@ -402,7 +401,6 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     if (randomReplayResult.valid > 0) {
       let mi = generalizedBalanceHeuristic(Xi.Y, Xi.Y.F, i, candidates);
       wi = mi * length(randomReplayResult.pHat) * Wxi;
-      miSum += mi;
       // wi = 0.5 * length(randomReplayResult.pHat) * Wxi;
     } else {
       

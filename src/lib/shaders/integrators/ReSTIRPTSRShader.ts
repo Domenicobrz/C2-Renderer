@@ -142,6 +142,7 @@ struct PathInfo {
 
 struct Reservoir {
   Y: PathInfo,
+  domain: vec2i,
   Gbuffer: vec4f, // normal.xyz, depth at first bounce. depth = -1 if no intersection was found
   Wy: f32,  // probability chain
   c: f32,
@@ -335,10 +336,10 @@ fn generalizedBalanceHeuristic(
     // same applies for candidates that have been removed because of Gbuffer differences
 
     // if (Xj.isNull > 0) { continue; }
-    if (Xj.Y.seed.x < 0) { continue; }
+    if (Xj.domain.x < 0) { continue; }
 
     // shift the Xi path into Xj's pixel (seed is effectively tid.xy)
-    let randomReplayResult = randomReplay(XiPi, vec3u(vec2u(Xj.Y.seed), 0));
+    let randomReplayResult = randomReplay(XiPi, vec3u(vec2u(Xj.domain), 0));
 
     if (randomReplayResult.valid > 0) {
       let res = length(randomReplayResult.pHat);
@@ -377,7 +378,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the seed value
     PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0),
-    candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0,
+    vec2i(tid.xy), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0,
   );
   let M: i32 = SR_CANDIDATES_COUNT;
 
@@ -495,13 +496,13 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
           if (dot(normal1, normal0) < 0.9) {
             candidates[i] = Reservoir(
               PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0),
-              vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
+              vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
             );
           }
         } else {
           candidates[i] = Reservoir(
             PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0),
-            vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
+            vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
           );
         }
       }

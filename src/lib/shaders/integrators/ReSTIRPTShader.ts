@@ -141,6 +141,7 @@ struct PathInfo {
 
 struct Reservoir {
   Y: PathInfo,
+  domain: vec2i,
   Gbuffer: vec4f, // normal.xyz, depth at first bounce. depth = -1 if no intersection was found
   Wy: f32,  // probability chain
   c: f32,
@@ -398,7 +399,7 @@ fn shade(
   var prevReservoir = restirPassOutput[idx];
   var reservoir = Reservoir(
     PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0),
-    vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
+    vec2i(tid.xy), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
   );
 
   initializeRandoms(tid, debugInfo.sample);

@@ -14,7 +14,9 @@ import { getDeviceAndContext } from './webgpu-utils/getDeviceAndContext';
 import { ReSTIRDLSegment } from './segment/integrators/ReSTIRDLSegment';
 import { ReSTIRPTSegment } from './segment/integrators/ReSTIRPTSegment';
 
-let computeSegment: ComputeSegment | ReSTIRDLSegment | ReSTIRPTSegment;
+export type Integrator = ComputeSegment | ReSTIRDLSegment | ReSTIRPTSegment;
+
+let computeSegment: Integrator;
 let renderSegment: RenderSegment;
 let previewSegment: PreviewSegment;
 let scene: C2Scene;
@@ -101,7 +103,7 @@ function onCanvasResize(
   canvas: HTMLCanvasElement,
   device: GPUDevice,
   scene: C2Scene,
-  computeSegment: ComputeSegment | ReSTIRDLSegment,
+  computeSegment: Integrator,
   renderSegment: RenderSegment,
   previewSegment: PreviewSegment
 ) {

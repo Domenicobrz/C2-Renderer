@@ -1,0 +1,83 @@
+export const tempEmissiveCopy = /* wgsl */ `
+fn shadeEmissive(
+  ires: BVHIntersectionResult, 
+  ray: ptr<function, Ray>,
+  reservoir: ptr<function, Reservoir>,
+  throughput: ptr<function, vec3f>, 
+  lastBrdfMis: ptr<function, f32>, 
+  isRandomReplay: bool,
+  tid: vec3u,
+  i: i32
+) -> RandomReplayStepResult {
+  /*
+    **************************
+    ***** important note *****
+    **************************
+
+    If you ever decide to apply MIS / NEE on emissive surfaces,
+    remember to invalidate light source samples that selected the same light source 
+    that is being shaded
+  */
+
+  let hitPoint = ires.hitPoint;
+  let material: Emissive = createEmissive(ires.triangle.materialOffset);
+
+  let albedo = vec3f(1,1,1);
+  let emissive = material.color * material.intensity;
+
+  var rrStepResult = RandomReplayResult(0, vec3f(0.0));
+
+  var N = ires.triangle.geometricNormal;
+  if (dot(N, (*ray).direction) > 0) {
+    N = -N;
+  } else {
+    let mi = *lastBrdfMis;
+    let pHat = emissive * *throughput;
+    let Wxi = 1.0;
+    let wi = mi * length(pHat) * Wxi;
+
+    if (isRandomReplay) {
+      if (pi.bounceCount == u32(debugInfo.bounce) && pi.flags == 2) {
+        rrStepResult.valid = 1;
+        rrStepResult.pHat = pHat;
+      }
+    } else {
+      let pathInfo = PathInfo(
+        pHat,
+        vec2i(tid.xy),
+        u32(debugInfo.bounce),
+        2   // always set flags to "path ends by BRDF"
+      );
+  
+      // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
+      updateReservoir(reservoir, pathInfo, wi);
+    }
+  }
+
+  (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
+
+  let rands = vec4f(getRand2D(), getRand2D());
+
+  let r0 = 2.0 * PI * rands.x;
+  let r1 = acos(rands.y);
+  let nd = normalize(vec3f(
+    sin(r0) * sin(r1),
+    cos(r1),
+    cos(r0) * sin(r1),
+  ));
+
+
+  var tangent = vec3f(0.0);
+  var bitangent = vec3f(0.0);
+  getTangentFromTriangle(ires, ires.triangle, N, &tangent, &bitangent);
+
+  // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+  let TBN = mat3x3f(tangent, bitangent, N);
+  // from tangent space to world space
+  (*ray).direction = normalize(TBN * nd.xzy);
+
+  *throughput *= albedo * max(dot(N, (*ray).direction), 0.0) * (1 / PI) * (2 * PI);
+
+  return rrStepResult;
+} 
+`;

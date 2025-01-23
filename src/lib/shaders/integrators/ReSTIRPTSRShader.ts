@@ -22,6 +22,7 @@ import type { LUTManager } from '$lib/managers/lutManager';
 import { getRandomPart, getReSTIRRandomPart } from '../parts/getRandom';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
 import { tempShadCopy } from './tempShadCopy';
+import { tempDiffCopy } from './tempDiffuseCopy';
 
 export function getReSTIRPTSRShader(lutManager: LUTManager) {
   return /* wgsl */ `
@@ -155,105 +156,14 @@ struct RandomReplayResult {
   pHat: vec3f,
 }
 
-struct RandomReplayStepResult {
-  terminatedByNEE: bool,
-  pHat: vec3f,
-}
-
 const SR_CANDIDATES_COUNT = 3;
 
 fn getLuminance(emission: vec3f) -> f32 {
   return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
 }
 
+${tempDiffCopy}
 ${tempShadCopy}
-
-fn shadeDiffuse(
-  ires: BVHIntersectionResult, 
-  ray: ptr<function, Ray>,
-  pi: PathInfo,
-  throughput: ptr<function, vec3f>, 
-  tid: vec3u,
-  i: i32
-) -> RandomReplayStepResult {
-  let hitPoint = ires.hitPoint;
-  let material: Diffuse = createDiffuse(ires.triangle.materialOffset);
-
-  var color = material.color;
-  if (material.mapLocation.x > -1) {
-    color *= getTexelFromTextureArrays(material.mapLocation, ires.uv, material.mapUvRepeat).xyz;
-  }
-
-  var vertexNormal = ires.normal;
-  // the normal flip is calculated using the geometric normal to avoid
-  // black edges on meshes displaying strong smooth-shading via vertex normals
-  if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
-    vertexNormal = -vertexNormal;
-  }
-  var N = vertexNormal;
-  var bumpOffset: f32 = 0.0;
-  if (material.bumpMapLocation.x > -1) {
-    N = getShadingNormal(
-      material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-      ires, &bumpOffset
-    );
-  }
-
-  let x0 = ray.origin;
-  let x1 = ires.hitPoint;
-
-  // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
-  (*ray).origin = ires.hitPoint;
-  // in practice however, only for Dielectrics we need the exact origin, 
-  // for Diffuse we can apply the bump offset if necessary
-  if (bumpOffset > 0.0) {
-    (*ray).origin += vertexNormal * bumpOffset;
-  }
-
-  // rands1.w is used for ONE_SAMPLE_MODEL
-  // rands1.xy is used for brdf samples
-  // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
-  let rands1 = vec4f(getRand2D(), getRand2D());
-  let rands2 = vec4f(getRand2D(), getRand2D());
-
-  var brdf = color / PI;
-  var colorLessBrdf = 1.0 / PI;
-
-  var brdfSamplePdf: f32; var brdfMisWeight: f32; 
-  var lightSamplePdf: f32; var lightMisWeight: f32; var lightSampleRadiance: vec3f;
-  var rayBrdf = Ray((*ray).origin, (*ray).direction);
-  var rayLight = Ray((*ray).origin, (*ray).direction);
-
-  shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight, ires);
-  shadeDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
-
-  (*ray).origin += rayBrdf.direction * 0.001;
-  (*ray).direction = rayBrdf.direction;
-
-  var rrStepResult = RandomReplayStepResult(false, vec3f(0.0));
-
-  if (length(lightSampleRadiance) > 0.0) {
-    let mi = 1.0;
-    // for now it's easier to only consider NEE - we avoid having to deal with Emissive materials
-    let pHat = lightSampleRadiance * (/*lightMisWeight*/ 1.0 / lightSamplePdf) * *throughput * 
-               brdf * max(dot(N, rayLight.direction), 0.0);
-    // let Wxi = 1.0; // *wxi * (1.0 / lightSamplePdf);
-    // let wi = mi * length(pHat) * Wxi;
-
-    if (pi.bounceCount == u32(debugInfo.bounce)) {
-      rrStepResult.terminatedByNEE = true;
-      rrStepResult.pHat = pHat;
-    }
-
-    // updateReservoir uses a different set of random numbers, exclusive for ReSTIR,
-    // no need to skip numbers here
-    // updateReservoir(reservoir, pathInfo, wi);
-  }
-
-  *throughput *= brdf * (/* mis weight */ 1.0 / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0); 
-
-  return rrStepResult;
-}
 
 fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
@@ -289,6 +199,7 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
     return RandomReplayResult(0, vec3f(0));
   }
 
+  var lastBrdfMis = 0.0;
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);
   for (var i = 0; i < config.BOUNCES_COUNT; i++) {
@@ -299,10 +210,12 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
-      let rrStepResult = shadeDiffuse(ires, &ray, pi, &throughput, tid, i);
+      var unusedReservoir = Reservoir();
+
+      let rrStepResult = shade(ires, &ray, &unusedReservoir, &throughput, pi, &lastBrdfMis, true, tid, i);
       
-      if (pi.bounceCount == u32(debugInfo.bounce) && rrStepResult.terminatedByNEE) {
-        return RandomReplayResult(1, rrStepResult.pHat);
+      if (pi.bounceCount == u32(debugInfo.bounce) && rrStepResult.valid > 0) {
+        return rrStepResult;
       }
     } 
     // ..... missing stuff .....

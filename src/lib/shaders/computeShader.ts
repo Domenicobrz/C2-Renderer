@@ -4,7 +4,7 @@ import { configManager } from '$lib/config';
 import { Diffuse } from '$lib/materials/diffuse';
 import { Emissive } from '$lib/materials/emissive';
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
-import { Material } from '$lib/materials/material';
+import { Material, MATERIAL_TYPE } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { TileSequence } from '$lib/tile';
 import { mathUtilsPart } from './parts/mathUtils';

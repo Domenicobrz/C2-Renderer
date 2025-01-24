@@ -591,12 +591,12 @@ export class ReSTIRPTSegment {
 
   createPipeline() {
     const computeModule = this.device.createShaderModule({
-      label: 'compute module',
+      label: 'ReSTIR PT module',
       code: getReSTIRPTShader(this.lutManager)
     });
 
     this.pipeline = this.device.createComputePipeline({
-      label: 'restir pipeline',
+      label: 'ReSTIR PT pipeline',
       layout: this.layout,
       compute: {
         module: computeModule,
@@ -605,12 +605,12 @@ export class ReSTIRPTSegment {
     });
 
     const srComputeModule = this.device.createShaderModule({
-      label: 'spatial-reuse compute module',
+      label: 'ReSTIR PT-SR module',
       code: getReSTIRPTSRShader(this.lutManager)
     });
 
     this.srPipeline = this.device.createComputePipeline({
-      label: 'restir spatial-reuse pipeline',
+      label: 'ReSTIR PT-SR pipeline',
       layout: this.layout,
       compute: {
         module: srComputeModule,

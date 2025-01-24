@@ -23,6 +23,7 @@ import { getRandomPart, getReSTIRRandomPart } from '../parts/getRandom';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
 import { tempDiffCopy } from './tempDiffuseCopy';
 import { tempShadCopy } from './tempShadCopy';
+import { tempEmissiveCopy } from './tempEmissiveCopy';
 
 export function getReSTIRPTShader(lutManager: LUTManager) {
   return /* wgsl */ `
@@ -41,7 +42,7 @@ ${getReSTIRRandomPart}
 ${lutManager.getShaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
-${Emissive.shaderShadeEmissive()}
+${'' /* Emissive.shaderShadeEmissive() */}
 ${Diffuse.shaderStruct()}
 ${Diffuse.shaderCreateStruct()}
 ${'' /* Diffuse.shaderShadeDiffuse() */}
@@ -187,6 +188,7 @@ fn getLuminance(emission: vec3f) -> f32 {
   return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
 }
 
+${tempEmissiveCopy}
 ${tempDiffCopy}
 ${tempShadCopy}
 
@@ -236,7 +238,7 @@ ${tempShadCopy}
     let ires = bvhIntersect(ray);
 
     let unusedPi = PathInfo();
-
+    
     if (ires.hit) {
       shade(ires, &ray, &reservoir, &throughput, unusedPi, &lastBrdfMis, false, tid, i);
     } 

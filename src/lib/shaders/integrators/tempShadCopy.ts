@@ -19,9 +19,9 @@ fn shade(
     return shadeDiffuse(ires, ray, reservoir, throughput, pi, lastBrdfMis, isRandomReplay, tid, i);
   }
 
-  // if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-  //   return shadeEmissive(ires, ray, reservoir, throughput, lastBrdfMis, tid, i);
-  // }
+  if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
+    return shadeEmissive(ires, ray, reservoir, throughput, pi, lastBrdfMis, isRandomReplay, tid, i);
+  }
 
   return RandomReplayResult(0, vec3f(0.0));
 }

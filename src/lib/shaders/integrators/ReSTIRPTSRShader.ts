@@ -23,6 +23,7 @@ import { getRandomPart, getReSTIRRandomPart } from '../parts/getRandom';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
 import { tempShadCopy } from './tempShadCopy';
 import { tempDiffCopy } from './tempDiffuseCopy';
+import { tempEmissiveCopy } from './tempEmissiveCopy';
 
 export function getReSTIRPTSRShader(lutManager: LUTManager) {
   return /* wgsl */ `
@@ -41,7 +42,7 @@ ${getReSTIRRandomPart}
 ${lutManager.getShaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
-${Emissive.shaderShadeEmissive()}
+${'' /* Emissive.shaderShadeEmissive() */}
 ${Diffuse.shaderStruct()}
 ${Diffuse.shaderCreateStruct()}
 ${'' /* Diffuse.shaderShadeDiffuse() */}
@@ -162,6 +163,7 @@ fn getLuminance(emission: vec3f) -> f32 {
   return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
 }
 
+${tempEmissiveCopy}
 ${tempDiffCopy}
 ${tempShadCopy}
 
@@ -199,7 +201,7 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
     return RandomReplayResult(0, vec3f(0));
   }
 
-  var lastBrdfMis = 0.0;
+  var lastBrdfMis = 1.0;
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);
   for (var i = 0; i < config.BOUNCES_COUNT; i++) {
@@ -389,7 +391,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
         depth0 = candidates[i].Gbuffer.w;
       } else {
         // uniform circle sampling 
-        let circleRadiusInPixels = 25.0;
+        let circleRadiusInPixels = 15.0;
         let rands = getRand2D_2();
         let r = circleRadiusInPixels * sqrt(rands.x);
         let theta = rands.y * 2.0 * PI;

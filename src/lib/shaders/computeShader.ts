@@ -158,11 +158,16 @@ fn debugLog(value: f32) {
   var reflectance = vec3f(1.0);
   var rad = vec3f(0.0);
   for (var i = 0; i < config.BOUNCES_COUNT; i++) {
+  // for (var i = 0; i < config.BOUNCES_COUNT + 1; i++) {
     if (rayContribution == 0.0) { break; }
 
     debugInfo.bounce = i;
 
     let ires = bvhIntersect(ray);
+
+    // let materialOffset = ires.triangle.materialOffset;
+    // let materialType = materialsData[materialOffset];
+    // if (materialType != ${MATERIAL_TYPE.EMISSIVE} && i == config.BOUNCES_COUNT) { break; }
 
     if (ires.hit) {
       shade(ires, &ray, &reflectance, &rad, tid, i);

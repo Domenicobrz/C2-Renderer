@@ -161,7 +161,11 @@ fn shadeDiffuse(
 
   if (length(lightSampleRadiance) > 0.0) {
     // let mi = 1.0;
-    let mi = lightMisWeight;
+    var mi = lightMisWeight;
+    // if (debugInfo.bounce == config.BOUNCES_COUNT - 1) {
+    //   mi = 1.0;
+    // }
+
     let pHat = lightSampleRadiance * (1.0 / lightSamplePdf) * *throughput * 
                brdf * max(dot(N, rayLight.direction), 0.0);
     let Wxi = 1.0; // *wxi * (1.0 / lightSamplePdf);

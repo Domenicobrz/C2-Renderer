@@ -145,7 +145,6 @@ export class Diffuse extends Material {
         // from tangent space to world space
         (*ray).direction = normalize(TBN * newDir.xzy);
 
-
         *pdf = brdfSamplePdf;
         let lightSamplePdf = getLightPDF(*ray);
         *misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);

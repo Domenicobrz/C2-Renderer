@@ -480,7 +480,7 @@ export class TorranceSparrow extends Material {
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin += (*ray).direction * 0.001;
          
-          *reflectance *= brdfSampleBrdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);
+          *reflectance *= brdfSampleBrdf * (1.0 / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);
           *lastBrdfMisWeight = brdfMisWeight;
         }
       } 

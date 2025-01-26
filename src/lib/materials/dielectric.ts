@@ -606,7 +606,7 @@ export class Dielectric extends Material {
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
           
-          *reflectance *= (brdfSampleBrdf / msCompensation) * (brdfMisWeight / brdfSamplePdf) * 
+          *reflectance *= (brdfSampleBrdf / msCompensation) * (1.0 / brdfSamplePdf) * 
             abs(dot(N, (*ray).direction));
           *lastBrdfMisWeight = brdfMisWeight;
         }

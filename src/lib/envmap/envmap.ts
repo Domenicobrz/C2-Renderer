@@ -17,6 +17,7 @@ export class Envmap {
   private data: Float32Array = new Float32Array();
   public distribution = new PC2D([[0]], 1, 1, new AABB());
   public compensatedDistribution = new PC2D([[0]], 1, 1, new AABB());
+  public lightSourcePickProb = 0;
 
   constructor() {}
 
@@ -162,6 +163,10 @@ export class Envmap {
     );
 
     return this;
+  }
+
+  setLightSourcePickProb(value: number) {
+    this.lightSourcePickProb = value;
   }
 
   getArrayBuffer(): ArrayBuffer {
@@ -319,6 +324,7 @@ export class Envmap {
     const EnvmapInfoViews = {
       size: new Int32Array(EnvmapInfoValues, 0, 2),
       scale: new Float32Array(EnvmapInfoValues, 8, 1),
+      lightSourcePickProb: new Float32Array(EnvmapInfoValues, 12, 1),
       transform: new Float32Array(EnvmapInfoValues, 16, 12),
       invTransform: new Float32Array(EnvmapInfoValues, 64, 12)
     };
@@ -329,6 +335,7 @@ export class Envmap {
 
     EnvmapInfoViews.size.set([this.size.x, this.size.y]);
     EnvmapInfoViews.scale.set([this.scale]);
+    EnvmapInfoViews.lightSourcePickProb.set([this.lightSourcePickProb]);
     // matrix.elements is stored in column major order
     EnvmapInfoViews.transform.set(matrix.elements.slice(0, 12));
     EnvmapInfoViews.invTransform.set(invMatrix.elements.slice(0, 12));
@@ -375,6 +382,7 @@ export class Envmap {
       struct EnvmapInfo {
         size: vec2i,
         scale: f32,
+        lightSourcePickProb: f32,
         transform: mat3x3f,
         invTransform: mat3x3f,
       }

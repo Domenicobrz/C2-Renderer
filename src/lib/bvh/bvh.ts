@@ -21,6 +21,7 @@ export type BVHIntersectionResult = {
 export class BVH {
   public root: Node;
   public bvhFlatArray: Node[];
+  public cdfToTriangleIndex: number[][] = [];
 
   constructor(public scene: C2Scene) {
     let triangles = scene.triangles;
@@ -255,9 +256,9 @@ export class BVH {
     };
   }
 
-  getLightsCDFBufferData() {
+  computeLightPickProbabilities() {
     let sum = 0;
-    let cdfToTriangleIndex: number[][] = [];
+    this.cdfToTriangleIndex = [];
 
     let triangles = this.scene.triangles;
     let materials = this.scene.materials;
@@ -265,7 +266,7 @@ export class BVH {
     triangles.forEach((t) => {
       let material = materials[t.materialIndex];
       if (material instanceof Emissive) {
-        cdfToTriangleIndex.push([sum, t.getLuminance(material), t.idxRef]);
+        this.cdfToTriangleIndex.push([sum, t.getLuminance(material), t.idxRef]);
         sum += t.getLuminance(material);
       }
     });
@@ -279,19 +280,34 @@ export class BVH {
         envmapRadius *
         this.scene.envmap.scale *
         this.scene.envmap.luminanceAverage;
-      cdfToTriangleIndex.push([sum, envmapLuminance, -2 /* signals envmap instead of triangle */]);
+      this.cdfToTriangleIndex.push([
+        sum,
+        envmapLuminance,
+        -2 /* signals envmap instead of triangle */
+      ]);
       sum += envmapLuminance;
     }
 
     // normalize cdf and pdf values
-    cdfToTriangleIndex.forEach((el) => {
+    this.cdfToTriangleIndex.forEach((el) => {
       el[0] /= sum;
       el[1] /= sum;
-    });
 
-    const LightsCDFBufferDataByteSize = 12 * cdfToTriangleIndex.length;
+      let lightPickProbability = el[1];
+      let triangleIndex = el[2];
+
+      if (triangleIndex > 0) {
+        triangles[triangleIndex].setLightSourcePickProb(lightPickProbability);
+      } else if (triangleIndex === -2 && this.scene.envmap) {
+        this.scene.envmap.setLightSourcePickProb(lightPickProbability);
+      }
+    });
+  }
+
+  getLightsCDFBufferData() {
+    const LightsCDFBufferDataByteSize = 12 * this.cdfToTriangleIndex.length;
     const LightsCDFBufferData = new ArrayBuffer(LightsCDFBufferDataByteSize);
-    cdfToTriangleIndex.forEach((el, i) => {
+    this.cdfToTriangleIndex.forEach((el, i) => {
       let offs = 12 * i;
 
       let cdf = new Float32Array(LightsCDFBufferData, offs + 0, 1);
@@ -447,6 +463,9 @@ export class BVH {
               lNolD = -lNolD;
             }
             lightSamplePdf = r2 / (lNolD * ires.triangle.area);
+            // probability of picking this triangle from the getLightCDFEntry(...)
+            lightSamplePdf *= ires.triangle.lightSourcePickProb;
+
             return lightSamplePdf;
           } 
         } else if (shaderConfig.HAS_ENVMAP) {
@@ -458,6 +477,8 @@ export class BVH {
             uv, 
             AABB(envmapPC2D.domainmin, envmapPC2D.domainmax),
           );
+          // probability of picking the envmap from the getLightCDFEntry(...)
+          pdf *= envmapInfo.lightSourcePickProb;
 
           return pdf / (4 * PI);
         }

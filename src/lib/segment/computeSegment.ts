@@ -224,8 +224,19 @@ export class ComputeSegment {
     if (envmap && configManager.options.ENVMAP_SCALE != envmap.scale) {
       envmap.scale = configManager.options.ENVMAP_SCALE;
 
+      this.bvh!.computeLightPickProbabilities();
+      let {
+        trianglesBufferData,
+        trianglesBufferDataByteSize,
+        BVHBufferData,
+        BVHBufferDataByteSize
+      } = this.bvh!.getBufferData();
       let { LightsCDFBufferData, LightsCDFBufferDataByteSize } = this.bvh!.getLightsCDFBufferData();
+
       this.device.queue.writeBuffer(this.lightsCDFBuffer!, 0, LightsCDFBufferData);
+      this.device.queue.writeBuffer(this.trianglesBuffer!, 0, trianglesBufferData);
+      this.device.queue.writeBuffer(this.bvhBuffer!, 0, BVHBufferData);
+      // both .scale and .lightSourcePickProb of the envmap struct changed
       updateEnvInfoBuffer = true;
     }
 
@@ -329,6 +340,8 @@ export class ComputeSegment {
 
     const bvh = new BVH(scene);
     this.bvh = bvh;
+    this.bvh.computeLightPickProbabilities();
+
     let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
       bvh.getBufferData();
 

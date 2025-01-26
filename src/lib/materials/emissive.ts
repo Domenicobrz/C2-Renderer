@@ -56,6 +56,7 @@ export class Emissive extends Material {
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
         reflectance: ptr<function, vec3f>, 
+        lastBrdfMisWeight: ptr<function, f32>, 
         rad: ptr<function, vec3f>,
         tid: vec3u,
         i: i32
@@ -80,7 +81,7 @@ export class Emissive extends Material {
         if (dot(N, (*ray).direction) > 0) {
           N = -N;
         } else {
-          *rad += emissive * *reflectance;
+          *rad += emissive * *lastBrdfMisWeight * *reflectance;
         }
     
         (*ray).origin = ires.hitPoint - (*ray).direction * 0.001;
@@ -106,6 +107,7 @@ export class Emissive extends Material {
         (*ray).direction = normalize(TBN * nd.xzy);
 
         *reflectance *= albedo * max(dot(N, (*ray).direction), 0.0) * (1 / PI) * (2 * PI);
+        *lastBrdfMisWeight = 1.0;
       } 
     `;
   }

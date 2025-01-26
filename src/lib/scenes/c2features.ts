@@ -111,6 +111,7 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   materials.push(
     new Dielectric({
       absorption: new Color(0.25, 0.58, 0.99).multiplyScalar(4.5),
+      // absorption: new Color(0.25, 0.58, 0.99).multiplyScalar(0),
       roughness: 0.03,
       anisotropy: 0,
       eta: 1.6

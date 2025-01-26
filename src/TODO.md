@@ -5,11 +5,7 @@ https://pbr-book.org/4ed/Light_Sources/Area_Lights
 
 ---
 
-Seems like each MIS rendering option converges to a different result
-the largest offender is NEXT_EVENT_ESTIMATION where it feels like we're gathering
-a lot more energy than normal
-
-ONE_SAMPLE_MODEL gets closer to the BRDF_ONLY output but there are still differences
+Diffuse lambert and Diffuse EON fail the furnace test by a small margin
 
 ---
 

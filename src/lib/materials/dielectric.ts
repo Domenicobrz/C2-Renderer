@@ -485,6 +485,7 @@ export class Dielectric extends Material {
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
         reflectance: ptr<function, vec3f>, 
+        lastBrdfMisWeight: ptr<function, f32>, 
         rad: ptr<function, vec3f>,
         tid: vec3u,
         i: i32
@@ -537,7 +538,6 @@ export class Dielectric extends Material {
         // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
         (*ray).origin = ires.hitPoint;
 
-        // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xyz is used for brdf samples
         // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
         let rands1 = vec4f(getRand2D(), getRand2D());
@@ -569,25 +569,7 @@ export class Dielectric extends Material {
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
           *reflectance *= (brdf / msCompensation) / pdf * abs(dot(N, (*ray).direction));
-        }
-
-        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-          var pdf: f32; var misWeight: f32; var brdf: vec3f; var ls: vec3f;
-          var isBrdfSample = rands1.w < 0.5;
-          if (isBrdfSample) {
-            shadeDielectricSampleBRDF(
-              rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &misWeight
-            );
-          } else {
-            shadeDielectricSampleLight(
-              rands2, material, wo, &wi, ray, TBN, TBNinverse, 
-              &brdf, &pdf, &misWeight, &ls
-            );
-          }
-
-          (*ray).direction = normalize(TBN * wi);
-          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
-          *reflectance *= (brdf / msCompensation) * (misWeight / pdf) * abs(dot(N, (*ray).direction));
+          *lastBrdfMisWeight = 1.0;
         }
 
         if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
@@ -598,30 +580,35 @@ export class Dielectric extends Material {
           var lightRadiance: vec3f; var lightSampleBrdf: vec3f;
           var lightSampleWi: vec3f;
 
+          // the reason why we're guarding NEE with this if statement is explained in the docs
+          if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
+            shadeDielectricSampleLight(
+              rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse, 
+              &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
+            );
+            // from tangent space to world space
+            lightSampleWi = normalize(TBN * lightSampleWi);
+            // *****************
+            // The reason why we can use NEE without issues here is that if the light sample ray 
+            // ends up inside the medium, the bvh intersection routine will find the other side of 
+            // the object instead of a light source, thus setting misWeight to zero.
+            // We're also making sure the light-sample ray is correctly being positioned inside or outside 
+            // the medium before using the ray
+            // *****************
+            *rad += *reflectance * lightRadiance * (lightSampleBrdf / msCompensation) * 
+              (lightMisWeight / lightSamplePdf) * abs(dot(N, lightSampleWi));
+          }
+
           shadeDielectricSampleBRDF(
             rands1, material, wo, &wi, ray, TBN, &brdfSampleBrdf, &brdfSamplePdf, &brdfMisWeight
-          );
-          shadeDielectricSampleLight(
-            rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse, 
-            &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
           );
 
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
-          // from tangent space to world space
-          lightSampleWi = normalize(TBN * lightSampleWi);
-          // *****************
-          // The reason why we can use NEE without issues here is that if the light sample ray 
-          // ends up inside the medium, the bvh intersection routine will find the other side of 
-          // the object instead of a light source, thus setting misWeight to zero.
-          // We're also making sure the light-sample ray is correctly being positioned inside or outside 
-          // the medium before using the ray
-          // *****************
-          *rad += *reflectance * lightRadiance * (lightSampleBrdf / msCompensation) * 
-            (lightMisWeight / lightSamplePdf) * abs(dot(N, lightSampleWi));
           
           *reflectance *= (brdfSampleBrdf / msCompensation) * (brdfMisWeight / brdfSamplePdf) * 
             abs(dot(N, (*ray).direction));
+          *lastBrdfMisWeight = brdfMisWeight;
         }
       } 
     `;

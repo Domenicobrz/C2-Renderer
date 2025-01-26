@@ -373,6 +373,7 @@ export class TorranceSparrow extends Material {
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
         reflectance: ptr<function, vec3f>, 
+        lastBrdfMisWeight: ptr<function, f32>, 
         rad: ptr<function, vec3f>,
         tid: vec3u,
         i: i32
@@ -418,7 +419,6 @@ export class TorranceSparrow extends Material {
           (*ray).origin += vertexNormal * bumpOffset;
         }
 
-        // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xy is used for brdf samples
         // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
         let rands1 = vec4f(getRand2D(), getRand2D());
@@ -448,23 +448,7 @@ export class TorranceSparrow extends Material {
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin += (*ray).direction * 0.001;
           *reflectance *= brdf * (1 / pdf) * max(dot(N, (*ray).direction), 0.0);
-        }
-
-        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-          var pdf: f32; var misWeight: f32; var brdf: vec3f; var ls: vec3f;
-          if (rands1.w < 0.5) {
-            shadeTorranceSparrowSampleBRDF(
-              rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &misWeight
-            );
-          } else {
-            shadeTorranceSparrowSampleLight(
-              rands2, material, wo, &wi, ray, TBN, TBNinverse, 
-              &brdf, &pdf, &misWeight, &ls
-            );
-          }
-          (*ray).direction = normalize(TBN * wi);
-          (*ray).origin += (*ray).direction * 0.001;
-          *reflectance *= brdf * (misWeight / pdf) * max(dot(N, (*ray).direction), 0.0);
+          *lastBrdfMisWeight = 1.0;
         }
 
         if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
@@ -475,22 +459,29 @@ export class TorranceSparrow extends Material {
           var lightRadiance: vec3f; var lightSampleBrdf: vec3f;
           var lightSampleWi: vec3f;
 
-          shadeTorranceSparrowSampleBRDF(
-            rands1, material, wo, &wi, ray, TBN, &brdfSampleBrdf, &brdfSamplePdf, &brdfMisWeight
-          );
-          shadeTorranceSparrowSampleLight(
-            rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse, 
-            &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
-          );
+          var rayCopy = Ray((*ray).origin, (*ray).direction);
 
+          // the reason why we're guarding NEE with this if statement is explained in the docs
+          if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
+            shadeTorranceSparrowSampleLight(
+              rands2, material, wo, &lightSampleWi, &rayCopy, TBN, TBNinverse, 
+              &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
+            );
+            // from tangent space to world space
+            lightSampleWi = normalize(TBN * lightSampleWi);
+            // light contribution, we have to multiply by *reflectance to account for reduced reflectance
+            // caused by previous light-bounces. You did miss this term when first implementing MIS here
+            *rad += *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * max(dot(N, lightSampleWi), 0.0);
+          }
+
+          shadeTorranceSparrowSampleBRDF(
+            rands1, material, wo, &wi, &rayCopy, TBN, &brdfSampleBrdf, &brdfSamplePdf, &brdfMisWeight
+          );
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin += (*ray).direction * 0.001;
-          // from tangent space to world space
-          lightSampleWi = normalize(TBN * lightSampleWi);
-          // light contribution, we have to multiply by *reflectance to account for reduced reflectance
-          // caused by previous light-bounces. You did miss this term when first implementing MIS here
-          *rad += *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * max(dot(N, lightSampleWi), 0.0);
+         
           *reflectance *= brdfSampleBrdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);
+          *lastBrdfMisWeight = brdfMisWeight;
         }
       } 
     `;

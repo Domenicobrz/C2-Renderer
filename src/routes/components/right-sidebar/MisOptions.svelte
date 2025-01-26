@@ -20,15 +20,6 @@
   <input
     type="radio"
     name="mis-type"
-    value={MIS_TYPE.ONE_SAMPLE_MODEL}
-    bind:group={$configOptions.MIS_TYPE}
-  />
-  One Sample Model
-</label>
-<label>
-  <input
-    type="radio"
-    name="mis-type"
     value={MIS_TYPE.NEXT_EVENT_ESTIMATION}
     bind:group={$configOptions.MIS_TYPE}
   />

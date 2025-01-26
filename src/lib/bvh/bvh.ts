@@ -383,8 +383,12 @@ export class BVH {
           var lightSamplePdf = r2 / (lNolD * triangle.area);
           lightSamplePdf *= cdfEntry.pdf;
 
+          if (backSideHit) {
+            return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1);
+          }
+          
           let ires = bvhIntersect(Ray(rayOrigin + sampleDirection * 0.001, sampleDirection));
-          if (!ires.hit || cdfEntry.triangleIndex != ires.triangleIndex || backSideHit) {
+          if (!ires.hit || cdfEntry.triangleIndex != ires.triangleIndex) {
             return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1);
           }
           let material: Emissive = createEmissive(ires.triangle.materialOffset);

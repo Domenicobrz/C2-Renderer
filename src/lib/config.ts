@@ -4,8 +4,7 @@ import { EventHandler } from './eventHandler';
 
 export enum MIS_TYPE {
   BRDF_ONLY = 0,
-  ONE_SAMPLE_MODEL = 1,
-  NEXT_EVENT_ESTIMATION = 2
+  NEXT_EVENT_ESTIMATION = 1
 }
 
 export enum SAMPLER_TYPE {
@@ -85,7 +84,6 @@ class ConfigManager {
     const DECORRELATION_BLUE_NOISE_MASK: u32 = ${SAMPLER_DECORRELATION.BLUE_NOISE_MASK};
 
     const BRDF_ONLY: u32 = ${MIS_TYPE.BRDF_ONLY};
-    const ONE_SAMPLE_MODEL: u32 = ${MIS_TYPE.ONE_SAMPLE_MODEL};
     const NEXT_EVENT_ESTIMATION: u32 = ${MIS_TYPE.NEXT_EVENT_ESTIMATION};
     
     struct Config {

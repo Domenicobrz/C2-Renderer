@@ -129,7 +129,6 @@ fn shadeDiffuse(
     (*ray).origin += vertexNormal * bumpOffset;
   }
 
-  // rands1.w is used for ONE_SAMPLE_MODEL
   // rands1.xy is used for brdf samples
   // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
   let rands1 = vec4f(getRand2D(), getRand2D());

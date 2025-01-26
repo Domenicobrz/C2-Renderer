@@ -190,6 +190,7 @@ export class Diffuse extends Material {
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
         reflectance: ptr<function, vec3f>, 
+        lastBrdfMisWeight: ptr<function, f32>, 
         rad: ptr<function, vec3f>,
         tid: vec3u,
         i: i32
@@ -225,7 +226,6 @@ export class Diffuse extends Material {
           (*ray).origin += vertexNormal * bumpOffset;
         }
     
-        // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xy is used for brdf samples
         // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
         let rands1 = vec4f(getRand2D(), getRand2D());
@@ -238,18 +238,7 @@ export class Diffuse extends Material {
           shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &w, ires);
           (*ray).origin += (*ray).direction * 0.001;
           *reflectance *= brdf * (1 / pdf) * max(dot(N, (*ray).direction), 0.0);
-        }
-
-        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-          var pdf: f32; var misWeight: f32; var ls: vec3f;
-          let isBrdfSample = rands1.w < 0.5;
-          if (isBrdfSample) {
-            shadeDiffuseSampleBRDF(rands1, N, ray, &pdf, &misWeight, ires);
-          } else {
-            shadeDiffuseSampleLight(rands2, N, ray, &pdf, &misWeight, &ls);          
-          }
-          (*ray).origin += (*ray).direction * 0.001;
-          *reflectance *= brdf * (misWeight / pdf) * max(dot(N, (*ray).direction), 0.0);
+          *lastBrdfMisWeight = 1.0;
         }
 
         if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
@@ -258,15 +247,19 @@ export class Diffuse extends Material {
           var rayBrdf = Ray((*ray).origin, (*ray).direction);
           var rayLight = Ray((*ray).origin, (*ray).direction);
 
-          shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight, ires);
-          shadeDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
+          // the reason why we're guarding NEE with this if statement is explained in the docs
+          if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
+            // light contribution
+            shadeDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
+            *rad += brdf * lightSampleRadiance * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
+          }
 
+          shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight, ires);
           (*ray).origin += rayBrdf.direction * 0.001;
           (*ray).direction = rayBrdf.direction;
 
-          // light contribution
-          *rad += brdf * lightSampleRadiance * (lightMisWeight / lightSamplePdf) * (*reflectance) * max(dot(N, rayLight.direction), 0.0);
-          *reflectance *= brdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);    
+          *lastBrdfMisWeight = brdfMisWeight;
+          *reflectance *= brdf * (1.0 / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0);    
         }
       }
     `;

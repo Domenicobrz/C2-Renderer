@@ -40,6 +40,7 @@ export class Material {
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
         reflectance: ptr<function, vec3f>, 
+        lastBrdfMisWeight: ptr<function, f32>, 
         rad: ptr<function, vec3f>,
         tid: vec3u,
         i: i32) 
@@ -48,23 +49,23 @@ export class Material {
         let materialType = materialsData[materialOffset];
 
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-          shadeDiffuse(ires, ray, reflectance, rad, tid, i);
+          shadeDiffuse(ires, ray, reflectance, lastBrdfMisWeight, rad, tid, i);
         }
 
         if (materialType == ${MATERIAL_TYPE.EON_DIFFUSE}) {
-          shadeEONDiffuse(ires, ray, reflectance, rad, tid, i);
+          shadeEONDiffuse(ires, ray, reflectance, lastBrdfMisWeight, rad, tid, i);
         }
 
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-          shadeEmissive(ires, ray, reflectance, rad, tid, i);
+          shadeEmissive(ires, ray, reflectance, lastBrdfMisWeight, rad, tid, i);
         }
 
         if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-          shadeTorranceSparrow(ires, ray, reflectance, rad, tid, i);
+          shadeTorranceSparrow(ires, ray, reflectance, lastBrdfMisWeight, rad, tid, i);
         }
 
         if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
-          shadeDielectric(ires, ray, reflectance, rad, tid, i);
+          shadeDielectric(ires, ray, reflectance, lastBrdfMisWeight, rad, tid, i);
         }
       }
     `;

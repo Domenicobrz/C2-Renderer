@@ -461,7 +461,7 @@ export class TorranceSparrow extends Material {
 
           var rayCopy = Ray((*ray).origin, (*ray).direction);
 
-          // the reason why we're guarding NEE with this if statement is explained in the docs
+          // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
           if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
             shadeTorranceSparrowSampleLight(
               rands2, material, wo, &lightSampleWi, &rayCopy, TBN, TBNinverse, 

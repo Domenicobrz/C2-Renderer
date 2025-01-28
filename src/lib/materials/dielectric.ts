@@ -580,7 +580,7 @@ export class Dielectric extends Material {
           var lightRadiance: vec3f; var lightSampleBrdf: vec3f;
           var lightSampleWi: vec3f;
 
-          // the reason why we're guarding NEE with this if statement is explained in the docs
+          // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
           if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
             shadeDielectricSampleLight(
               rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse, 

@@ -146,7 +146,7 @@ fn shadeDiffuse(
 
   shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight, ires);
   
-  // the reason why we're guarding NEE with this if statement is explained in the docs
+  // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
   if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
     shadeDiffuseSampleLight(rands2, N, &rayLight, &lightSamplePdf, &lightMisWeight, &lightSampleRadiance);
   

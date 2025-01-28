@@ -89,6 +89,7 @@ fn shadeEmissive(
   (*ray).direction = normalize(TBN * nd.xzy);
 
   *throughput *= albedo * max(dot(N, (*ray).direction), 0.0) * (1 / PI) * (2 * PI);
+  *lastBrdfMis = 1.0;
 
   return rrStepResult;
 } 

@@ -11,10 +11,9 @@ import { PreviewSegment } from './segment/previewSegment';
 import { get } from 'svelte/store';
 import { tick } from './utils/tick';
 import { getDeviceAndContext } from './webgpu-utils/getDeviceAndContext';
-import { ReSTIRDLSegment } from './segment/integrators/ReSTIRDLSegment';
 import { ReSTIRPTSegment } from './segment/integrators/ReSTIRPTSegment';
 
-export type Integrator = ComputeSegment | ReSTIRDLSegment | ReSTIRPTSegment;
+export type Integrator = ComputeSegment | ReSTIRPTSegment;
 
 let computeSegment: Integrator;
 let renderSegment: RenderSegment;
@@ -55,9 +54,8 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
 
   // *************** compute & render segments ****************
   const tileSequence = new TileSequence();
-  computeSegment = new ComputeSegment(tileSequence);
-  // computeSegment = new ReSTIRDLSegment();
-  // computeSegment = new ReSTIRPTSegment();
+  // computeSegment = new ComputeSegment(tileSequence);
+  computeSegment = new ReSTIRPTSegment();
 
   centralStatusMessage.set('creating scene');
   // passed down to both compute and render segment

@@ -37,9 +37,10 @@ fn shadeEmissive(
     let pHat = emissive * *throughput;
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
+    let lobeIndex: u32 = 2;
 
     if (isRandomReplay) {
-      if (pi.bounceCount == u32(debugInfo.bounce) && pi.flags == 2) {
+      if (pi.bounceCount == u32(debugInfo.bounce) && pathEndsByBRDF(pi) && pathHasLobeIndex(pi, lobeIndex)) {
         rrStepResult.valid = 1;
         // why do we have to multiply by "mi" here and in the pathinfo struct below to fix 
         // some issues related to correct convergence to the right result?
@@ -58,7 +59,7 @@ fn shadeEmissive(
         pHat * mi,
         vec2i(tid.xy),
         u32(debugInfo.bounce),
-        2   // always set flags to "path ends by BRDF"
+        setPathFlags(lobeIndex, false, true), // set flags to "path ends by NEE"
       );
   
       // updateReservoir uses a different set of random numbers, exclusive for ReSTIR

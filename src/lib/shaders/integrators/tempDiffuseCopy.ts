@@ -157,9 +157,10 @@ fn shadeDiffuse(
       let Wxi = 1.0;
   
       let wi = mi * length(pHat) * Wxi;
+      let lobeIndex: u32 = 1;
   
       if (isRandomReplay) {
-        if (pi.bounceCount == u32(debugInfo.bounce) && pi.flags == 1) {
+        if (pi.bounceCount == u32(debugInfo.bounce) && pathEndsByNEE(pi) && pathHasLobeIndex(pi, lobeIndex)) {
           rrStepResult.valid = 1;
           // why do we have to multiply by "mi" here and in the pathinfo struct below to fix 
           // some issues related to correct convergence to the right result?
@@ -178,7 +179,7 @@ fn shadeDiffuse(
           pHat * mi,
           vec2i(tid.xy),
           u32(debugInfo.bounce),
-          1   // always set flags to "path ends by NEE"
+          setPathFlags(lobeIndex, true, false), // set flags to "path ends by NEE"
         );
     
         // updateReservoir uses a different set of random numbers, exclusive for ReSTIR

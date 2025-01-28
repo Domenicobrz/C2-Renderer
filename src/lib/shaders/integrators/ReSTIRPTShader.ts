@@ -139,6 +139,7 @@ struct PathInfo {
   // bit 1: path ends by BRDF sampling boolean (we found a light)
   // bit 2: path ends by escape boolean
   // in theory, the remaining bits could contain the bounce count
+  // bit 16 onward: lobe index
   flags: u32,
 }
 
@@ -159,6 +160,26 @@ struct Reservoir {
 struct RandomReplayResult {
   valid: u32,
   pHat: vec3f,
+}
+
+fn pathEndsByNEE(pi: PathInfo) -> bool {
+  return (pi.flags & 1) > 0;
+}
+
+fn pathEndsByBRDF(pi: PathInfo) -> bool {
+  return (pi.flags & 2) > 0;
+}
+
+fn pathHasLobeIndex(pi: PathInfo, lobeIndex: u32) -> bool {
+  return (pi.flags >> 16) == lobeIndex;
+}
+
+fn setPathFlags(lobeIndex: u32, endsByNEE: bool, endsByBRDF: bool) -> u32 {
+  var pathFlags = lobeIndex; // lobe index
+  pathFlags = pathFlags << 16;
+  if (endsByNEE) { pathFlags |= 1; } 
+  if (endsByBRDF) { pathFlags |= 2; } 
+  return pathFlags;
 }
 
 fn updateReservoir(reservoir: ptr<function, Reservoir>, Xi: PathInfo, wi: f32) {

@@ -80,7 +80,7 @@ fn shadeTorranceSparrow(
   isRandomReplay: bool,
   tid: vec3u,
   i: i32
-) {
+) -> RandomReplayResult {
   let hitPoint = ires.hitPoint;
   var material: TORRANCE_SPARROW = createTorranceSparrow(ires.triangle.materialOffset);
 
@@ -153,6 +153,10 @@ fn shadeTorranceSparrow(
 
   var rayCopy = Ray((*ray).origin, (*ray).direction);
 
+  shadeTorranceSparrowSampleBRDF(
+    rands1, material, wo, &wi, &rayCopy, TBN, &brdfSampleBrdf, &brdfSamplePdf, &brdfMisWeight
+  );
+  
   // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
   if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
     shadeTorranceSparrowSampleLight(
@@ -168,10 +172,11 @@ fn shadeTorranceSparrow(
       let pHat = lightRadiance * (lightSampleBrdf / lightSamplePdf) * *throughput * 
                  max(dot(N, lightSampleWi), 0.0);
       let Wxi = 1.0;
+      let lobeIndex: u32 = 3;
   
       let wi = mi * length(pHat) * Wxi;
       if (isRandomReplay) {
-        if (pi.bounceCount == u32(debugInfo.bounce) && pi.flags == 1) {
+        if (pi.bounceCount == u32(debugInfo.bounce) && pathEndsByNEE(pi) && pathHasLobeIndex(pi, lobeIndex)) {
           rrStepResult.valid = 1;
           // why do we have to multiply by "mi" here and in the pathinfo struct below to fix 
           // some issues related to correct convergence to the right result?
@@ -190,7 +195,7 @@ fn shadeTorranceSparrow(
           pHat * mi,
           vec2i(tid.xy),
           u32(debugInfo.bounce),
-          1   // always set flags to "path ends by NEE"
+          setPathFlags(lobeIndex, true, false), // set flags to "path ends by NEE"
         );
     
         // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
@@ -200,13 +205,12 @@ fn shadeTorranceSparrow(
 
   }
 
-  shadeTorranceSparrowSampleBRDF(
-    rands1, material, wo, &wi, &rayCopy, TBN, &brdfSampleBrdf, &brdfSamplePdf, &brdfMisWeight
-  );
   (*ray).direction = normalize(TBN * wi);
   (*ray).origin += (*ray).direction * 0.001;
   
   *throughput *= brdfSampleBrdf * (1.0 / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);
   *lastBrdfMis = brdfMisWeight;
+
+  return rrStepResult;
 } 
 `;

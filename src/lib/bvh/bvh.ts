@@ -345,6 +345,7 @@ export class BVH {
         tangent: vec3f,
         triangle: Triangle,
         triangleIndex: i32,
+        barycentrics: vec2f,
       }
 
       struct LightCDFEntry {
@@ -361,7 +362,9 @@ export class BVH {
         direction: vec3f,
         radiance: vec3f,
         hitPoint: vec3f,
-        triangleIndex: i32
+        triangleIndex: i32,
+        barycentrics: vec2f,
+        geometricNormal: vec3f,
       }
     `;
   }
@@ -375,7 +378,8 @@ export class BVH {
 
         if (cdfEntry.triangleIndex > -1) {
           let triangle = triangles[cdfEntry.triangleIndex];
-          let samplePoint = sampleTrianglePoint(triangle, rands.x, rands.y);
+          let sampleResult = sampleTrianglePoint(triangle, vec2f(rands.x, rands.y));
+          let samplePoint = sampleResult.point;
 
           let samplePointT = length(samplePoint - rayOrigin);
           let lD = normalize(samplePoint - rayOrigin);
@@ -400,12 +404,12 @@ export class BVH {
           lightSamplePdf *= cdfEntry.pdf;
 
           if (backSideHit) {
-            return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1);
+            return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1, vec2f(0), vec3f(0));
           }
           
           let ires = bvhIntersect(Ray(rayOrigin + sampleDirection * 0.001, sampleDirection));
           if (!ires.hit || cdfEntry.triangleIndex != ires.triangleIndex) {
-            return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1);
+            return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1, vec2f(0), vec3f(0));
           }
           let material: Emissive = createEmissive(ires.triangle.materialOffset);
           let emissive = material.color * material.intensity;
@@ -413,7 +417,8 @@ export class BVH {
 
           return LightSample(
             false, backSideHit, lightSamplePdf, sampleDirection, radiance, 
-            samplePoint, cdfEntry.triangleIndex
+            samplePoint, cdfEntry.triangleIndex, sampleResult.barycentrics,
+            lN
           );
         }
 
@@ -435,14 +440,14 @@ export class BVH {
 
           let ires = bvhIntersect(Ray(rayOrigin + sampleDirection * 0.001, sampleDirection));
           if (ires.hit) {
-            return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1);
+            return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1, vec2f(0), vec3f(0));
           }
           let radiance = getEnvmapRadiance(sampleDirection);
 
-          return LightSample(true, false, lightSamplePdf, sampleDirection, radiance, vec3f(0.0), -1);
+          return LightSample(true, false, lightSamplePdf, sampleDirection, radiance, vec3f(0.0), -1, uv, vec3f(0));
         }
 
-        return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1);
+        return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1, vec2f(0), vec3f(0));
       }
 
       fn getLightPDF(ray: Ray) -> f32 {
@@ -517,14 +522,14 @@ export class BVH {
 
         if (!aabbIntersect(ray.origin, ray.direction, rootNode.aabb).hit) {
           return BVHIntersectionResult(
-            false, 0, vec3f(0), vec2f(0), vec3f(0), vec3f(0), triangles[0], 0
+            false, 0, vec3f(0), vec2f(0), vec3f(0), vec3f(0), triangles[0], 0, vec2f(0)
           );
         }
 
         // from: https://github.com/gpuweb/gpuweb/issues/3431#issuecomment-1453667278
         let highestFloat = 0x1.fffffep+127f;
         var closestIntersection = IntersectionResult(
-          false, highestFloat, vec3f(0), vec2f(0), vec3f(0), vec3f(0)
+          false, highestFloat, vec3f(0), vec2f(0), vec3f(0), vec3f(0), vec2f(0.0)
         );
         var closestPrimitiveIndex = -1;
 
@@ -602,7 +607,8 @@ export class BVH {
           closestIntersection.normal,
           closestIntersection.tangent,
           triangles[closestPrimitiveIndex],
-          closestPrimitiveIndex
+          closestPrimitiveIndex,
+          closestIntersection.barycentrics
         );
       } 
     `;

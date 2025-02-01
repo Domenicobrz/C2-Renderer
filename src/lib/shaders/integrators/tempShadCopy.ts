@@ -7,6 +7,7 @@ fn shade(
   reservoir: ptr<function, Reservoir>,
   throughput: ptr<function, vec3f>, 
   pi: PathInfo,
+  psi: ptr<function, PathSampleInfo>,
   lastBrdfMis: ptr<function, f32>, 
   isRandomReplay: bool,
   tid: vec3u,
@@ -16,17 +17,17 @@ fn shade(
   let materialType = materialsData[materialOffset];
 
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-    return shadeDiffuse(ires, ray, reservoir, throughput, pi, lastBrdfMis, isRandomReplay, tid, i);
+    return shadeDiffuse(ires, ray, reservoir, throughput, pi, psi, lastBrdfMis, isRandomReplay, tid, i);
   }
 
   if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-    return shadeEmissive(ires, ray, reservoir, throughput, pi, lastBrdfMis, isRandomReplay, tid, i);
+    return shadeEmissive(ires, ray, reservoir, throughput, pi, psi, lastBrdfMis, isRandomReplay, tid, i);
   }
 
   if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-    return shadeTorranceSparrow(ires, ray, reservoir, throughput, pi, lastBrdfMis, isRandomReplay, tid, i);
+    return shadeTorranceSparrow(ires, ray, reservoir, throughput, pi, psi, lastBrdfMis, isRandomReplay, tid, i);
   }
 
-  return RandomReplayResult(0, vec3f(0.0));
+  return RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
 }
 `;

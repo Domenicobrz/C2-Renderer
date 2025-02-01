@@ -88,18 +88,47 @@ fn debugLog(value: f32) {
   }
 }
 
+// this struct will be saved in the reservoir
 struct PathInfo {
   F: vec3f,
   seed: vec2i,
   bounceCount: u32,
-  // bit 0: path ends by NEE boolean
-  // bit 1: path ends by BRDF sampling boolean (we found a light)
-  // bit 2: path ends by escape boolean
-  // in theory, the remaining bits could contain the bounce count
-  // bit 16 onward: lobe index
-  // theoretically, flags could also contain the bounce count
+  /* 
+    bit 0: path-end sampled by Light boolean
+    bit 1: path-end sampled by BRDF boolean
+    bit 2: path ends by escape boolean
+    bit 4-5:  
+       00 no reconnection 
+       01 reconnection at light_source 
+       10 reconnection 1 before light_source 
+       11 reconnection 2+ before light_source 
+    in theory, the remaining bits could contain the bounce count
+    bit 16 onward: lobe index
+    theoretically, flags could also contain the bounce count
+  */
   flags: u32,
+  reconnectionBounce: i32,
+  reconnectionTriangleIndex: i32,
+  // these are the barycentric coordinates of the triangle, not the uvs.
+  // to define a point within a triangle, we can't use texture uvs (they could be scaled/repeated)
+  reconnectionBarycentrics: vec2f,  
+  reconnectionRadiance: vec3f,
+  jacobian: vec2f, 
 }
+
+// this struct does not have to be saved in the reservoir,
+// hence why we're creating a separate struct
+struct PathSampleInfo {
+  wasPrevVertexRough: bool,
+  prevVertexPosition: vec3f,
+  brdfPdfPrevVertex: f32,
+  lobePdfPrevVertex: f32,
+}
+
+const NO_RECONNECTION: u32 = 0;
+const RECONNECTION_AT_LS: u32 = 1;
+const RECONNECTION_ONE_BEFORE_LS: u32 = 2;
+const RECONNECTION_MANY_BEFORE_LS: u32 = 3;
 
 struct Reservoir {
   Y: PathInfo,
@@ -118,13 +147,15 @@ struct Reservoir {
 struct RandomReplayResult {
   valid: u32,
   pHat: vec3f,
+  shouldTerminate: bool,
+  jacobian: vec2f,
 }
 
-fn pathEndsByNEE(pi: PathInfo) -> bool {
+fn pathIsLightSampled(pi: PathInfo) -> bool {
   return (pi.flags & 1) > 0;
 }
 
-fn pathEndsByBRDF(pi: PathInfo) -> bool {
+fn pathIsBrdfSampled(pi: PathInfo) -> bool {
   return (pi.flags & 2) > 0;
 }
 
@@ -132,11 +163,24 @@ fn pathHasLobeIndex(pi: PathInfo, lobeIndex: u32) -> bool {
   return (pi.flags >> 16) == lobeIndex;
 }
 
-fn setPathFlags(lobeIndex: u32, endsByNEE: bool, endsByBRDF: bool) -> u32 {
-  var pathFlags = lobeIndex; // lobe index
-  pathFlags = pathFlags << 16;
-  if (endsByNEE) { pathFlags |= 1; } 
-  if (endsByBRDF) { pathFlags |= 2; } 
+fn pathDoesNotReconnect(pi: PathInfo) -> bool {
+  return ((pi.flags >> 3) & 3) == NO_RECONNECTION;
+}
+
+fn pathReconnectsAtLightVertex(pi: PathInfo) -> bool {
+  return ((pi.flags >> 3) & 3) == RECONNECTION_AT_LS;
+}
+
+fn pathReconnectsFarFromLightVertex(pi: PathInfo) -> bool {
+  return ((pi.flags >> 3) & 3) == RECONNECTION_MANY_BEFORE_LS;
+}
+
+fn setPathFlags(lobeIndex: u32, lightSampled: u32, brdfSampled: u32, reconnection_type: u32) -> u32 {
+  var pathFlags: u32 = 0;
+  pathFlags |= (brdfSampled << 1);
+  pathFlags |= (lightSampled << 0);
+  pathFlags |= (reconnection_type << 3);
+  pathFlags |= (lobeIndex << 16);
   return pathFlags;
 }
 

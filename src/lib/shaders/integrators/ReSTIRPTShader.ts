@@ -72,7 +72,7 @@ export function getReSTIRPTShader(lutManager: LUTManager) {
 
   var prevReservoir = restirPassOutput[idx];
   var reservoir = Reservoir(
-    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0),
+    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, -1, -1, vec2f(0), vec3f(0), vec2f(0)),
     vec2i(tid.xy), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
   );
 
@@ -82,6 +82,8 @@ export function getReSTIRPTShader(lutManager: LUTManager) {
   var rayContribution: f32;
   var ray = getCameraRay(tid, idx, &rayContribution);
 
+  var pathSampleInfo = PathSampleInfo(false, vec3f(0.0), 0, 0);
+  let unusedPi = PathInfo();
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);
   var lastBrdfMis = 1.0;
@@ -91,11 +93,9 @@ export function getReSTIRPTShader(lutManager: LUTManager) {
     debugInfo.bounce = i;
 
     let ires = bvhIntersect(ray);
-
-    let unusedPi = PathInfo();
     
     if (ires.hit) {
-      shade(ires, &ray, &reservoir, &throughput, unusedPi, &lastBrdfMis, false, tid, i);
+      shade(ires, &ray, &reservoir, &throughput, unusedPi, &pathSampleInfo, &lastBrdfMis, false, tid, i);
     } 
     // else if (shaderConfig.HAS_ENVMAP) {
     //   // we bounced off into the envmap

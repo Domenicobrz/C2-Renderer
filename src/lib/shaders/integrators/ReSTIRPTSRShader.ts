@@ -51,12 +51,6 @@ const SR_CANDIDATES_COUNT = 3;
 fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
 
-  // debugInfo.tid = tid;
-  // debugInfo.isSelectedPixel = false;
-  // if (debugPixelTarget.x == tid.x && debugPixelTarget.y == tid.y) {
-  //   debugInfo.isSelectedPixel = true;
-  // }
-
   // initializeRandoms(vec3u(vec2u(pi.seed), 0), 0);
 
   // the initial camera ray should be the same of the pixel we are shading,
@@ -79,12 +73,14 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
     // This wasn't implemented since the catseyedbokeh routine asks for 
     // rand 2ds in a for loop and then uses those rands to decide where to 
     // continue the for loop or not
-    return RandomReplayResult(0, vec3f(0));
+    return RandomReplayResult(0, vec3f(0), true, vec2f(0.0));
   }
 
   var lastBrdfMis = 1.0;
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);
+  var unusedReservoir = Reservoir();
+  var pathSampleInfo = PathSampleInfo(false, vec3f(0.0), 0, 0);
   for (var i = 0; i < config.BOUNCES_COUNT; i++) {
     if (rayContribution == 0.0) { break; }
 
@@ -93,32 +89,32 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
-      var unusedReservoir = Reservoir();
+      let rrStepResult = shade(ires, &ray, &unusedReservoir, &throughput, pi, &pathSampleInfo, &lastBrdfMis, true, tid, i);
 
-      let rrStepResult = shade(ires, &ray, &unusedReservoir, &throughput, pi, &lastBrdfMis, true, tid, i);
-      
-      // I think it would be enough to check if rrStepResult is valid, since
-      // the bounce count check is already done inside shade(...)
-      if (pi.bounceCount == u32(debugInfo.bounce) && rrStepResult.valid > 0) {
+      if (rrStepResult.shouldTerminate) {
         return rrStepResult;
       }
     } 
     // ..... missing stuff .....
   }
 
-  return RandomReplayResult(0, vec3f(0));
+  return RandomReplayResult(0, vec3f(0), true, vec2f(0.0));
 }
 
 fn generalizedBalanceHeuristic(
-  XiPi: PathInfo, pHatXi: vec3f, idx: i32, candidates: array<Reservoir, SR_CANDIDATES_COUNT>
+  X: PathInfo, Y: PathInfo, idx: i32, candidates: array<Reservoir, SR_CANDIDATES_COUNT>
 ) -> f32 {
-  let numerator = length(pHatXi);
-  var denominator = length(pHatXi);
+  let J = (Y.jacobian.x / X.jacobian.x) * abs(Y.jacobian.y / X.jacobian.y);
+  // in this case I'm dividing by the jacobian because it was computed when going from x->y,
+  // and here we want to basically "transform back" y->x, and doing that would result in the inverse
+  // of the jacobian that we got from x->y
+  let numerator = length(X.F) / J;
+  var denominator = length(X.F) / J;
 
   for (var i = 0; i < SR_CANDIDATES_COUNT; i++) {
     if (i == idx) { continue; }
 
-    let Xj = candidates[i];
+    let XjCandidate = candidates[i];
 
     // there's a big difference between a null candidate path, and a null candidate
     // if one of the ""candidates"" is outside of the screen boundaries, we're not simply
@@ -126,7 +122,7 @@ fn generalizedBalanceHeuristic(
     // associated with a pixel outside the screen boundaries. Nothing at all, none.
     // However, some nearby pixels might have been unable to find a candidate path Y, but *must* still
     // be tested in the generalized balance heuristic. They may have failed to generate a candidate
-    // path, but they may be able to successfully random replay the path we're testing here with XiPi
+    // path, but they may be able to successfully random replay the path we're testing here with Y
     // Thus they must be considered and used here otherwise we'll gain energy where we shouldn't.
     // This is the reason why we're only checking if the candidate has a negative seed, that means
     // that the ""candidate"" is one of those samples that fell outside the screen boundaries and is thus 
@@ -134,13 +130,20 @@ fn generalizedBalanceHeuristic(
     // same applies for candidates that have been removed because of Gbuffer differences
 
     // if (Xj.isNull > 0) { continue; }
-    if (Xj.domain.x < 0) { continue; }
+    if (XjCandidate.domain.x < 0) { continue; }
 
-    // shift the Xi path into Xj's pixel (seed is effectively tid.xy)
-    let randomReplayResult = randomReplay(XiPi, vec3u(vec2u(Xj.domain), 0));
-
+    // shift Y into Xj's pixel (seed is effectively tid.xy)
+    let randomReplayResult = randomReplay(Y, vec3u(vec2u(XjCandidate.domain), 0));
     if (randomReplayResult.valid > 0) {
-      let res = length(randomReplayResult.pHat);
+      // shift Y -> Xj and evaluate jacobian
+      var Xj = Y;
+      Xj.F = randomReplayResult.pHat;
+      Xj.jacobian = randomReplayResult.jacobian;
+
+      // since we're doing y->xj,  the xj terms appear on top of the fraction
+      let J = (Xj.jacobian.x / Y.jacobian.x) * abs(X.jacobian.y / Y.jacobian.y);
+      let res = length(Xj.F) * J;
+
       denominator += res;
     }
   }
@@ -161,7 +164,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     // In this case, it's important because for next spatial iterations
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the seed value
-    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0),
+    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, -1, vec2f(0), vec3f(0), vec2f(0)),
     vec2i(tid.xy), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0,
   );
   let M: i32 = SR_CANDIDATES_COUNT;
@@ -181,22 +184,32 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
       continue; 
     }
 
-    let Wxi = Xi.Wy;
     let randomReplayResult = randomReplay(Xi.Y, tid);
+    
+    // remember that the random-replay will end up creating a new path-info
+    // that computed internally a different jacobian compared to the jacobian
+    // that is saved in the original path Xi.Y. This is the real difference between
+    // Y and X when it's presented in section 5 of the ReSTIR guide
+    let X = Xi.Y;
+    var Y = Xi.Y;
+    Y.F = randomReplayResult.pHat;
+    Y.jacobian = randomReplayResult.jacobian;
+
+    let jacobian = (Y.jacobian.x / X.jacobian.x) * abs(Y.jacobian.y / X.jacobian.y);
+    let Wxi = Xi.Wy * jacobian;
     var wi = 0.0;
 
     if (randomReplayResult.valid > 0) {
-      let mi = generalizedBalanceHeuristic(Xi.Y, Xi.Y.F, i, candidates);
-      wi = mi * length(randomReplayResult.pHat) * Wxi;
-      // wi = 0.5 * length(randomReplayResult.pHat) * Wxi;
+      let mi = generalizedBalanceHeuristic(X, Y, i, candidates);
+      wi = mi * length(Y.F) * Wxi;    
     } else {
       
     }
 
     if (wi > 0.0) {
-      let updated = updateReservoir(&r, Xi.Y, wi);
+      let updated = updateReservoir(&r, Y, wi);
       if (updated) {
-        YpHat = randomReplayResult.pHat;
+        YpHat = Y.F;
       }
     }
   }
@@ -279,13 +292,13 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
           if (dot(normal1, normal0) < 0.9) {
             candidates[i] = Reservoir(
-              PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0),
+              PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec2f(0)),
               vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
             );
           }
         } else {
           candidates[i] = Reservoir(
-            PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0),
+            PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec2f(0)),
             vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
           );
         }

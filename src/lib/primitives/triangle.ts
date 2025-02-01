@@ -228,6 +228,12 @@ export class Triangle {
         uv: vec2f,
         normal: vec3f,
         tangent: vec3f,
+        barycentrics: vec2f,
+      }
+
+      struct TriangleSampleResult {
+        point: vec3f,
+        barycentrics: vec2f,
       }
 
       // this layout saves some bytes because of padding
@@ -255,16 +261,22 @@ export class Triangle {
 
   static shaderIntersectionFn(): string {
     return /* wgsl */ `
-      fn sampleTrianglePoint(triangle: Triangle, s: f32, t: f32) -> vec3f {
+      fn sampleTrianglePoint(triangle: Triangle, st: vec2f) -> TriangleSampleResult {
+        let s = st.x;
+        let t = st.y;
+        
         let v0v1 = (triangle.v1 - triangle.v0);
         let v0v2 = (triangle.v2 - triangle.v0);
-        let in_triangle = s + t <= 1;
 
+        let in_triangle = s + t <= 1;
         if (in_triangle) {
-          return v0v1 * s + v0v2 * t + triangle.v0;
+          return TriangleSampleResult(v0v1 * s + v0v2 * t + triangle.v0, vec2f(s, t));
         }
 
-        return v0v1 * (1.0 - s) + v0v2 * (1.0 - t) + triangle.v0;
+        return TriangleSampleResult(
+          v0v1 * (1.0 - s) + v0v2 * (1.0 - t) + triangle.v0,
+          vec2f((1.0 - s), (1.0 - t))
+        );
       }
 
       // https://github.com/johnnovak/raytriangle-test
@@ -281,7 +293,9 @@ export class Triangle {
         let det = dot(v0v1, pvec);
       
         const CULLING = false;
-        const noIntersection = IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0), vec3(0));
+        const noIntersection = IntersectionResult(
+          false, 0, vec3f(0), vec2f(0), vec3f(0), vec3f(0), vec2f(0)
+        );
       
         if (CULLING) {
           if (det < 0.000001) {
@@ -332,7 +346,9 @@ export class Triangle {
         let tang2 = triangle.tang2;
         let hitTangent = normalize(tang0 * w + tang1 * u + tang2 * v);
 
-        return IntersectionResult(true, t, hitPoint, hitUV, hitNormal, hitTangent);
+        return IntersectionResult(
+          true, t, hitPoint, hitUV, hitNormal, hitTangent, vec2f(u, v)
+        );
       }
     `;
   }

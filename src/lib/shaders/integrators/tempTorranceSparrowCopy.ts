@@ -76,6 +76,7 @@ fn shadeTorranceSparrow(
   reservoir: ptr<function, Reservoir>,
   throughput: ptr<function, vec3f>, 
   pi: PathInfo,
+  psi: ptr<function, PathSampleInfo>,
   lastBrdfMis: ptr<function, f32>, 
   isRandomReplay: bool,
   tid: vec3u,
@@ -142,7 +143,7 @@ fn shadeTorranceSparrow(
   var wi = vec3f(0,0,0); 
   let wo = TBNinverse * -(*ray).direction;
 
-  var rrStepResult = RandomReplayResult(0, vec3f(0.0));
+  var rrStepResult = RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
 
   var brdfSamplePdf: f32; var brdfMisWeight: f32; 
   var brdfSampleBrdf: vec3f; 
@@ -176,7 +177,7 @@ fn shadeTorranceSparrow(
   
       let wi = mi * length(pHat) * Wxi;
       if (isRandomReplay) {
-        if (pi.bounceCount == u32(debugInfo.bounce) && pathEndsByNEE(pi) && pathHasLobeIndex(pi, lobeIndex)) {
+        if (pi.bounceCount == u32(debugInfo.bounce) && pathIsLightSampled(pi) && pathHasLobeIndex(pi, lobeIndex)) {
           rrStepResult.valid = 1;
           // why do we have to multiply by "mi" here and in the pathinfo struct below to fix 
           // some issues related to correct convergence to the right result?
@@ -195,7 +196,8 @@ fn shadeTorranceSparrow(
           pHat * mi,
           vec2i(tid.xy),
           u32(debugInfo.bounce),
-          setPathFlags(lobeIndex, true, false), // set flags to "path ends by NEE"
+          setPathFlags(lobeIndex, 1, 0, NO_RECONNECTION), // set flags to "path ends by NEE"
+          0, -1, vec2f(0), vec3f(0), vec2f(0)
         );
     
         // updateReservoir uses a different set of random numbers, exclusive for ReSTIR

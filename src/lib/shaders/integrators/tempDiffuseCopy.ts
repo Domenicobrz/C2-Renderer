@@ -185,7 +185,8 @@ fn shadeDiffuse(
           lightSample.triangleIndex, 
           lightSample.barycentrics, 
           lightSample.radiance, 
-          jacobian
+          vec2f(1.0),
+          // jacobian
         );
         
         // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
@@ -218,7 +219,8 @@ fn shadeDiffuse(
         // TODO: we're doing a bvh traversal here that is probably unnecessary,
         //       can we use only the call to getLightPdf to make our checks?
         let visibilityRes = bvhIntersect(visibilityRay);
-        if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex) {
+        let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
+        if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
           // shift failed, should terminate
           // shift failed, should terminate
           // shift failed, should terminate
@@ -248,10 +250,21 @@ fn shadeDiffuse(
           mi = getMisWeight(lightPdf, brdfPdf);
         }
 
-        let jacobian = vec2f(
+        var jacobian = vec2f(
           p * probability_of_sampling_lobe * dot(w_vec, w_vec), 
           abs(dot(w_km1, triangle.geometricNormal))
         );
+        if (pathIsLightSampled(pi)) {
+          // I could be completely wrong here, however this case seems to be confirmed while
+          // comparing results to ground truth.
+          // Basically the idea is that when the last vertex was sampled by NEE,
+          // given the architecture of this path tracer, when we do a random replay we'll
+          // always use the same last random numbers for the light sampling routine, which means
+          // we will always select the same point on the light source. Since we always
+          // select the same points on the light source, there's no variation in probabiliy
+          // that needs to be accounted for with a jacobian
+          jacobian = vec2f(1.0);
+        }
       
         let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
                    brdf * max(dot(N, dir), 0.0);

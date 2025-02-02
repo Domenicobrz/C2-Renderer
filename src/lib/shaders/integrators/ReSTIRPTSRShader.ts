@@ -183,9 +183,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
       // we weren't able to generate a path for this candidate, thus skip it
       continue; 
     }
-
     let randomReplayResult = randomReplay(Xi.Y, tid);
-    
     // remember that the random-replay will end up creating a new path-info
     // that computed internally a different jacobian compared to the jacobian
     // that is saved in the original path Xi.Y. This is the real difference between

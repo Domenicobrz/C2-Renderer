@@ -47,7 +47,12 @@ fn shadeEmissive(
       let w_vec = ires.hitPoint - psi.prevVertexPosition;
       let w_km1 = normalize(w_vec);
       let p = psi.brdfPdfPrevVertex * psi.lobePdfPrevVertex;
-      let jacobian = vec2f(p * dot(w_vec, w_vec), abs(dot(w_km1, ires.triangle.geometricNormal)));
+      var jacobian = vec2f(p * dot(w_vec, w_vec), abs(dot(w_km1, ires.triangle.geometricNormal)));
+
+      // directly hitting a light source at bounce 0
+      if (debugInfo.bounce == 0) {
+        jacobian = vec2f(1.0);
+      }
 
       let pathInfo = PathInfo(
         pHat * mi,
@@ -61,6 +66,7 @@ fn shadeEmissive(
         ires.triangleIndex, 
         ires.barycentrics, 
         emissive, 
+        // vec2f(1.0), // jacobian
         jacobian
       );
     
@@ -79,6 +85,7 @@ fn shadeEmissive(
         rrStepResult.shouldTerminate = true;
         rrStepResult.jacobian = vec2f(1.0);
         rrStepResult.pHat = pHat * mi;
+        return rrStepResult;
       }
 
       // next vertex is reconnection vertex
@@ -101,7 +108,8 @@ fn shadeEmissive(
         let visibilityRay = Ray(ires.hitPoint + dir * 0.0001, dir);
 
         let visibilityRes = bvhIntersect(visibilityRay);
-        if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex) {
+        let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
+        if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
           // shift failed, should terminate
           // shift failed, should terminate
           // shift failed, should terminate
@@ -132,6 +140,7 @@ fn shadeEmissive(
 
         rrStepResult.valid = 1;
         rrStepResult.shouldTerminate = true;
+        // rrStepResult.jacobian = vec2f(1.0);
         rrStepResult.jacobian = jacobian;
         rrStepResult.pHat = pHat * mi;
         return rrStepResult;

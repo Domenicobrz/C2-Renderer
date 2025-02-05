@@ -63,9 +63,9 @@ fn shadeEmissive(
         u32(debugInfo.bounce),
         // set flags to "BRDF sampled"
         setPathFlags(
-          lobeIndex, 0, 1, select(NO_RECONNECTION, RECONNECTION_AT_LS, isConnectible)
+          lobeIndex, 0, 1, u32(select(0, 1, isConnectible))
         ),
-        debugInfo.bounce, 
+        u32(debugInfo.bounce), 
         ires.triangleIndex, 
         ires.barycentrics, 
         emissive, 
@@ -92,7 +92,7 @@ fn shadeEmissive(
       }
 
       // next vertex is reconnection vertex, this is effectively the case: lightsource -> lightsource
-      if (pi.reconnectionBounce == (debugInfo.bounce+1)) {    
+      if (pi.reconnectionBounce == u32(debugInfo.bounce+1)) {    
         let triangle = triangles[pi.reconnectionTriangleIndex];
         let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
       

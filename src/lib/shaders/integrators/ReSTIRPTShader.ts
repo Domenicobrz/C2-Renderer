@@ -72,7 +72,7 @@ export function getReSTIRPTShader(lutManager: LUTManager) {
 
   var prevReservoir = restirPassOutput[idx];
   var reservoir = Reservoir(
-    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, -1, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0)),
+    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0)),
     vec2i(tid.xy), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
   );
 

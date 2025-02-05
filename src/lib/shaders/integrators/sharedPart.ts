@@ -21,7 +21,6 @@ import { texturePart } from '../parts/texture';
 import { tempDiffCopy } from './tempDiffuseCopy';
 import { tempEmissiveCopy } from './tempEmissiveCopy';
 import { tempShadCopy } from './tempShadCopy';
-import { tempTorranceSparrowCopy } from './tempTorranceSparrowCopy';
 
 export function getReSTIRPTSharedPart(lutManager: LUTManager) {
   return /* wgsl */ `
@@ -47,9 +46,9 @@ ${'' /* Diffuse.shaderShadeDiffuse() */}
 ${'' /* EONDiffuse.shaderStruct() */}
 ${'' /* EONDiffuse.shaderCreateStruct() */}
 ${'' /* EONDiffuse.shaderShadeEONDiffuse() */}
-${TorranceSparrow.shaderStruct()}
-${TorranceSparrow.shaderCreateStruct()}
-${TorranceSparrow.shaderBRDF()}
+${'' /* TorranceSparrow.shaderStruct() */}
+${'' /* TorranceSparrow.shaderCreateStruct() */}
+${'' /* TorranceSparrow.shaderBRDF() */}
 ${'' /* TorranceSparrow.shaderShadeTorranceSparrow() */}
 ${'' /* Dielectric.shaderStruct() */}
 ${'' /* Dielectric.shaderCreateStruct() */}
@@ -97,17 +96,13 @@ struct PathInfo {
     bit 0: path-end sampled by Light boolean
     bit 1: path-end sampled by BRDF boolean
     bit 2: path ends by escape boolean
-    bit 4-5:  
-       00 no reconnection 
-       01 reconnection at light_source 
-       10 reconnection 1 before light_source 
-       11 reconnection 2+ before light_source 
+    bit 3: path reconnects / doesn't reconnect boolean
     in theory, the remaining bits could contain the bounce count
     bit 16 onward: lobe index
     theoretically, flags could also contain the bounce count
   */
   flags: u32,
-  reconnectionBounce: i32,
+  reconnectionBounce: u32,
   reconnectionTriangleIndex: i32,
   // these are the barycentric coordinates of the triangle, not the uvs.
   // to define a point within a triangle, we can't use texture uvs (they could be scaled/repeated)
@@ -125,11 +120,6 @@ struct PathSampleInfo {
   brdfPdfPrevVertex: f32,
   lobePdfPrevVertex: f32,
 }
-
-const NO_RECONNECTION: u32 = 0;
-const RECONNECTION_AT_LS: u32 = 1;
-const RECONNECTION_ONE_BEFORE_LS: u32 = 2;
-const RECONNECTION_MANY_BEFORE_LS: u32 = 3;
 
 struct Reservoir {
   Y: PathInfo,
@@ -164,23 +154,31 @@ fn pathHasLobeIndex(pi: PathInfo, lobeIndex: u32) -> bool {
   return (pi.flags >> 16) == lobeIndex;
 }
 
+fn pathReconnects(pi: PathInfo) -> bool {
+  return ((pi.flags >> 3) & 1) == 1;
+}
+
 fn pathDoesNotReconnect(pi: PathInfo) -> bool {
-  return ((pi.flags >> 3) & 3) == NO_RECONNECTION;
+  return !pathReconnects(pi);
 }
 
 fn pathReconnectsAtLightVertex(pi: PathInfo) -> bool {
-  return ((pi.flags >> 3) & 3) == RECONNECTION_AT_LS;
+  return pathReconnects(pi) && pi.bounceCount == pi.reconnectionBounce;
 }
 
 fn pathReconnectsFarFromLightVertex(pi: PathInfo) -> bool {
-  return ((pi.flags >> 3) & 3) == RECONNECTION_MANY_BEFORE_LS;
+  return pathReconnects(pi) && pi.bounceCount >= (pi.reconnectionBounce+2);
 }
 
-fn setPathFlags(lobeIndex: u32, lightSampled: u32, brdfSampled: u32, reconnection_type: u32) -> u32 {
+fn pathReconnectsOneVertextBeforeLight(pi: PathInfo) -> bool {
+  return pathReconnects(pi) && pi.bounceCount == (pi.reconnectionBounce+1);
+}
+
+fn setPathFlags(lobeIndex: u32, lightSampled: u32, brdfSampled: u32, reconnects: u32) -> u32 {
   var pathFlags: u32 = 0;
   pathFlags |= (brdfSampled << 1);
   pathFlags |= (lightSampled << 0);
-  pathFlags |= (reconnection_type << 3);
+  pathFlags |= (reconnects << 3);
   pathFlags |= (lobeIndex << 16);
   return pathFlags;
 }
@@ -217,7 +215,6 @@ fn getLuminance(emission: vec3f) -> f32 {
 
 ${tempEmissiveCopy}
 ${tempDiffCopy}
-${tempTorranceSparrowCopy}
 ${tempShadCopy}
 `;
 }

@@ -174,7 +174,7 @@ fn shadeDiffuse(
         let w_km1 = normalize(w_vec);
         let probability_of_sampling_lobe = 1.0;
         let p = lightSamplePdf * probability_of_sampling_lobe;
-        let jacobian = vec2f(p * dot(w_vec, w_vec), abs(dot(w_km1, lightSample.geometricNormal)));
+        let jacobian = vec2f(p, abs(dot(w_km1, lightSample.geometricNormal)) / dot(w_vec, w_vec));
 
         let pathInfo = PathInfo(
           pHat * mi,
@@ -185,8 +185,7 @@ fn shadeDiffuse(
           lightSample.triangleIndex, 
           lightSample.barycentrics, 
           lightSample.radiance, 
-          vec2f(1.0),
-          // jacobian
+          jacobian
         );
         
         // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
@@ -251,20 +250,9 @@ fn shadeDiffuse(
         }
 
         var jacobian = vec2f(
-          p * probability_of_sampling_lobe * dot(w_vec, w_vec), 
-          abs(dot(w_km1, triangle.geometricNormal))
+          p * probability_of_sampling_lobe, 
+          abs(dot(w_km1, triangle.geometricNormal)) / dot(w_vec, w_vec)
         );
-        if (pathIsLightSampled(pi)) {
-          // I could be completely wrong here, however this case seems to be confirmed while
-          // comparing results to ground truth.
-          // Basically the idea is that when the last vertex was sampled by NEE,
-          // given the architecture of this path tracer, when we do a random replay we'll
-          // always use the same last random numbers for the light sampling routine, which means
-          // we will always select the same point on the light source. Since we always
-          // select the same points on the light source, there's no variation in probabiliy
-          // that needs to be accounted for with a jacobian
-          jacobian = vec2f(1.0);
-        }
       
         let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
                    brdf * max(dot(N, dir), 0.0);

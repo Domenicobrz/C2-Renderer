@@ -184,12 +184,12 @@ fn setPathFlags(lobeIndex: u32, lightSampled: u32, brdfSampled: u32, reconnectio
   return pathFlags;
 }
 
-fn updateReservoir(reservoir: ptr<function, Reservoir>, Xi: PathInfo, wi: f32) -> bool {
+fn updateReservoir(reservoir: ptr<function, Reservoir>, Y: PathInfo, wi: f32) -> bool {
   (*reservoir).wSum = (*reservoir).wSum + wi;
   let prob = wi / (*reservoir).wSum;
 
   if (getRand2D_2().x < prob) {
-    (*reservoir).Y = Xi;
+    (*reservoir).Y = Y;
     (*reservoir).isNull = -1.0;
     return true;
   }

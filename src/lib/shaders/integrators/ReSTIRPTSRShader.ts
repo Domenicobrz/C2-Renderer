@@ -132,7 +132,7 @@ fn generalizedBalanceHeuristic(
     // if (Xj.isNull > 0) { continue; }
     if (XjCandidate.domain.x < 0) { continue; }
 
-    // shift Y into Xj's pixel (seed is effectively tid.xy)
+    // shift Y into Xj's pixel
     let randomReplayResult = randomReplay(Y, vec3u(vec2u(XjCandidate.domain), 0));
     if (randomReplayResult.valid > 0) {
       // shift Y -> Xj and evaluate jacobian
@@ -141,7 +141,7 @@ fn generalizedBalanceHeuristic(
       Xj.jacobian = randomReplayResult.jacobian;
 
       // since we're doing y->xj,  the xj terms appear on top of the fraction
-      let J = (Xj.jacobian.x / Y.jacobian.x) * abs(X.jacobian.y / Y.jacobian.y);
+      let J = (Xj.jacobian.x / Y.jacobian.x) * abs(Xj.jacobian.y / Y.jacobian.y);
       let res = length(Xj.F) * J;
 
       denominator += res;
@@ -169,15 +169,12 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
   );
   let M: i32 = SR_CANDIDATES_COUNT;
 
-  var YpHat = vec3f(0.0); 
-
   for (var i: i32 = 0; i < M; i++) {
     /* 
       since the very first candidate is this pixel's reservoir, 
       I can probably avoid the random replay
       and optimize that part away
     */
-
     let Xi = candidates[i];
     if (Xi.isNull > 0) { 
       // we weren't able to generate a path for this candidate, thus skip it
@@ -206,16 +203,11 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
     if (wi > 0.0) {
       let updated = updateReservoir(&r, Y, wi);
-      if (updated) {
-        YpHat = Y.F;
-      }
     }
   }
 
   if (r.isNull <= 0.0) {
-    r.Wy = 1 / length(YpHat) * r.wSum;
-    // theoretically we shouldn't re-use Y.F but for now we'll do it
-    r.Y.F = YpHat;
+    r.Wy = 1 / length(r.Y.F) * r.wSum;
   }
 
   return r;

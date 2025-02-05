@@ -47,7 +47,10 @@ fn shadeEmissive(
       let w_vec = ires.hitPoint - psi.prevVertexPosition;
       let w_km1 = normalize(w_vec);
       let p = psi.brdfPdfPrevVertex * psi.lobePdfPrevVertex;
-      var jacobian = vec2f(p * dot(w_vec, w_vec), abs(dot(w_km1, ires.triangle.geometricNormal)));
+      var jacobian = vec2f(
+        p, 
+        abs(dot(w_km1, ires.triangle.geometricNormal)) / dot(w_vec, w_vec)
+      );
 
       // directly hitting a light source at bounce 0
       if (debugInfo.bounce == 0) {
@@ -88,7 +91,7 @@ fn shadeEmissive(
         return rrStepResult;
       }
 
-      // next vertex is reconnection vertex
+      // next vertex is reconnection vertex, this is effectively the case: lightsource -> lightsource
       if (pi.reconnectionBounce == debugInfo.bounce) {    
         let triangle = triangles[pi.reconnectionTriangleIndex];
         let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
@@ -131,8 +134,8 @@ fn shadeEmissive(
         let lightPdf = getLightPDF(Ray(ires.hitPoint + w_km1 * 0.0001, w_km1));
 
         let jacobian = vec2f(
-          p * probability_of_sampling_lobe * dot(w_vec, w_vec), 
-          abs(dot(w_km1, triangle.geometricNormal))
+          p * probability_of_sampling_lobe, 
+          abs(dot(w_km1, triangle.geometricNormal)) / dot(w_vec, w_vec)
         );
       
         let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 

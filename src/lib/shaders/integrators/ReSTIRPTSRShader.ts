@@ -164,7 +164,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     // In this case, it's important because for next spatial iterations
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the seed value
-    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, -1, vec2f(0), vec3f(0), vec2f(0)),
+    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0)),
     vec2i(tid.xy), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0,
   );
   let M: i32 = SR_CANDIDATES_COUNT;
@@ -282,13 +282,13 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
           if (dot(normal1, normal0) < 0.9) {
             candidates[i] = Reservoir(
-              PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec2f(0)),
+              PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0)),
               vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
             );
           }
         } else {
           candidates[i] = Reservoir(
-            PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec2f(0)),
+            PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0)),
             vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
           );
         }

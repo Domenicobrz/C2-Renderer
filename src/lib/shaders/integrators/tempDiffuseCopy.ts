@@ -179,12 +179,13 @@ fn shadeDiffuse(
         let pathInfo = PathInfo(
           pHat * mi,
           vec2i(tid.xy),
-          u32(debugInfo.bounce),
+          u32(debugInfo.bounce + 1),
           setPathFlags(lobeIndex, 1, 0, RECONNECTION_AT_LS), // set flags to "path ends by NEE"
-          debugInfo.bounce, 
+          debugInfo.bounce + 1, 
           lightSample.triangleIndex, 
           lightSample.barycentrics, 
           lightSample.radiance, 
+          vec3f(0),
           jacobian
         );
         
@@ -195,7 +196,7 @@ fn shadeDiffuse(
 
     if (isRandomReplay) {
       // next vertex is reconnection vertex
-      if (pi.reconnectionBounce == debugInfo.bounce) {        
+      if (pi.reconnectionBounce == (debugInfo.bounce+1)) {        
         let triangle = triangles[pi.reconnectionTriangleIndex];
         let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
       
@@ -267,7 +268,7 @@ fn shadeDiffuse(
 
       if (
         pathDoesNotReconnect(pi) && 
-        pi.bounceCount == u32(debugInfo.bounce) && 
+        pi.bounceCount == u32(debugInfo.bounce + 1) && 
         pathIsLightSampled(pi) && 
         pathHasLobeIndex(pi, lobeIndex)
       ) {

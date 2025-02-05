@@ -197,7 +197,7 @@ fn shadeTorranceSparrow(
           vec2i(tid.xy),
           u32(debugInfo.bounce),
           setPathFlags(lobeIndex, 1, 0, NO_RECONNECTION), // set flags to "path ends by NEE"
-          0, -1, vec2f(0), vec3f(0), vec2f(0)
+          0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0)
         );
     
         // updateReservoir uses a different set of random numbers, exclusive for ReSTIR

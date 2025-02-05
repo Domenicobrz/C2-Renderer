@@ -65,11 +65,11 @@ fn shadeEmissive(
         setPathFlags(
           lobeIndex, 0, 1, select(NO_RECONNECTION, RECONNECTION_AT_LS, isConnectible)
         ),
-        debugInfo.bounce - 1, 
+        debugInfo.bounce, 
         ires.triangleIndex, 
         ires.barycentrics, 
         emissive, 
-        // vec2f(1.0), // jacobian
+        vec3f(0),
         jacobian
       );
     
@@ -92,7 +92,7 @@ fn shadeEmissive(
       }
 
       // next vertex is reconnection vertex, this is effectively the case: lightsource -> lightsource
-      if (pi.reconnectionBounce == debugInfo.bounce) {    
+      if (pi.reconnectionBounce == (debugInfo.bounce+1)) {    
         let triangle = triangles[pi.reconnectionTriangleIndex];
         let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
       
@@ -151,7 +151,7 @@ fn shadeEmissive(
 
       if (
         pathDoesNotReconnect(pi) && 
-        pi.bounceCount == u32(debugInfo.bounce) && 
+        pi.bounceCount == u32(debugInfo.bounce+1) && 
         pathIsBrdfSampled(pi) && 
         pathHasLobeIndex(pi, lobeIndex)
       ) {

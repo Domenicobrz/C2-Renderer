@@ -4,7 +4,7 @@ fn shadeEmissive(
   ray: ptr<function, Ray>,
   reservoir: ptr<function, Reservoir>,
   throughput: ptr<function, vec3f>, 
-  pi: PathInfo,
+  pi: ptr<function, PathInfo>,
   psi: ptr<function, PathSampleInfo>,
   lastBrdfMis: ptr<function, f32>, 
   isRandomReplay: bool,
@@ -150,10 +150,10 @@ fn shadeEmissive(
       }
 
       if (
-        pathDoesNotReconnect(pi) && 
+        pathDoesNotReconnect(*pi) && 
         pi.bounceCount == u32(debugInfo.bounce+1) && 
-        pathIsBrdfSampled(pi) && 
-        pathHasLobeIndex(pi, lobeIndex)
+        pathIsBrdfSampled(*pi) && 
+        pathHasLobeIndex(*pi, lobeIndex)
       ) {
         rrStepResult.valid = 0;
         rrStepResult.shouldTerminate = true;
@@ -207,12 +207,11 @@ fn shadeEmissive(
 
   *throughput *= albedo * max(dot(N, (*ray).direction), 0.0) * brdf * (1 / brdfPdf);
   *lastBrdfMis = 1.0;
-  *psi = PathSampleInfo(
-    true,
-    ires.hitPoint,
-    brdfPdf,
-    1.0,
-  );
+
+  psi.wasPrevVertexRough = true;
+  psi.prevVertexPosition = ires.hitPoint;
+  psi.brdfPdfPrevVertex = brdfPdf;
+  psi.lobePdfPrevVertex = 1.0;
 
   return rrStepResult;
 } 

@@ -6,7 +6,7 @@ fn shade(
   ray: ptr<function, Ray>,
   reservoir: ptr<function, Reservoir>,
   throughput: ptr<function, vec3f>, 
-  pi: PathInfo,
+  pi: ptr<function, PathInfo>,
   psi: ptr<function, PathSampleInfo>,
   lastBrdfMis: ptr<function, f32>, 
   isRandomReplay: bool,

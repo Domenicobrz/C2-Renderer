@@ -119,6 +119,8 @@ struct PathSampleInfo {
   prevVertexPosition: vec3f,
   brdfPdfPrevVertex: f32,
   lobePdfPrevVertex: f32,
+  reconnectionVertexIndex: i32, // -1 signals no reconnection
+  postfixThroughput: vec3f,
 }
 
 struct Reservoir {

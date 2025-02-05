@@ -80,7 +80,8 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);
   var unusedReservoir = Reservoir();
-  var pathSampleInfo = PathSampleInfo(false, vec3f(0.0), 0, 0);
+  var pathSampleInfo = PathSampleInfo(false, vec3f(0.0), 0, 0, -1, vec3f(1.0));
+  var pathInfoCopy = pi;
   for (var i = 0; i < config.BOUNCES_COUNT; i++) {
     if (rayContribution == 0.0) { break; }
 
@@ -89,7 +90,7 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
-      let rrStepResult = shade(ires, &ray, &unusedReservoir, &throughput, pi, &pathSampleInfo, &lastBrdfMis, true, tid, i);
+      let rrStepResult = shade(ires, &ray, &unusedReservoir, &throughput, &pathInfoCopy, &pathSampleInfo, &lastBrdfMis, true, tid, i);
 
       if (rrStepResult.shouldTerminate) {
         return rrStepResult;

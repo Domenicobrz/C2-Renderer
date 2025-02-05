@@ -92,7 +92,7 @@ fn shadeDiffuse(
   ray: ptr<function, Ray>,
   reservoir: ptr<function, Reservoir>,
   throughput: ptr<function, vec3f>, 
-  pi: PathInfo,
+  pi: ptr<function, PathInfo>,
   psi: ptr<function, PathSampleInfo>,
   lastBrdfMis: ptr<function, f32>, 
   isRandomReplay: bool,
@@ -196,7 +196,7 @@ fn shadeDiffuse(
 
     if (isRandomReplay) {
       // next vertex is reconnection vertex
-      if (pathReconnects(pi) && pi.reconnectionBounce == u32(debugInfo.bounce+1)) {        
+      if (pathReconnects(*pi) && pi.reconnectionBounce == u32(debugInfo.bounce+1)) {        
         let triangle = triangles[pi.reconnectionTriangleIndex];
         let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
       
@@ -241,11 +241,11 @@ fn shadeDiffuse(
         var mi = 0.0;
         let brdfPdf = getBrdfPdf(w_km1, N);
         let lightPdf = getLightPDF(Ray(ires.hitPoint + w_km1 * 0.0001, w_km1));
-        if (pathIsBrdfSampled(pi)) {
+        if (pathIsBrdfSampled(*pi)) {
           p = brdfPdf;
           mi = getMisWeight(brdfPdf, lightPdf);
         }
-        if (pathIsLightSampled(pi)) {
+        if (pathIsLightSampled(*pi)) {
           p = lightPdf;
           mi = getMisWeight(lightPdf, brdfPdf);
         }
@@ -267,10 +267,10 @@ fn shadeDiffuse(
       }
 
       if (
-        pathDoesNotReconnect(pi) && 
+        pathDoesNotReconnect(*pi) && 
         pi.bounceCount == u32(debugInfo.bounce + 1) && 
-        pathIsLightSampled(pi) && 
-        pathHasLobeIndex(pi, lobeIndex)
+        pathIsLightSampled(*pi) && 
+        pathHasLobeIndex(*pi, lobeIndex)
       ) {
         rrStepResult.valid = 0;
         rrStepResult.shouldTerminate = true;
@@ -306,12 +306,10 @@ fn shadeDiffuse(
   *lastBrdfMis = brdfMisWeight;
   *throughput *= brdf * (/* mis weight */ 1.0 / brdfSamplePdf) * max(dot(N, rayBrdf.direction), 0.0); 
   
-  *psi = PathSampleInfo(
-    true,
-    ires.hitPoint,
-    brdfSamplePdf,
-    1.0,
-  );
+  psi.wasPrevVertexRough = true;
+  psi.prevVertexPosition = ires.hitPoint;
+  psi.brdfPdfPrevVertex = brdfSamplePdf;
+  psi.lobePdfPrevVertex = 1.0;
 
   return rrStepResult;
 }

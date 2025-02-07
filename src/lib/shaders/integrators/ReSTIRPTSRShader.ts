@@ -80,7 +80,7 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);
   var unusedReservoir = Reservoir();
-  var pathSampleInfo = PathSampleInfo(false, vec3f(0.0), 0, 0, -1, vec3f(1.0));
+  var pathSampleInfo = PathSampleInfo(false, vec3f(0.0), vec3f(0.0), 0, 0, -1, vec3f(1.0), -1);
   var pathInfoCopy = pi;
   for (var i = 0; i < config.BOUNCES_COUNT; i++) {
     if (rayContribution == 0.0) { break; }
@@ -165,7 +165,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     // In this case, it's important because for next spatial iterations
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the seed value
-    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0)),
+    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
     vec2i(tid.xy), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0,
   );
   let M: i32 = SR_CANDIDATES_COUNT;
@@ -283,13 +283,13 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
           if (dot(normal1, normal0) < 0.9) {
             candidates[i] = Reservoir(
-              PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0)),
+              PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
               vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
             );
           }
         } else {
           candidates[i] = Reservoir(
-            PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0)),
+            PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
             vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
           );
         }

@@ -72,7 +72,7 @@ export function getReSTIRPTShader(lutManager: LUTManager) {
 
   var prevReservoir = restirPassOutput[idx];
   var reservoir = Reservoir(
-    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0)),
+    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
     vec2i(tid.xy), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
   );
 
@@ -83,9 +83,9 @@ export function getReSTIRPTShader(lutManager: LUTManager) {
   var ray = getCameraRay(tid, idx, &rayContribution);
 
   var pathSampleInfo = PathSampleInfo(
-    false, vec3f(0.0), 0, 0, -1, vec3f(1.0) /* <- initial postfix throughput */
+    false, vec3f(0.0), vec3f(0.0), 0, 0, -1, vec3f(1.0), -1
   );
-  var pi = PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, 0, vec2f(0), vec3f(0), vec3f(0), vec2f(0));
+  var pi = PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, 0, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1));
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);
   var lastBrdfMis = 1.0;

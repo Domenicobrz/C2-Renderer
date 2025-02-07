@@ -110,17 +110,22 @@ struct PathInfo {
   reconnectionRadiance: vec3f,
   reconnectionDirection: vec3f,
   jacobian: vec2f, 
+  reconnectionLobes: vec2i, // .x is the xk-1 vertex, and .y is xk 
 }
 
 // this struct does not have to be saved in the reservoir,
 // hence why we're creating a separate struct
 struct PathSampleInfo {
+
+  // some of these might be unnecessary now that I'm always reconnecting at xkm1
   wasPrevVertexRough: bool,
   prevVertexPosition: vec3f,
+  prevVertexBrdf: vec3f,
   brdfPdfPrevVertex: f32,
   lobePdfPrevVertex: f32,
   reconnectionVertexIndex: i32, // -1 signals no reconnection
   postfixThroughput: vec3f,
+  prevLobeIndex: i32,
 }
 
 struct Reservoir {

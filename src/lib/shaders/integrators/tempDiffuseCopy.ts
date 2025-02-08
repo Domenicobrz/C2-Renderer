@@ -242,7 +242,7 @@ fn shadeDiffuse(
           abs(dot(w_km1, ires.triangle.geometricNormal)) / dot(w_vec, w_vec)
         );
         pi.reconnectionDirection = rayBrdf.direction;
-        pi.flags = setPathFlags(lobeIndex, 0, 1, 0);
+        pi.flags = setPathFlags(lobeIndex, 0, 1, 1);
         
         psi.reconnectionVertexIndex = debugInfo.bounce;
       }
@@ -250,7 +250,7 @@ fn shadeDiffuse(
       // if we have already found a reconnection vertex previously
       if (
         (*psi).reconnectionVertexIndex != -1 && 
-        (*psi).reconnectionVertexIndex != debugInfo.bounce && 
+        (*psi).reconnectionVertexIndex < debugInfo.bounce && 
         lightSampleSuccessful
       ) {
         var mi = lightMisWeight;
@@ -262,7 +262,8 @@ fn shadeDiffuse(
           
         pi.F = pHat * mi;
         pi.bounceCount = u32(debugInfo.bounce + 1);
-        pi.reconnectionRadiance = psi.postfixThroughput * lsThroughput;
+        // for this type of path ending, we have to multiply the reconnectionRadiance by mi
+        pi.reconnectionRadiance = lightSampleRadiance * psi.postfixThroughput * lsThroughput * mi;
 
         // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
         updateReservoir(reservoir, *pi, wi);

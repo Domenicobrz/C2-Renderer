@@ -129,7 +129,7 @@ fn shadeEmissive(
       pi.reconnectionBarycentrics = ires.barycentrics;
       // these last elements will be updated by Emissive for the brdf
       // path
-      pi.flags = setPathFlags(lobeIndex, 0, 1, u32(select(0, 1, isConnectible))); // set flags to "path ends by NEE" and "reconnects"
+      pi.flags = setPathFlags(lobeIndex, 0, 1, 1); // set flags to "path ends by NEE" and "reconnects"
       pi.reconnectionRadiance = emissive; 
       pi.reconnectionDirection = vec3f(0.0);
       pi.jacobian = jacobian;
@@ -146,7 +146,7 @@ fn shadeEmissive(
         abs(dot(w_km1, ires.triangle.geometricNormal)) / dot(w_vec, w_vec)
       );
       pi.reconnectionDirection = newDirection;
-      pi.flags = setPathFlags(lobeIndex, 0, 1, 0);
+      pi.flags = setPathFlags(lobeIndex, 0, 1, 1);
       
       psi.reconnectionVertexIndex = debugInfo.bounce;
     }
@@ -190,7 +190,8 @@ fn shadeEmissive(
         
       pi.F = pHat * mi;
       pi.bounceCount = u32(debugInfo.bounce);
-      pi.reconnectionRadiance = psi.postfixThroughput * emissive;
+      // for this type of path ending, we have to multiply the reconnectionRadiance by mi
+      pi.reconnectionRadiance = psi.postfixThroughput * emissive * mi;
 
       // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
       updateReservoir(reservoir, *pi, wi);

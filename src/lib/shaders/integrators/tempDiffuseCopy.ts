@@ -155,6 +155,19 @@ fn shadeDiffuse(
 
   shadeDiffuseSampleBRDF(rands1, N, &rayBrdf, &brdfSamplePdf, &brdfMisWeight, ires);
 
+
+
+  // i could be wrong, but I think this line below v v v v v v v is causing issues
+  // i could be wrong, but I think this line below v v v v v v v is causing issues
+  // i could be wrong, but I think this line below v v v v v v v is causing issues
+  // i could be wrong, but I think this line below v v v v v v v is causing issues
+  // i could be wrong, but I think this line below v v v v v v v is causing issues
+  // i could be wrong, but I think this line below v v v v v v v is causing issues
+  // i could be wrong, but I think this line below v v v v v v v is causing issues
+  // i could be wrong, but I think this line below v v v v v v v is causing issues
+  // i could be wrong, but I think this line below v v v v v v v is causing issues
+
+   
   // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
   if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
     
@@ -193,7 +206,7 @@ fn shadeDiffuse(
           jacobian,
           vec2i(i32(lobeIndex), 2) // 2 is the emissive lobe-index
         );
-        
+      
         // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
         updateReservoir(reservoir, pathInfo, wi);
       }
@@ -309,6 +322,7 @@ fn shadeDiffuse(
         // TODO: we're doing a bvh traversal here that is probably unnecessary,
         //       can we use only the call to getLightPdf to make our checks?
         let visibilityRes = bvhIntersect(visibilityRay);
+        // in this case, we have to check wether the light source is backfacing, since it's the next vertex
         let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
         if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
           // shift failed, should terminate
@@ -381,8 +395,9 @@ fn shadeDiffuse(
         // TODO: we're doing a bvh traversal here that is probably unnecessary,
         //       can we use only the call to getLightPdf to make our checks?
         let visibilityRes = bvhIntersect(visibilityRay);
-        let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
-        if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
+        // in this case, we DON'T have to check wether the next vertex is backfacing, since it's NOT the light source
+        // let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
+        if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex) {
           // shift failed, should terminate
           rrStepResult.valid = 0;
           rrStepResult.shouldTerminate = true;
@@ -477,8 +492,9 @@ fn shadeDiffuse(
         // TODO: we're doing a bvh traversal here that is probably unnecessary,
         //       can we use only the call to getLightPdf to make our checks?
         let visibilityRes = bvhIntersect(visibilityRay);
-        let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
-        if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
+        // in this case, we DON'T have to check wether the next vertex is backfacing, since it's NOT the light source
+        // let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
+        if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex) {
           // shift failed, should terminate
           rrStepResult.valid = 0;
           rrStepResult.shouldTerminate = true;

@@ -81,6 +81,9 @@ export class Emissive extends Material {
         if (dot(N, (*ray).direction) > 0) {
           N = -N;
         } else {
+          // another way of handling this, that does not involve the usage of 
+          // an else statement, is to set the emissive to vec3f(0.0) if the
+          // triangle is back facing
           *rad += emissive * *lastBrdfMisWeight * *reflectance;
         }
     

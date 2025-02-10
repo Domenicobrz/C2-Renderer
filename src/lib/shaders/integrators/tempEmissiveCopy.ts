@@ -24,7 +24,7 @@ fn shadeEmissive(
   let hitPoint = ires.hitPoint;
   let material: Emissive = createEmissive(ires.triangle.materialOffset);
 
-  let emissive = material.color * material.intensity;
+  var emissive = material.color * material.intensity;
   const albedo = vec3f(1,1,1);
   const brdfPdf = 1 / (2 * PI);
   const brdf = (1 / PI);
@@ -38,6 +38,10 @@ fn shadeEmissive(
   if (dot(N, (*ray).direction) > 0) {
     N = -N;
     isBackFacing = true;
+  }
+
+  if (isBackFacing) {
+    emissive = vec3f(0.0);
   }
 
   let rands = vec4f(getRand2D(), getRand2D());
@@ -63,7 +67,7 @@ fn shadeEmissive(
 
   if (!isRandomReplay) {
     // directly hitting light source at bounce 0
-    if (debugInfo.bounce == 0 && !isBackFacing) {
+    if (debugInfo.bounce == 0) {
       let mi = *lastBrdfMis; // will be 1 in this case
       let pHat = emissive * *throughput; // throughput will be 1 in this case
       let wi = mi * length(pHat);
@@ -250,6 +254,7 @@ fn shadeEmissive(
       // TODO: we're doing a bvh traversal here that is probably unnecessary,
       //       can we use only the call to getLightPdf to make our checks?
       let visibilityRes = bvhIntersect(visibilityRay);
+      // in this case, we have to check wether the light source is backfacing, since it's the next vertex
       let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
       if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
         // shift failed, should terminate
@@ -313,8 +318,9 @@ fn shadeEmissive(
       // TODO: we're doing a bvh traversal here that is probably unnecessary,
       //       can we use only the call to getLightPdf to make our checks?
       let visibilityRes = bvhIntersect(visibilityRay);
-      let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
-      if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
+      // in this case, we DON'T have to check wether the next vertex is backfacing, since it's NOT the light source
+      // let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
+      if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex) {
         // shift failed, should terminate
         rrStepResult.valid = 0;
         rrStepResult.shouldTerminate = true;
@@ -409,8 +415,9 @@ fn shadeEmissive(
       // TODO: we're doing a bvh traversal here that is probably unnecessary,
       //       can we use only the call to getLightPdf to make our checks?
       let visibilityRes = bvhIntersect(visibilityRay);
-      let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
-      if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
+      // in this case, we DON'T have to check wether the next vertex is backfacing, since it's NOT the light source
+      // let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
+      if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex) {
         // shift failed, should terminate
         rrStepResult.valid = 0;
         rrStepResult.shouldTerminate = true;

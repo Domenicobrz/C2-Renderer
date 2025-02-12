@@ -79,37 +79,46 @@ export function getReSTIRPTShader(lutManager: LUTManager) {
   initializeRandoms(tid, debugInfo.sample);
   initializeRandoms2(tid);
 
-  var rayContribution: f32;
-  var ray = getCameraRay(tid, idx, &rayContribution);
+  let INITIAL_CANDIDATES_COUNT = 1;
 
-  var pathSampleInfo = PathSampleInfo(
-    false, vec3f(0.0), vec3f(0.0), 0, 0, -1, vec3f(1.0), -1
-  );
-  var pi = PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, 0, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1));
-  var throughput = vec3f(1.0);
-  var rad = vec3f(0.0);
-  var lastBrdfMis = 1.0;
-  for (var i = 0; i < config.BOUNCES_COUNT; i++) {
-    if (rayContribution == 0.0) { break; }
-
-    debugInfo.bounce = i;
-
-    let ires = bvhIntersect(ray);
-    
-    if (ires.hit) {
-      shade(ires, &ray, &reservoir, &throughput, &pi, &pathSampleInfo, &lastBrdfMis, false, tid, i);
-    } 
-    // else if (shaderConfig.HAS_ENVMAP) {
-    //   // we bounced off into the envmap
-    //   let envmapRad = getEnvmapRadiance(ray.direction);
-    //   rad += reflectance * envmapRad;
-    //   break;
-    // }
-
-    // if (reflectance.x == 0.0 && reflectance.y == 0.0 && reflectance.z == 0.0) {
-    //   break;
-    // }
+  for (var ic = 0; ic < INITIAL_CANDIDATES_COUNT; ic++) {
+    var rayContribution: f32;
+    var ray = getCameraRay(tid, idx, &rayContribution);
+  
+    var pathSampleInfo = PathSampleInfo(
+      false, vec3f(0.0), vec3f(0.0), 0, 0, -1, vec3f(1.0), -1
+    );
+    var pi = PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, 0, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1));
+    var throughput = vec3f(1.0);
+    var rad = vec3f(0.0);
+    var lastBrdfMis = 1.0;
+    for (var i = 0; i < config.BOUNCES_COUNT; i++) {
+      if (rayContribution == 0.0) { break; }
+  
+      debugInfo.bounce = i;
+  
+      let ires = bvhIntersect(ray);
+      
+      if (ires.hit) {
+        shade(ires, &ray, &reservoir, &throughput, &pi, &pathSampleInfo, &lastBrdfMis, false, tid, i);
+      } 
+      // else if (shaderConfig.HAS_ENVMAP) {
+      //   // we bounced off into the envmap
+      //   let envmapRad = getEnvmapRadiance(ray.direction);
+      //   rad += reflectance * envmapRad;
+      //   break;
+      // }
+  
+      // if (reflectance.x == 0.0 && reflectance.y == 0.0 && reflectance.z == 0.0) {
+      //   break;
+      // }
+    }
   }
+
+  // I think it would be better to multiply every wi
+  // instead of doing this to avoid me forgetting this thing
+  // when I'll eventually implement temporal reuse
+  reservoir.wSum /= f32(INITIAL_CANDIDATES_COUNT);
 
   if (reservoir.isNull <= 0.0) {
     reservoir.Wy = (1 / length(reservoir.Y.F)) * reservoir.wSum;

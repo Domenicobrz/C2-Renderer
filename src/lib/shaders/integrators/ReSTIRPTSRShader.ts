@@ -46,7 +46,7 @@ export function getReSTIRPTSRShader(lutManager: LUTManager) {
 @group(3) @binding(11) var lut32: texture_3d<f32>;
 @group(3) @binding(12) var blueNoise256: texture_2d<f32>;
 
-const SR_CANDIDATES_COUNT = 3;
+const SR_CANDIDATES_COUNT = 3; // the paper recommends 6
 
 fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
@@ -264,7 +264,8 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
         depth0 = candidates[i].Gbuffer.w;
       } else {
         // uniform circle sampling 
-        let circleRadiusInPixels = 15.0;
+        // TODO: the paper recommends using a low discrepancy sequence here 
+        let circleRadiusInPixels = 10.0;
         let rands = getRand2D_2();
         let r = circleRadiusInPixels * sqrt(rands.x);
         let theta = rands.y * 2.0 * PI;

@@ -100,7 +100,10 @@ export function getReSTIRPTShader(lutManager: LUTManager) {
       let ires = bvhIntersect(ray);
       
       if (ires.hit) {
-        shade(ires, &ray, &reservoir, &throughput, &pi, &pathSampleInfo, &lastBrdfMis, false, tid, i);
+        shade(
+          ires, &ray, &reservoir, &throughput, &pi, &pathSampleInfo, 
+          &lastBrdfMis, false, tid, i
+        );
       } 
       // else if (shaderConfig.HAS_ENVMAP) {
       //   // we bounced off into the envmap

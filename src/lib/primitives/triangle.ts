@@ -231,6 +231,12 @@ export class Triangle {
         barycentrics: vec2f,
       }
 
+      struct SurfaceAttributes {
+        normal: vec3f,
+        uv: vec2f,
+        tangent: vec3f,
+      }
+
       struct TriangleSampleResult {
         point: vec3f,
         barycentrics: vec2f,
@@ -277,6 +283,28 @@ export class Triangle {
           v0v1 * (1.0 - s) + v0v2 * (1.0 - t) + triangle.v0,
           vec2f((1.0 - s), (1.0 - t))
         );
+      }
+
+      fn getSurfaceAttributes(triangle: Triangle, barycentrics: vec2f) -> SurfaceAttributes {
+        let u = barycentrics.x;
+        let v = barycentrics.y;
+        let w = 1.0 - u - v;
+        let uv0 = triangle.uv0;
+        let uv1 = triangle.uv1;
+        let uv2 = triangle.uv2;
+        let hitUV = uv0 * w + uv1 * u + uv2 * v;
+        
+        let norm0 = triangle.norm0;
+        let norm1 = triangle.norm1;
+        let norm2 = triangle.norm2;
+        let hitNormal = normalize(norm0 * w + norm1 * u + norm2 * v);
+
+        let tang0 = triangle.tang0;
+        let tang1 = triangle.tang1;
+        let tang2 = triangle.tang2;
+        let hitTangent = normalize(tang0 * w + tang1 * u + tang2 * v);
+
+        return SurfaceAttributes(hitNormal, hitUV, hitTangent);
       }
 
       // https://github.com/johnnovak/raytriangle-test
@@ -330,24 +358,11 @@ export class Triangle {
 
         let hitPoint = ray.origin + t * ray.direction;
         
-        let w = 1.0 - u - v;
-        let uv0 = triangle.uv0;
-        let uv1 = triangle.uv1;
-        let uv2 = triangle.uv2;
-        let hitUV = uv0 * w + uv1 * u + uv2 * v;
-        
-        let norm0 = triangle.norm0;
-        let norm1 = triangle.norm1;
-        let norm2 = triangle.norm2;
-        let hitNormal = normalize(norm0 * w + norm1 * u + norm2 * v);
-
-        let tang0 = triangle.tang0;
-        let tang1 = triangle.tang1;
-        let tang2 = triangle.tang2;
-        let hitTangent = normalize(tang0 * w + tang1 * u + tang2 * v);
+        let barycentrics = vec2f(u, v);
+        let sa = getSurfaceAttributes(triangle, barycentrics);
 
         return IntersectionResult(
-          true, t, hitPoint, hitUV, hitNormal, hitTangent, vec2f(u, v)
+          true, t, hitPoint, sa.uv, sa.normal, sa.tangent, barycentrics
         );
       }
     `;

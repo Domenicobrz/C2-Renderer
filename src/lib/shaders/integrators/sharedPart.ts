@@ -220,8 +220,6 @@ fn getLuminance(emission: vec3f) -> f32 {
   return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
 }
 
-${tempEmissiveCopy}
-${tempDiffCopy}
 ${tempShadCopy}
 `;
 }

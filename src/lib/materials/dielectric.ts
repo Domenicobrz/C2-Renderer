@@ -546,7 +546,7 @@ export class Dielectric extends Material {
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires, ires.triangle, N, &tangent, &bitangent);
+        getTangentFromTriangle(ires.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
        
 
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping

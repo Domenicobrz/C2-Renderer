@@ -64,11 +64,11 @@ fn isFloatNaN(value: f32) -> bool {
 
 // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
 fn getTangentFromTriangle(
-  ires: BVHIntersectionResult, triangle: Triangle, shadingNormal: vec3f, 
+  vertexTangent: vec3f, geometricNormal: vec3f, shadingNormal: vec3f, 
   tangent: ptr<function, vec3f>, bitangent: ptr<function, vec3f>
 ) {
-  *tangent = ires.tangent;
-  *bitangent = normalize(cross(*tangent, triangle.geometricNormal));
+  *tangent = vertexTangent;
+  *bitangent = normalize(cross(*tangent, geometricNormal));
 
   // the tangents above are calculated with the geometric normal (picked from ires.triangle)
   // and have to be adjusted to use the vertex/shading normal

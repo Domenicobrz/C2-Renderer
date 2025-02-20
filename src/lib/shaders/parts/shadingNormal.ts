@@ -3,7 +3,6 @@ export const shadingNormalsPart = /* wgsl */ `
     mapLocation: vec2i, strength: f32, uvRepeat: vec2f, normal: vec3f, ray: Ray, 
     ires: BVHIntersectionResult, rayOffset: ptr<function, f32>
   ) -> vec3f {
-    let hitP = ires.hitPoint;
     let uv = ires.uv; 
     let triangle = ires.triangle;
     
@@ -62,7 +61,8 @@ export const shadingNormalsPart = /* wgsl */ `
     // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
     var tangent = vec3f(0.0);
     var bitangent = vec3f(0.0);
-    getTangentFromTriangle(ires, triangle, normal, &tangent, &bitangent);
+    getTangentFromTriangle(ires.tangent, triangle.geometricNormal, normal, &tangent, &bitangent);
+    
     // negated bitangent to switch handedness
     // I think bump / normal maps are authored with a right-handed system in mind
     // where z points towards "us"

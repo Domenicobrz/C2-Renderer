@@ -131,9 +131,9 @@ fn evaluateMaterialAtSurfacePoint(surface: SurfaceDescriptor) -> array<f32, MATE
   return array<f32,MATERIAL_DATA_ELEMENTS>();
 }
 
-fn getEmissive(materialData: array<f32, MATERIAL_DATA_ELEMENTS>) -> vec3f {
+fn getEmissive(materialData: array<f32, MATERIAL_DATA_ELEMENTS>, isBackFacing: bool) -> vec3f {
   let materialType = materialsData[0];
-  if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
+  if (materialType == ${MATERIAL_TYPE.EMISSIVE} && !isBackFacing) {
     let color = vec3f(
       materialsData[1],
       materialsData[2],
@@ -237,9 +237,9 @@ fn shade(
   let materialType = materialData[0];
 
   var bumpOffset = 0.0;
-  var isBackfacing = false;
+  var isBackFacing = false;
   let normals = getNormalsAtPoint(
-    materialData, ray, surfaceAttributes, triangle, &bumpOffset, &isBackfacing,
+    materialData, ray, surfaceAttributes, triangle, &bumpOffset, &isBackFacing,
   );
 
   var isRough = false;
@@ -267,7 +267,7 @@ fn shade(
     }
   }
   
-  let emissive = getEmissive(materialData);
+  var emissive = getEmissive(materialData, isBackFacing);
   // let absorption = getAbsorption(materialData);
 
   let brdfSample = sampleBrdf(materialData, ray, surfaceAttributes, normals);

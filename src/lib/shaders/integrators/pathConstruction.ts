@@ -288,13 +288,13 @@ fn setReconnectionVertex(
   psi: ptr<function, PathSampleInfo>,
   lobeIndex: u32,
 ) {
+  let isRough = true;
+  let isConnectible = psi.wasPrevVertexRough && isRough;
+
   // if this is a reconnection vertex, we'll have to prepare
   // the jacobian such that successive bounces can use it 
   // while saving new pathinfos in the reservoir
-  if (psi.reconnectionVertexIndex == -1) {
-    let isRough = true;
-    let isConnectible = psi.wasPrevVertexRough && isRough;
-
+  if (psi.reconnectionVertexIndex == -1 && isConnectible) {
     let w_vec = psi.prevVertexPosition - ires.hitPoint;
     let w_km1 = normalize(w_vec);
 

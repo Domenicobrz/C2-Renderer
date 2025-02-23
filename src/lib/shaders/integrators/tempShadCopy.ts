@@ -132,14 +132,14 @@ fn evaluateMaterialAtSurfacePoint(surface: SurfaceDescriptor) -> array<f32, MATE
 }
 
 fn getEmissive(materialData: array<f32, MATERIAL_DATA_ELEMENTS>, isBackFacing: bool) -> vec3f {
-  let materialType = materialsData[0];
+  let materialType = materialData[0];
   if (materialType == ${MATERIAL_TYPE.EMISSIVE} && !isBackFacing) {
     let color = vec3f(
-      materialsData[1],
-      materialsData[2],
-      materialsData[3],
+      materialData[1],
+      materialData[2],
+      materialData[3],
     );
-    let intensity = materialsData[4];
+    let intensity = materialData[4];
     return color * intensity;
   }
   return vec3f(0);
@@ -174,7 +174,7 @@ fn getNormalsAtPoint(
     );
 
     let bumpStrength = materialData[4];
-    let uvRepeat = vec2f(materialsData[5], materialsData[6]);
+    let uvRepeat = vec2f(materialData[5], materialData[6]);
 
     if (bumpMapLocation.x > -1) {
       // only used for getShadingNormal. Truth be told, we should change
@@ -269,6 +269,11 @@ fn shade(
   
   var emissive = getEmissive(materialData, isBackFacing);
   // let absorption = getAbsorption(materialData);
+
+  // !!!! careful !!!!
+  // !!!! careful !!!!
+  // sampleBrdf and sampleLight should *always* use the same number of rands
+  // otherwise we can't properly do the RandomReplay
 
   let brdfSample = sampleBrdf(materialData, ray, surfaceAttributes, normals);
   setReconnectionVertex(brdfSample, ires, pi, psi, u32(lobeIndex));

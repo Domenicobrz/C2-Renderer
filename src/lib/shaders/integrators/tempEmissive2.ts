@@ -1,4 +1,11 @@
 export let tempEmissive2 = /* wgsl */ `
+fn evaluatePdfEmissiveLobe() -> f32 {
+  return 1 / (2 * PI);
+}
+
+fn evaluateEmissiveBrdf() -> vec3f {
+  return vec3f(1 / PI);
+}
 
 fn sampleEmissiveBrdf(
   materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
@@ -27,8 +34,8 @@ fn sampleEmissiveBrdf(
   let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
   // from tangent space to world space
   let newDirection = normalize(TBN * nd.xzy);
-  const brdfSamplePdf = 1 / (2 * PI);
-  const brdf = vec3f(1 / PI);
+  let brdfSamplePdf = evaluatePdfEmissiveLobe();
+  let brdf = evaluateEmissiveBrdf();
   const misWeight = 1.0;
 
   return BrdfDirectionSample(

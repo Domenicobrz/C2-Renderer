@@ -1,4 +1,30 @@
 export let tempDiffuse2 = /* wgsl */ `
+fn evaluatePdfDiffuseLobe(
+  wi: vec3f,
+  surfaceNormals: SurfaceNormals,
+) -> f32 {
+  let cosTheta = dot(wi, surfaceNormals.shading);
+  let brdfSamplePdf = cosTheta / PI;
+  return brdfSamplePdf;
+}
+
+fn evaluateDiffuseBrdf(
+  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  surfaceAttributes: SurfaceAttributes,
+) -> vec3f {
+  var color = vec3f(materialData[1], materialData[2], materialData[3]);
+  let mapLocation = vec2i(
+    bitcast<i32>(materialData[9]),
+    bitcast<i32>(materialData[10]),
+  );
+  let mapUvRepeat = vec2f(materialData[7], materialData[8]);
+  if (mapLocation.x > -1) {
+    color *= getTexelFromTextureArrays(mapLocation, surfaceAttributes.uv, mapUvRepeat).xyz;
+  }
+
+  let brdf = color / PI;
+  return brdf;
+}
 
 fn sampleDiffuseBrdf(
   materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
@@ -29,7 +55,6 @@ fn sampleDiffuseBrdf(
   let sinTheta = sin(theta);
   // local space new ray direction
   let newDir = vec3f(cos(phi) * sinTheta, cosTheta, sin(phi) * sinTheta);
-  var brdfSamplePdf = cosTheta / PI;
   
   var tangent = vec3f(0.0);
   var bitangent = vec3f(0.0);
@@ -41,20 +66,12 @@ fn sampleDiffuseBrdf(
   // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
   let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
 
-  var color = vec3f(materialData[1], materialData[2], materialData[3]);
-  let mapLocation = vec2i(
-    bitcast<i32>(materialData[9]),
-    bitcast<i32>(materialData[10]),
-  );
-  let mapUvRepeat = vec2f(materialData[7], materialData[8]);
-  if (mapLocation.x > -1) {
-    color *= getTexelFromTextureArrays(mapLocation, surfaceAttributes.uv, mapUvRepeat).xyz;
-  }
-
-  let brdf = color / PI;
-
   // from tangent space to world space
   let newDirection = normalize(TBN * newDir.xzy);
+
+  let brdf = evaluateDiffuseBrdf(materialData, surfaceAttributes);
+  var brdfSamplePdf = evaluatePdfDiffuseLobe(newDirection, surfaceNormals);
+
   let lightSamplePdf = getLightPDF(Ray((*ray).origin, newDirection));
   let misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
 
@@ -79,8 +96,6 @@ fn sampleDiffuseLight(
 
   let newDirection = lightSample.direction;
 
-  let cosTheta = dot(lightSample.direction, surfaceNormals.shading);
-  let brdfSamplePdf = cosTheta / PI;
   // if the sampled ray sits below the hemisphere, brdfSamplePdf is zero,
   // since diffuse materials never sample a direction under the hemisphere.
   // However at this point, it doesn't even make sense to evaluate the 
@@ -99,18 +114,9 @@ fn sampleDiffuseLight(
     );
   }
 
+  let brdf = evaluateDiffuseBrdf(materialData, surfaceAttributes);
+  let brdfSamplePdf = evaluatePdfDiffuseLobe(newDirection, surfaceNormals);
   let mis = getMisWeight(lightSample.pdf, brdfSamplePdf);
-
-  var color = vec3f(materialData[1], materialData[2], materialData[3]);
-  let mapLocation = vec2i(
-    bitcast<i32>(materialData[9]),
-    bitcast<i32>(materialData[10]),
-  );
-  let mapUvRepeat = vec2f(materialData[7], materialData[8]);
-  if (mapLocation.x > -1) {
-    color *= getTexelFromTextureArrays(mapLocation, surfaceAttributes.uv, mapUvRepeat).xyz;
-  }
-  let brdf = color / PI;
 
   return LightDirectionSample(
     brdf,

@@ -1,5 +1,6 @@
 import { MATERIAL_TYPE } from '$lib/materials/material';
 import { pathConstruction } from './pathConstruction';
+import { rrPathConstruction } from './rrPathConstruction';
 import { tempDiffuse2 } from './tempDiffuse2';
 import { tempEmissive2 } from './tempEmissive2';
 
@@ -35,6 +36,47 @@ struct LightDirectionSample {
 ${tempDiffuse2}
 ${tempEmissive2}
 ${pathConstruction}
+${rrPathConstruction}
+
+fn evaluateLobePdf(
+  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  wo: vec3f,
+  wi: vec3f,
+  surfaceAttributes: SurfaceAttributes,
+  surfaceNormals: SurfaceNormals,
+) -> f32 {
+  let materialType = materialData[0];
+
+  if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
+    return evaluatePdfDiffuseLobe(wi, surfaceNormals);
+  }
+
+  if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
+    return evaluatePdfEmissiveLobe();
+  }
+
+  return 0.0;
+}
+
+fn evaluateBrdf(
+  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  wo: vec3f,
+  wi: vec3f,
+  surfaceAttributes: SurfaceAttributes,
+  surfaceNormals: SurfaceNormals,
+) -> vec3f {
+  let materialType = materialData[0];
+
+  if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
+    return evaluateDiffuseBrdf(materialData, surfaceAttributes);
+  }
+
+  if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
+    return evaluateEmissiveBrdf();
+  }
+
+  return vec3f(0);
+}
 
 fn sampleBrdf(
   materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
@@ -276,28 +318,52 @@ fn shade(
   // otherwise we can't properly do the RandomReplay
 
   let brdfSample = sampleBrdf(materialData, ray, surfaceAttributes, normals);
-  setReconnectionVertex(brdfSample, ires, pi, psi, u32(lobeIndex));
 
-  // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
-  if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
-    let lightSample = sampleLight(materialData, ray, surfaceAttributes, normals);
-    let lightSampleRadiance = lightSample.ls.radiance;
-    let lightSampleSuccessful = dot(lightSampleRadiance, lightSampleRadiance) > 0.0;
-    
-    if (lightSampleSuccessful) {
-      neePathConstruction( 
-        lightSample, brdfSample, ires,  ray, reservoir, throughput, 
-        pi, psi, lastBrdfMis, u32(lobeIndex), normals.shading, tid
+  if (!isRandomReplay) {
+    setReconnectionVertex(brdfSample, ires, pi, psi, u32(lobeIndex));
+
+    // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
+    if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
+      let lightSample = sampleLight(materialData, ray, surfaceAttributes, normals);
+      let lightSampleRadiance = lightSample.ls.radiance;
+      let lightSampleSuccessful = dot(lightSampleRadiance, lightSampleRadiance) > 0.0;
+      
+      if (lightSampleSuccessful) {
+        neePathConstruction( 
+          lightSample, brdfSample, ires,  ray, reservoir, throughput, 
+          pi, psi, lastBrdfMis, u32(lobeIndex), normals.shading, tid
+        );
+      }
+    }
+  
+    // if there's emission
+    if (dot(emissive, emissive) > 0.0) {
+      emissiveSurfacePathConstruction( 
+        brdfSample, ires,  ray, reservoir, throughput, 
+        pi, psi, lastBrdfMis, u32(lobeIndex), normals.shading, emissive, tid
       );
     }
   }
 
-  // if there's emission
-  if (dot(emissive, emissive) > 0.0) {
-    emissiveSurfacePathConstruction( 
-      brdfSample, ires,  ray, reservoir, throughput, 
-      pi, psi, lastBrdfMis, u32(lobeIndex), normals.shading, emissive, tid
+  if (isRandomReplay) {
+    let rrResult = rrPathConstruction(
+      surfaceAttributes,
+      normals,
+      materialData,
+      ires, 
+      ray,
+      throughput, 
+      isRough,
+      pi,
+      psi,
+      isBackFacing,
+      emissive,
+      lastBrdfMis,
+      u32(lobeIndex),
     );
+    if (rrResult.shouldTerminate || rrResult.valid > 0) {
+      return rrResult;
+    }
   }
 
   // now you have to actually change ray.direction to reflect the new direction
@@ -324,7 +390,6 @@ fn shade(
   psi.brdfPdfPrevVertex  = brdfSample.pdf;
   psi.lobePdfPrevVertex  = 1.0;
 
-  var rrResult = RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
-  return rrResult;
+  return RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
 }
 `;

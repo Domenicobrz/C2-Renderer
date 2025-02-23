@@ -1,0 +1,138 @@
+export let rrPathConstruction = /* wgsl */ `
+fn rrPathConstruction(
+  // lightDirectionSample: LightDirectionSample,
+  // brdfDirectionSample: BrdfDirectionSample,
+  surfaceAttributes: SurfaceAttributes,
+  normals: SurfaceNormals,
+  materialData: array<f32, MATERIAL_DATA_ELEMENTS>,
+  ires: BVHIntersectionResult, 
+  ray: ptr<function, Ray>,
+  // reservoir: ptr<function, Reservoir>,
+  throughput: ptr<function, vec3f>, 
+  isRough: bool,
+  pi: ptr<function, PathInfo>,
+  psi: ptr<function, PathSampleInfo>,
+  isBackFacing: bool,
+  emissive: vec3f,
+  lastBrdfMis: ptr<function, f32>, 
+  lobeIndex: u32,
+  // N: vec3f,
+  // tid: vec3u,
+) -> RandomReplayResult {
+  var rrStepResult = RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
+
+  let isConnectible = psi.wasPrevVertexRough && isRough;
+  // invertibility check
+  if (isConnectible && u32(debugInfo.bounce) < pi.reconnectionBounce) {
+    rrStepResult.valid = 0;
+    rrStepResult.shouldTerminate = true;
+    return rrStepResult;
+  }
+
+
+  // directly hitting light source at bounce 0, no need to check if emissive > 0.0
+  if (
+    pi.bounceCount == 0 && debugInfo.bounce == 0 && !isBackFacing
+  ) {
+    let mi = *lastBrdfMis; // will be 1 in this case
+    let pHat = emissive * *throughput; // throughput will be 1 in this case
+    let wi = mi * length(pHat);
+
+    rrStepResult.valid = 1;
+    rrStepResult.shouldTerminate = true;
+    rrStepResult.jacobian = vec2f(1.0);
+    rrStepResult.pHat = pHat * mi;
+    return rrStepResult;
+  }
+
+
+  // next vertex is the reconnection vertex, which is also a light source
+  if (
+    pathReconnectsAtLightVertex(*pi) && 
+    pi.reconnectionBounce == u32(debugInfo.bounce+1)
+  ) {
+    let triangle = triangles[pi.reconnectionTriangleIndex];
+    let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
+    var isConnectible = true; // check distance condition
+
+    // next vertex lobe will necessarily be identical since we're reconnecting to the same
+    // xk, however for the previous vertex, xk-1, which is this vertex, we have to make this check
+    if (i32(lobeIndex) != pi.reconnectionLobes.x) { isConnectible = false; }
+
+    if (!isConnectible) {
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      rrStepResult.valid = 0;
+      rrStepResult.shouldTerminate = true;
+      return rrStepResult;
+    }
+
+    let dir = normalize(nextVertexPosition - ires.hitPoint);
+    let visibilityRay = Ray(ires.hitPoint + dir * 0.0001, dir);
+
+    // TODO: we're doing a bvh traversal here that is probably unnecessary
+    // TODO: we're doing a bvh traversal here that is probably unnecessary
+    // TODO: we're doing a bvh traversal here that is probably unnecessary,
+    //       can we use only the call to getLightPdf to make our checks?
+    let visibilityRes = bvhIntersect(visibilityRay);
+    // in this case, we have to check wether the light source is backfacing, since it's the next vertex
+    let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
+    if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
+      // shift failed, should terminate
+      rrStepResult.valid = 0;
+      rrStepResult.shouldTerminate = true;
+      return rrStepResult;
+    }
+
+    // reconnection is successful
+    let w_vec = nextVertexPosition - ires.hitPoint;
+    let w_km1 = normalize(w_vec);
+    let probability_of_sampling_lobe = 1.0;
+
+    let brdf = evaluateBrdf(
+      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+    );
+    let brdfPdf = evaluateLobePdf(
+      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+    );
+    let lightPdf = getLightPDF(Ray(ires.hitPoint + w_km1 * 0.0001, w_km1));
+
+    var p = 1.0;
+    var mi = 0.0; 
+    if (pathIsBrdfSampled(*pi)) {
+      p *= brdfPdf * probability_of_sampling_lobe;
+      mi = getMisWeight(brdfPdf, lightPdf);
+    }
+    if (pathIsLightSampled(*pi)) {
+      p *= lightPdf * probability_of_sampling_lobe;
+      mi = getMisWeight(lightPdf, brdfPdf);
+    }
+
+    var jacobian = vec2f(
+      p, 
+      abs(dot(w_km1, triangle.geometricNormal)) / dot(w_vec, w_vec)
+    );
+    let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
+               brdf * max(dot(normals.shading, w_km1), 0.0);
+
+    rrStepResult.valid = 1;
+    rrStepResult.shouldTerminate = true;
+    rrStepResult.jacobian = jacobian;
+    rrStepResult.pHat = pHat * mi;
+    return rrStepResult;
+  }
+
+
+
+
+
+
+
+
+
+
+  return rrStepResult;
+}
+`;

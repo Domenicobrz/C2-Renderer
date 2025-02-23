@@ -247,61 +247,61 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
   var reservoir: Reservoir;
   
   if (!isOutOfScreenBounds) {
-    var reservoir = restirPassInput[idx];
-    if (reservoir.isNull < 0.0) {
-      // pHat(Y) * Wy
-      rad = reservoir.Y.F * reservoir.Wy;
-    }
-
-    // // ******* important: first candidate is current pixel's reservoir ***********
-    // var candidates = array<Reservoir, SR_CANDIDATES_COUNT>();
-    // var normal0 = vec3f(0.0);
-    // var depth0 = 0.0;
-    // for (var i = 0; i < SR_CANDIDATES_COUNT; i++) {
-    //   if (i == 0) {
-    //     candidates[i] = restirPassInput[idx];
-    //     normal0 = candidates[i].Gbuffer.xyz;
-    //     depth0 = candidates[i].Gbuffer.w;
-    //   } else {
-    //     // uniform circle sampling 
-    //     // TODO: the paper recommends using a low discrepancy sequence here 
-    //     let circleRadiusInPixels = 10.0;
-    //     let rands = getRand2D_2();
-    //     let r = circleRadiusInPixels * sqrt(rands.x);
-    //     let theta = rands.y * 2.0 * PI;
-
-    //     let offx = i32(r * cos(theta));
-    //     let offy = i32(r * sin(theta));
-
-    //     let ntid = vec3i(i32(tid.x) + offx, i32(tid.y) + offy, 0);
-    //     if (ntid.x >= 0 && ntid.y >= 0 && ntid.x < i32(canvasSize.x) && ntid.y < i32(canvasSize.y)) {
-    //       let nidx = ntid.y * i32(canvasSize.x) + ntid.x;
-    //       candidates[i] = restirPassInput[nidx];
-
-    //       // GBuffer test
-    //       let normal1 = candidates[i].Gbuffer.xyz;
-    //       let depth1 = candidates[i].Gbuffer.w;
-
-    //       if (dot(normal1, normal0) < 0.9) {
-    //         candidates[i] = Reservoir(
-    //           PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    //           vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
-    //         );
-    //       }
-    //     } else {
-    //       candidates[i] = Reservoir(
-    //         PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    //         vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
-    //       );
-    //     }
-    //   }
-    // }
-  
-    // reservoir = SpatialResample(candidates, tid);
+    // var reservoir = restirPassInput[idx];
     // if (reservoir.isNull < 0.0) {
-    //   // theoretically we shouldn't re-use Y.F but for now we'll do it
+    //   // pHat(Y) * Wy
     //   rad = reservoir.Y.F * reservoir.Wy;
     // }
+
+    // ******* important: first candidate is current pixel's reservoir ***********
+    var candidates = array<Reservoir, SR_CANDIDATES_COUNT>();
+    var normal0 = vec3f(0.0);
+    var depth0 = 0.0;
+    for (var i = 0; i < SR_CANDIDATES_COUNT; i++) {
+      if (i == 0) {
+        candidates[i] = restirPassInput[idx];
+        normal0 = candidates[i].Gbuffer.xyz;
+        depth0 = candidates[i].Gbuffer.w;
+      } else {
+        // uniform circle sampling 
+        // TODO: the paper recommends using a low discrepancy sequence here 
+        let circleRadiusInPixels = 10.0;
+        let rands = getRand2D_2();
+        let r = circleRadiusInPixels * sqrt(rands.x);
+        let theta = rands.y * 2.0 * PI;
+
+        let offx = i32(r * cos(theta));
+        let offy = i32(r * sin(theta));
+
+        let ntid = vec3i(i32(tid.x) + offx, i32(tid.y) + offy, 0);
+        if (ntid.x >= 0 && ntid.y >= 0 && ntid.x < i32(canvasSize.x) && ntid.y < i32(canvasSize.y)) {
+          let nidx = ntid.y * i32(canvasSize.x) + ntid.x;
+          candidates[i] = restirPassInput[nidx];
+
+          // GBuffer test
+          let normal1 = candidates[i].Gbuffer.xyz;
+          let depth1 = candidates[i].Gbuffer.w;
+
+          if (dot(normal1, normal0) < 0.9) {
+            candidates[i] = Reservoir(
+              PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+              vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
+            );
+          }
+        } else {
+          candidates[i] = Reservoir(
+            PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+            vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
+          );
+        }
+      }
+    }
+  
+    reservoir = SpatialResample(candidates, tid);
+    if (reservoir.isNull < 0.0) {
+      // theoretically we shouldn't re-use Y.F but for now we'll do it
+      rad = reservoir.Y.F * reservoir.Wy;
+    }
   }
 
   // https://www.w3.org/TR/WGSL/#storageBarrier-builtin

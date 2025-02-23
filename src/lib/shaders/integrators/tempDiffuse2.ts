@@ -19,7 +19,7 @@ fn sampleDiffuseBrdf(
   // if you switch to another brdf pdf, remember to also update the light sample brdf's pdf
   // *********************************************************************
   // cosine-weighted hemisphere sampling:
-  let rands = getRand2D();
+  let rands = vec4f(getRand2D(), getRand2D());
   let rand_1 = rands.x;
   // if rand_2 is 0, both cosTheta and the pdf will be zero
   let rand_2 = max(rands.y, 0.000001);

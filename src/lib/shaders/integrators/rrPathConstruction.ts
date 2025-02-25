@@ -124,14 +124,192 @@ fn rrPathConstruction(
     return rrStepResult;
   }
 
+  // next vertex is the reconnection vertex and the path ends on the vertex after that
+  if (
+    pathReconnectsOneVertextBeforeLight(*pi) &&
+    pi.reconnectionBounce == u32(debugInfo.bounce+1)
+  ) {
+    let triangle = triangles[pi.reconnectionTriangleIndex];
+    let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
+    var isConnectible = true; // check distance condition
+    
+    // next vertex lobe will necessarily be identical since we're reconnecting to the same
+    // xk, however for the previous vertex, xk-1, which is this vertex, we have to make this check
+    if (i32(lobeIndex) != pi.reconnectionLobes.x) { isConnectible = false; }
+    
+    if (!isConnectible) {
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      rrStepResult.valid = 0;
+      rrStepResult.shouldTerminate = true;
+      return rrStepResult;
+    }
+
+    let dir = normalize(nextVertexPosition - ires.hitPoint);
+    var visibilityRay = Ray(ires.hitPoint + dir * 0.0001, dir);
+   
+    // TODO: we're doing a bvh traversal here that is probably unnecessary
+    // TODO: we're doing a bvh traversal here that is probably unnecessary
+    // TODO: we're doing a bvh traversal here that is probably unnecessary,
+    //       can we use only the call to getLightPdf to make our checks?
+    let visibilityRes = bvhIntersect(visibilityRay);
+    // in this case, we DON'T have to check wether the next vertex is backfacing, since it's NOT the light source
+    // let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
+    if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex) {
+      // shift failed, should terminate
+      rrStepResult.valid = 0;
+      rrStepResult.shouldTerminate = true;
+      return rrStepResult;
+    }
+
+    // reconnection is successful
+    let w_vec = nextVertexPosition - ires.hitPoint;
+    let w_km1 = normalize(w_vec);
+    let probability_of_sampling_lobe = 1.0;
+    
+    let brdf = evaluateBrdf(
+      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+    );
+    let brdfPdf = evaluateLobePdf(
+      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+    );
+    var p = probability_of_sampling_lobe * brdfPdf;
 
 
+    // pick surface information of vertex Xk
+    let surfaceXk = SurfaceDescriptor(visibilityRes.triangleIndex, visibilityRes.barycentrics); 
+    let surfaceAttributesXk = getSurfaceAttributes(triangle, visibilityRes.barycentrics);
+    let materialDataXk = evaluateMaterialAtSurfacePoint(surfaceXk);
+    var bumpOffset: f32; var isBackFacing: bool;
+    let normalsXk = getNormalsAtPoint(
+      materialDataXk, &visibilityRay, surfaceAttributesXk, triangle, &bumpOffset, &isBackFacing,
+    );
 
+    let brdfXk = evaluateBrdf(
+      materialDataXk, w_km1, pi.reconnectionDirection, surfaceAttributesXk, normalsXk
+    );
+    let brdfPdfXk = evaluateLobePdf(
+      materialDataXk, w_km1, pi.reconnectionDirection, surfaceAttributesXk, normalsXk
+    );
+    let lightPdfXk = getLightPDF(Ray(visibilityRes.hitPoint + pi.reconnectionDirection * 0.0001, pi.reconnectionDirection));
+    var mi = 0.0;
 
+    if (pathIsBrdfSampled(*pi)) {
+      p *= brdfPdfXk * probability_of_sampling_lobe;
+      mi = getMisWeight(brdfPdfXk, lightPdfXk);
+    }
+    if (pathIsLightSampled(*pi)) {
+      p *= lightPdfXk * probability_of_sampling_lobe;
+      mi = getMisWeight(lightPdfXk, brdfPdfXk);
+    }
+    if (pi.reconnectionLobes.y == 2) {
+      mi = 1.0;
+    }
 
+    var jacobian = vec2f(
+      p, 
+      abs(dot(w_km1, triangle.geometricNormal)) / dot(w_vec, w_vec)
+    );
+  
+    let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
+               brdf * brdfXk * max(dot(normals.shading, w_km1), 0.0) * 
+               max(dot(normalsXk.shading, pi.reconnectionDirection), 0.0);
 
+    rrStepResult.valid = 1;
+    rrStepResult.shouldTerminate = true;
+    rrStepResult.jacobian = jacobian;
+    rrStepResult.pHat = pHat * mi;
+    return rrStepResult;
+  }
 
+  // next vertex is the reconnection vertex and the path ends far from light source
+  if (
+    pathReconnectsFarFromLightVertex(*pi) &&
+    pi.reconnectionBounce == u32(debugInfo.bounce+1)
+  ) {
+    let triangle = triangles[pi.reconnectionTriangleIndex];
+    let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
+    var isConnectible = true; // check distance condition
+  
+    // next vertex lobe will necessarily be identical since we're reconnecting to the same
+    // xk, however for the previous vertex, xk-1, which is this vertex, we have to make this check
+    if (i32(lobeIndex) != pi.reconnectionLobes.x) { isConnectible = false; }
+  
+    if (!isConnectible) {
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      rrStepResult.valid = 0;
+      rrStepResult.shouldTerminate = true;
+      return rrStepResult;
+    }
 
+    let dir = normalize(nextVertexPosition - ires.hitPoint);
+    var visibilityRay = Ray(ires.hitPoint + dir * 0.0001, dir);
+  
+    // TODO: we're doing a bvh traversal here that is probably unnecessary
+    // TODO: we're doing a bvh traversal here that is probably unnecessary
+    // TODO: we're doing a bvh traversal here that is probably unnecessary,
+    //       can we use only the call to getLightPdf to make our checks?
+    let visibilityRes = bvhIntersect(visibilityRay);
+    // in this case, we DON'T have to check wether the next vertex is backfacing, since it's NOT the light source
+    // let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
+    if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex) {
+      // shift failed, should terminate
+      rrStepResult.valid = 0;
+      rrStepResult.shouldTerminate = true;
+      return rrStepResult;
+    }
+
+    // reconnection is successful
+    let w_vec = nextVertexPosition - ires.hitPoint;
+    let w_km1 = normalize(w_vec);
+    let probability_of_sampling_lobe = 1.0;
+  
+    let brdf = evaluateBrdf(
+      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+    );
+    let brdfPdf = evaluateLobePdf(
+      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+    );
+    var p = probability_of_sampling_lobe * brdfPdf;
+
+    // now calculate probabilities for vertex xk
+    let surfaceXk = SurfaceDescriptor(visibilityRes.triangleIndex, visibilityRes.barycentrics); 
+    let surfaceAttributesXk = getSurfaceAttributes(triangle, visibilityRes.barycentrics);
+    let materialDataXk = evaluateMaterialAtSurfacePoint(surfaceXk);
+    var bumpOffset: f32; var isBackFacing: bool;
+    let normalsXk = getNormalsAtPoint(
+      materialDataXk, &visibilityRay, surfaceAttributesXk, triangle, &bumpOffset, &isBackFacing,
+    );
+
+    let brdfXk = evaluateBrdf(
+      materialDataXk, w_km1, pi.reconnectionDirection, surfaceAttributesXk, normalsXk
+    );
+    let brdfPdfXk = evaluateLobePdf(
+      materialDataXk, w_km1, pi.reconnectionDirection, surfaceAttributesXk, normalsXk
+    );
+    var mi = 1.0;
+    p *= brdfPdfXk * probability_of_sampling_lobe;
+
+    var jacobian = vec2f(
+      p, 
+      abs(dot(w_km1, triangle.geometricNormal)) / dot(w_vec, w_vec)
+    );
+  
+    let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
+               brdf * brdfXk * max(dot(normals.shading, w_km1), 0.0) * 
+               max(dot(normalsXk.shading, pi.reconnectionDirection), 0.0);
+
+    rrStepResult.valid = 1;
+    rrStepResult.shouldTerminate = true;
+    rrStepResult.jacobian = jacobian;
+    rrStepResult.pHat = pHat * mi;
+    return rrStepResult;
+  }
 
   return rrStepResult;
 }

@@ -79,6 +79,8 @@ export function getReSTIRPTShader(lutManager: LUTManager) {
   initializeRandoms(tid, debugInfo.sample);
   initializeRandoms2(tid);
 
+  // setting any other number other than 1 will thwart the random replay since the selected
+  // candidate will have a seed that wont reflect the random numbers that have been selected
   let INITIAL_CANDIDATES_COUNT = 1;
 
   for (var ic = 0; ic < INITIAL_CANDIDATES_COUNT; ic++) {
@@ -146,7 +148,6 @@ export function getReSTIRPTShader(lutManager: LUTManager) {
   // }
 
   // if (debugInfo.isSelectedPixel) {
-  //   // debugLog(999);
   //   radianceOutput[idx] += vec3f(100, 0, 100);
   // } else {
   //   radianceOutput[idx] += rad * rayContribution;

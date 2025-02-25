@@ -55,7 +55,6 @@ fn sampleDiffuseBrdf(
   let sinTheta = sin(theta);
   // local space new ray direction
   let newDir = vec3f(cos(phi) * sinTheta, cosTheta, sin(phi) * sinTheta);
-  
   var tangent = vec3f(0.0);
   var bitangent = vec3f(0.0);
   getTangentFromTriangle(

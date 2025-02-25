@@ -12,7 +12,7 @@ export function getReSTIRPTSRShader(lutManager: LUTManager) {
 
 // on a separate bind group since camera changes more often than data/canvasSize
 @group(1) @binding(0) var<uniform> camera: Camera;
-// seems like maximum bindgroup count is 4 so I need to add the camera sample here 
+// seems like maximum bindgroup count is 4 so I need to add the camera sample here
 // unfortunately and I can't create a separate bindgroup for it
 @group(1) @binding(1) var<uniform> haltonSamples: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
 @group(1) @binding(2) var<uniform> uniformRandom: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
@@ -29,7 +29,7 @@ export function getReSTIRPTSRShader(lutManager: LUTManager) {
 // envmapPC2Darray will contain:
 // pConditionalV: PC1D[];
 // pMarginal: PC1D;
-// - - - - - - - -  
+// - - - - - - - -
 // PC1D will be held in memory with this layout:
 // min, max, funcInt, func[], absFunc[], cdf[]
 @group(3) @binding(4) var<storage> envmapPC2Darray: array<f32>;
@@ -46,7 +46,7 @@ export function getReSTIRPTSRShader(lutManager: LUTManager) {
 @group(3) @binding(11) var lut32: texture_3d<f32>;
 @group(3) @binding(12) var blueNoise256: texture_2d<f32>;
 
-const SR_CANDIDATES_COUNT = 3; // the paper recommends 6
+const MAX_SR_CANDIDATES_COUNT = 10;
 
 fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
@@ -70,8 +70,8 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
     // *********** ERROR ************
     // *********** ERROR ************
     // *********** ERROR ************
-    // This wasn't implemented since the catseyedbokeh routine asks for 
-    // rand 2ds in a for loop and then uses those rands to decide where to 
+    // This wasn't implemented since the catseyedbokeh routine asks for
+    // rand 2ds in a for loop and then uses those rands to decide where to
     // continue the for loop or not
     return RandomReplayResult(0, vec3f(0), true, vec2f(0.0));
   }
@@ -95,7 +95,7 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
       if (rrStepResult.shouldTerminate) {
         return rrStepResult;
       }
-    } 
+    }
     // ..... missing stuff .....
   }
 
@@ -103,7 +103,7 @@ fn randomReplay(pi: PathInfo, tid: vec3u) -> RandomReplayResult {
 }
 
 fn generalizedBalanceHeuristic(
-  X: PathInfo, Y: PathInfo, idx: i32, candidates: array<Reservoir, SR_CANDIDATES_COUNT>
+  X: PathInfo, Y: PathInfo, idx: i32, candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>
 ) -> f32 {
   let J = (Y.jacobian.x / X.jacobian.x) * abs(Y.jacobian.y / X.jacobian.y);
   // in this case I'm dividing by the jacobian because it was computed when going from x->y,
@@ -112,7 +112,7 @@ fn generalizedBalanceHeuristic(
   let numerator = length(X.F) / J;
   var denominator = length(X.F) / J;
 
-  for (var i = 0; i < SR_CANDIDATES_COUNT; i++) {
+  for (var i = 0; i < config.RESTIR_SR_CANDIDATES; i++) {
     if (i == idx) { continue; }
 
     let XjCandidate = candidates[i];
@@ -126,7 +126,7 @@ fn generalizedBalanceHeuristic(
     // path, but they may be able to successfully random replay the path we're testing here with Y
     // Thus they must be considered and used here otherwise we'll gain energy where we shouldn't.
     // This is the reason why we're only checking if the candidate has a negative seed, that means
-    // that the ""candidate"" is one of those samples that fell outside the screen boundaries and is thus 
+    // that the ""candidate"" is one of those samples that fell outside the screen boundaries and is thus
     // unuseable. This would have been easier if we had access to a dynamic array but sadly we can't
     // same applies for candidates that have been removed because of Gbuffer differences
 
@@ -155,10 +155,10 @@ fn generalizedBalanceHeuristic(
   return numerator / denominator;
 }
 
-fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u) -> Reservoir {
+fn SpatialResample(candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>, tid: vec3u) -> Reservoir {
   // ******* important: first candidate is the current pixel's reservoir ***********
   // ******* I should probably update this function to reflect that ***********
-  
+
   var r = Reservoir(
     // it's important that we set tid.xy as the path seed here, read
     // the note inside generalizedBalanceHeuristic to understand why.
@@ -168,18 +168,18 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
     vec2i(tid.xy), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0,
   );
-  let M: i32 = SR_CANDIDATES_COUNT;
+  let M: i32 = config.RESTIR_SR_CANDIDATES;
 
   for (var i: i32 = 0; i < M; i++) {
-    /* 
-      since the very first candidate is this pixel's reservoir, 
+    /*
+      since the very first candidate is this pixel's reservoir,
       I can probably avoid the random replay
       and optimize that part away
     */
     let Xi = candidates[i];
-    if (Xi.isNull > 0) { 
+    if (Xi.isNull > 0) {
       // we weren't able to generate a path for this candidate, thus skip it
-      continue; 
+      continue;
     }
     let randomReplayResult = randomReplay(Xi.Y, tid);
     // remember that the random-replay will end up creating a new path-info
@@ -197,9 +197,9 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
     if (randomReplayResult.valid > 0) {
       let mi = generalizedBalanceHeuristic(X, Y, i, candidates);
-      wi = mi * length(Y.F) * Wxi;    
+      wi = mi * length(Y.F) * Wxi;
     } else {
-      
+
     }
 
     if (wi > 0.0) {
@@ -221,15 +221,15 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
   // **************** WARNING *****************
   // **************** WARNING *****************
   // **************** WARNING *****************
-  // without being able to use return; here, since we need uniformity 
+  // without being able to use return; here, since we need uniformity
   // to use a storageBarrier(), we have to make sure that our tiles
   // do not exceed the boundaries too much otherwise there can potentially
-  // be a gigantic amount of computation that is wasteful and that needs to 
+  // be a gigantic amount of computation that is wasteful and that needs to
   // happen regardless since lines are executed in lockstep
   var isOutOfScreenBounds = false;
   let tid = vec3u(gid.x, gid.y, 0);
-  
-  if (tid.x >= canvasSize.x || tid.y >= canvasSize.y) { 
+
+  if (tid.x >= canvasSize.x || tid.y >= canvasSize.y) {
     isOutOfScreenBounds = true;
   }
 
@@ -245,7 +245,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
   var rad = vec3f(0.0);
   var reservoir: Reservoir;
-  
+
   if (!isOutOfScreenBounds) {
     // var reservoir = restirPassInput[idx];
     // if (reservoir.isNull < 0.0) {
@@ -254,17 +254,17 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
     // }
 
     // ******* important: first candidate is current pixel's reservoir ***********
-    var candidates = array<Reservoir, SR_CANDIDATES_COUNT>();
+    var candidates = array<Reservoir, MAX_SR_CANDIDATES_COUNT>();
     var normal0 = vec3f(0.0);
     var depth0 = 0.0;
-    for (var i = 0; i < SR_CANDIDATES_COUNT; i++) {
+    for (var i = 0; i < config.RESTIR_SR_CANDIDATES; i++) {
       if (i == 0) {
         candidates[i] = restirPassInput[idx];
         normal0 = candidates[i].Gbuffer.xyz;
         depth0 = candidates[i].Gbuffer.w;
       } else {
-        // uniform circle sampling 
-        // TODO: the paper recommends using a low discrepancy sequence here 
+        // uniform circle sampling
+        // TODO: the paper recommends using a low discrepancy sequence here
         let circleRadiusInPixels = 10.0;
         let rands = getRand2D_2();
         let r = circleRadiusInPixels * sqrt(rands.x);
@@ -296,7 +296,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
         }
       }
     }
-  
+
     reservoir = SpatialResample(candidates, tid);
     if (reservoir.isNull < 0.0) {
       // theoretically we shouldn't re-use Y.F but for now we'll do it
@@ -306,7 +306,7 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
   // https://www.w3.org/TR/WGSL/#storageBarrier-builtin
   // https://stackoverflow.com/questions/72035548/what-does-storagebarrier-in-webgpu-actually-do
-  // "storageBarrier coordinates access by invocations in single workgroup 
+  // "storageBarrier coordinates access by invocations in single workgroup
   // to buffers in 'storage' address space."
   storageBarrier();
 
@@ -320,7 +320,6 @@ fn SpatialResample(candidates: array<Reservoir, SR_CANDIDATES_COUNT>, tid: vec3u
 
   if (finalPass == 1) {
     if (debugInfo.isSelectedPixel) {
-      // debugLog(999);
       radianceOutput[idx] += vec3f(1, 0, 0);
     } else {
       radianceOutput[idx] += rad;

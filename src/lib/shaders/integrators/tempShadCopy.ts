@@ -320,7 +320,11 @@ fn shade(
   let brdfSample = sampleBrdf(materialData, ray, surfaceAttributes, normals);
 
   if (!isRandomReplay) {
-    setReconnectionVertex(brdfSample, ires, pi, psi, u32(lobeIndex));
+    if (debugInfo.bounce == 0) {
+      (*reservoir).Gbuffer = vec4f(normals.shading, length((*ray).origin - ires.hitPoint));
+    }
+
+    setReconnectionVertex(brdfSample, ires, pi, psi, u32(lobeIndex), tid);
 
     // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
     if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
@@ -335,7 +339,7 @@ fn shade(
         );
       }
     }
-  
+
     // if there's emission
     if (dot(emissive, emissive) > 0.0) {
       emissiveSurfacePathConstruction( 
@@ -346,6 +350,11 @@ fn shade(
   }
 
   if (isRandomReplay) {
+    // skip sampleLight(...) randoms
+    if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
+      let rands = vec4f(getRand2D(), getRand2D());
+    }
+
     let rrResult = rrPathConstruction(
       surfaceAttributes,
       normals,

@@ -25,8 +25,8 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
     new Diffuse({ color: new Color(1, 0.05, 0.05) }),
     new Diffuse({ color: new Color(0.05, 1, 0.05) }),
     // new Emissive({ color: new Color(1, 1, 1), intensity: 5000 })
-    new Emissive({ color: new Color(1, 1, 1), intensity: 30 })
-    // new Emissive({ color: new Color(1, 1, 1), intensity: 1 })
+    // new Emissive({ color: new Color(1, 1, 1), intensity: 30 })
+    new Emissive({ color: new Color(1, 1, 1), intensity: 1 })
   ];
 
   for (let i = 0; i < 5; i++) {
@@ -59,8 +59,8 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
     triangles = [...triangles, ...geometryToTriangles(pg, mi)];
   }
 
-  // const ls = 10;
-  const ls = 1;
+  const ls = 10;
+  // const ls = 1;
   // const ls = 0.05;
   let lpg = new PlaneGeometry(ls, ls);
   lpg.rotateX(Math.PI * 0.5);
@@ -80,12 +80,12 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
 
-  // light mesh cover
-  const lsc = 3;
-  let lcpg = new PlaneGeometry(lsc, lsc);
-  lcpg.rotateX(Math.PI * 0.5);
-  lcpg.translate(0, 3.5, 0);
-  triangles = [...triangles, ...geometryToTriangles(lcpg, 0)];
+  // // light mesh cover
+  // const lsc = 3;
+  // let lcpg = new PlaneGeometry(lsc, lsc);
+  // lcpg.rotateX(Math.PI * 0.5);
+  // lcpg.translate(0, 3.5, 0);
+  // triangles = [...triangles, ...geometryToTriangles(lcpg, 0)];
 
   // create & set camera
   const camera = new Orbit();

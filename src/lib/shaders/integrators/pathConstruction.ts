@@ -70,39 +70,21 @@ fn neePathConstruction(
             ((*psi).lobePdfPrevVertex * (*psi).brdfPdfPrevVertex);
     let jacobian = vec2f(p, abs(dot(w_km1, ires.triangle.geometricNormal)) / dot(w_vec, w_vec));
 
-    // save the pointer values of path-info such that successive bounces can use them
-    pi.F = pHat * mi;
-    pi.seed = vec2i(tid.xy);
-    pi.bounceCount = u32(debugInfo.bounce + 1);
+    // the reason why we're saving a copy is explained in shaders/integrators/doc2.md
+    var piCopy = *pi;
+    piCopy.F = pHat * mi;
+    piCopy.bounceCount = u32(debugInfo.bounce + 1);
     // v v v v v v v saved in another function v v v v v v v 
     // pi.reconnectionBounce = u32(debugInfo.bounce); // reconnects at xk, xk+1 is the light vertex
     // pi.reconnectionTriangleIndex = ires.triangleIndex; 
     // pi.reconnectionBarycentrics = ires.barycentrics; 
-    // these last elements will be updated by Emissive for the brdf
-    // path
-    pi.flags = setPathFlags(lobeIndex, 1, 0, 1); // set flags to "path ends by NEE" and "reconnects"
-    pi.reconnectionRadiance = lightPointSample.radiance; 
-    pi.reconnectionDirection = lightDirectionSample.dir;
-    pi.jacobian = jacobian;
-    pi.reconnectionLobes = vec2i(psi.prevLobeIndex, i32(lobeIndex));
+    piCopy.flags = setPathFlags(lobeIndex, 1, 0, 1); // set flags to "path ends by NEE" and "reconnects"
+    piCopy.reconnectionRadiance = lightPointSample.radiance; 
+    piCopy.reconnectionDirection = lightDirectionSample.dir;
+    piCopy.jacobian = jacobian;
     
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
-    updateReservoir(reservoir, *pi, wi);
-
-    // v v v v v v v moved to a separate function v v v v v v v v 
-    // // prepare path info for the next brdf hit. The jacobian changes since we'll use brdf sampling
-    // // instead of light sampling to find xk+1
-    // // wait, what are we preparing for here? the jacobian is "complete"
-    // pi.jacobian = vec2f(
-    //   (brdfDirectionSample.pdf * 1.0) * 
-    //   ((*psi).lobePdfPrevVertex * (*psi).brdfPdfPrevVertex), 
-    //   abs(dot(w_km1, ires.triangle.geometricNormal)) / dot(w_vec, w_vec)
-    // );
-    // pi.reconnectionRadiance = vec3f(0);
-    // pi.reconnectionDirection = brdfDirectionSample.dir;
-    // pi.flags = setPathFlags(lobeIndex, 0, 1, 1);
-    
-    // psi.reconnectionVertexIndex = debugInfo.bounce;
+    updateReservoir(reservoir, piCopy, wi);
   }
 
   // if we have already found a reconnection vertex previously
@@ -118,13 +100,14 @@ fn neePathConstruction(
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
       
-    pi.F = pHat * mi;
-    pi.bounceCount = u32(debugInfo.bounce + 1);
+    var piCopy = *pi;
+    piCopy.F = pHat * mi;
+    piCopy.bounceCount = u32(debugInfo.bounce + 1);
     // for this type of path ending, we have to multiply the reconnectionRadiance by mi
-    pi.reconnectionRadiance = lightSampleRadiance * psi.postfixThroughput * lsThroughput * mi;
+    piCopy.reconnectionRadiance = lightSampleRadiance * psi.postfixThroughput * lsThroughput * mi;
 
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
-    updateReservoir(reservoir, *pi, wi);
+    updateReservoir(reservoir, piCopy, wi);
   }
 }
 
@@ -200,38 +183,22 @@ fn emissiveSurfacePathConstruction(
       abs(dot(w_km1, ires.triangle.geometricNormal)) / dot(w_vec, w_vec)
     );
 
-    // save the pointer values of path-info such that successive bounces can use them
-    pi.F = pHat * mi;
-    pi.seed = vec2i(tid.xy);
-    pi.bounceCount = u32(debugInfo.bounce);
+    // the reason why we're saving a copy is explained in shaders/integrators/doc2.md
+    var piCopy = *pi;
+    piCopy.F = pHat * mi;
+    piCopy.bounceCount = u32(debugInfo.bounce);
     // v v v v v v v saved in another function v v v v v v v 
     // pi.reconnectionBounce = u32(debugInfo.bounce); // reconnects at xk, xk+1 is the light vertex
     // pi.reconnectionTriangleIndex = ires.triangleIndex; 
     // pi.reconnectionBarycentrics = ires.barycentrics;
     // these last elements will be updated by Emissive for the brdf
     // path
-    pi.flags = setPathFlags(lobeIndex, 0, 1, 1); // set flags to "path ends by NEE" and "reconnects"
-    pi.reconnectionRadiance = emissive; 
-    pi.reconnectionDirection = vec3f(0.0);
-    pi.jacobian = jacobian;
-    pi.reconnectionLobes = vec2i(psi.prevLobeIndex, i32(lobeIndex));
+    piCopy.flags = setPathFlags(lobeIndex, 0, 1, 1); // set flags to "path ends by BRDF" and "reconnects"
+    piCopy.reconnectionRadiance = emissive; 
+    piCopy.jacobian = jacobian;
 
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
-    updateReservoir(reservoir, *pi, wi);
-
-    // v v v v v v v moved to a separate function v v v v v v v v 
-    // // prepare path info for the next brdf hit. The jacobian changes since we'll add brdf sampling
-    // // for the light ray that finds xk+1
-    // pi.jacobian = vec2f(
-    //   (brdfDirectionSample.pdf * 1.0) * 
-    //   ((*psi).lobePdfPrevVertex * (*psi).brdfPdfPrevVertex), 
-    //   abs(dot(w_km1, ires.triangle.geometricNormal)) / dot(w_vec, w_vec)
-    // );
-    // pi.reconnectionRadiance = vec3f(0);
-    // pi.reconnectionDirection = brdfDirectionSample.dir;
-    // pi.flags = setPathFlags(lobeIndex, 0, 1, 1);
-    
-    // psi.reconnectionVertexIndex = debugInfo.bounce;
+    updateReservoir(reservoir, piCopy, wi);
   }
 
   // if the previous vertex is the reconnection vertex
@@ -246,19 +213,19 @@ fn emissiveSurfacePathConstruction(
     let w_vec = psi.prevVertexPosition - ires.hitPoint;
     let w_km1 = normalize(w_vec);
 
+    var piCopy = *pi;
     // the jacobian has already been calculated in the previous vertex, we don't need to add to it here.
     // the previous bounce handled the rest
-    pi.flags = setPathFlags(lobeIndex, 0, 1, 1);
-    pi.F = pHat * mi;
-    pi.seed = vec2i(tid.xy);
-    pi.bounceCount = u32(debugInfo.bounce);
-    pi.reconnectionRadiance = emissive;
+    piCopy.flags = setPathFlags(lobeIndex, 0, 1, 1);
+    piCopy.F = pHat * mi;
+    piCopy.bounceCount = u32(debugInfo.bounce);
+    piCopy.reconnectionRadiance = emissive;
     
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
       
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
-    updateReservoir(reservoir, *pi, wi);
+    updateReservoir(reservoir, piCopy, wi);
   }
 
   // if we have already found a reconnection vertex, at least 2 bounces away from this light source
@@ -271,13 +238,14 @@ fn emissiveSurfacePathConstruction(
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
       
-    pi.F = pHat * mi;
-    pi.bounceCount = u32(debugInfo.bounce);
+    var piCopy = *pi;
+    piCopy.F = pHat * mi;
+    piCopy.bounceCount = u32(debugInfo.bounce);
     // for this type of path ending, we have to multiply the reconnectionRadiance by mi
-    pi.reconnectionRadiance = psi.postfixThroughput * emissive * mi;
+    piCopy.reconnectionRadiance = psi.postfixThroughput * emissive * mi;
 
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
-    updateReservoir(reservoir, *pi, wi);
+    updateReservoir(reservoir, piCopy, wi);
   }
 }
 
@@ -287,6 +255,7 @@ fn setReconnectionVertex(
   pi: ptr<function, PathInfo>,
   psi: ptr<function, PathSampleInfo>,
   lobeIndex: u32,
+  tid: vec3u,
 ) {
   let isRough = true;
   let isConnectible = psi.wasPrevVertexRough && isRough;
@@ -298,6 +267,7 @@ fn setReconnectionVertex(
     let w_vec = psi.prevVertexPosition - ires.hitPoint;
     let w_km1 = normalize(w_vec);
 
+    pi.reconnectionLobes = vec2i(psi.prevLobeIndex, i32(lobeIndex));
     pi.reconnectionBounce = u32(debugInfo.bounce); // reconnects at xk, xk+1 is the light vertex
     pi.reconnectionTriangleIndex = ires.triangleIndex; 
     pi.reconnectionBarycentrics = ires.barycentrics;

@@ -113,6 +113,7 @@ export const configOptions = createConfigStore({
   ENVMAP_SCALE: 1,
   ENVMAP_ROTX: 0,
   ENVMAP_ROTY: 0,
+  RESTIR_SR_CANDIDATES: 3,
   ENVMAP_USE_COMPENSATED_DISTRIBUTION: false,
   shaderConfig: {
     HAS_ENVMAP: false

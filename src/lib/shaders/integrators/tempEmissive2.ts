@@ -52,6 +52,9 @@ fn sampleEmissiveLight(
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
 ) -> LightDirectionSample {
+  // necessary to use the same number of rands between this function and sampleDiffuseLight
+  let rands = vec4f(getRand2D(), getRand2D());
+  
   return LightDirectionSample(
     vec3f(0.0),
     1,

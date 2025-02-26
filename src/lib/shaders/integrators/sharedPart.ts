@@ -204,7 +204,7 @@ fn updateReservoir(reservoir: ptr<function, Reservoir>, Y: PathInfo, wi: f32) ->
 
 fn updateReservoirWithConfidence(
   reservoir: ptr<function, Reservoir>, Xi: PathInfo, wi: f32, ci: f32
-) {
+) -> bool {
   (*reservoir).wSum = (*reservoir).wSum + wi;
   (*reservoir).c = (*reservoir).c + ci;
   let prob = wi / (*reservoir).wSum;
@@ -212,7 +212,10 @@ fn updateReservoirWithConfidence(
   if (getRand2D_2().x < prob) {
     (*reservoir).Y = Xi;
     (*reservoir).isNull = -1.0;
+    return true;
   }
+  
+  return false;
 } 
 
 fn getLuminance(emission: vec3f) -> f32 {

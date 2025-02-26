@@ -1,4 +1,6 @@
 export const resampleLogic = /* wgsl */ `
+const MAX_CONFIDENCE = 15.0;
+
 fn randomReplay(pi: PathInfo, tid: vec3u, i: i32) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
 
@@ -58,14 +60,14 @@ fn randomReplay(pi: PathInfo, tid: vec3u, i: i32) -> RandomReplayResult {
 }
 
 fn generalizedBalanceHeuristic(
-  X: PathInfo, Y: PathInfo, idx: i32, candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>
+  X: PathInfo, Y: PathInfo, Xconfidence: f32, idx: i32, candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>
 ) -> f32 {
   let J = (Y.jacobian.x / X.jacobian.x) * abs(Y.jacobian.y / X.jacobian.y);
   // in this case I'm dividing by the jacobian because it was computed when going from x->y,
   // and here we want to basically "transform back" y->x, and doing that would result in the inverse
   // of the jacobian that we got from x->y
-  let numerator = length(X.F) / J;
-  var denominator = length(X.F) / J;
+  let numerator = Xconfidence * length(X.F) / J;
+  var denominator = Xconfidence * length(X.F) / J;
 
   var M = config.RESTIR_SR_CANDIDATES;
   if (temporalResample) {
@@ -103,7 +105,8 @@ fn generalizedBalanceHeuristic(
 
       // since we're doing y->xj,  the xj terms appear on top of the fraction
       let J = (Xj.jacobian.x / Y.jacobian.x) * abs(Xj.jacobian.y / Y.jacobian.y);
-      let res = length(Xj.F) * J;
+      let XjConfidence = XjCandidate.c;
+      let res = XjConfidence * length(Xj.F) * J;
 
       denominator += res;
     }
@@ -155,25 +158,27 @@ fn SpatialResample(candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>, tid: v
     Y.F = randomReplayResult.pHat;
     Y.jacobian = randomReplayResult.jacobian;
 
+    let confidence = Xi.c;
+
     let jacobian = (Y.jacobian.x / X.jacobian.x) * abs(Y.jacobian.y / X.jacobian.y);
     let Wxi = Xi.Wy * jacobian;
     var wi = 0.0;
 
     if (randomReplayResult.valid > 0) {
-      let mi = generalizedBalanceHeuristic(X, Y, i, candidates);
+      let mi = generalizedBalanceHeuristic(X, Y, confidence, i, candidates);
       wi = mi * length(Y.F) * Wxi;
-    } else {
-
-    }
+    } 
 
     if (wi > 0.0) {
-      let updated = updateReservoir(&r, Y, wi);
+      let updated = updateReservoirWithConfidence(&r, Y, wi, confidence);
     }
   }
 
   if (r.isNull <= 0.0) {
     r.Wy = 1 / length(r.Y.F) * r.wSum;
   }
+
+  r.c = clamp(r.c, 1.0, MAX_CONFIDENCE);
 
   return r;
 }`;

@@ -131,6 +131,7 @@ ${resampleLogic}
   // instead of doing this to avoid me forgetting this thing
   // when I'll eventually implement temporal reuse
   reservoir.wSum /= f32(INITIAL_CANDIDATES_COUNT);
+  reservoir.c = 1.0;
 
   if (reservoir.isNull <= 0.0) {
     reservoir.Wy = (1 / length(reservoir.Y.F)) * reservoir.wSum;

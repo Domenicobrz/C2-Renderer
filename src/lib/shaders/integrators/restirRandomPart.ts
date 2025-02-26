@@ -1,10 +1,11 @@
-export const getRandomPart = /* wgsl */ `
+export const getReSTIRRandomPart = /* wgsl */ `
 const RANDOMS_VEC4F_ARRAY_COUNT = 50;
 const RANDOMS_SAMPLES_COUNT = RANDOMS_VEC4F_ARRAY_COUNT * 4;
 var<private> randomsArrayIndex: u32 = 0;
 var<private> randomsOffset: f32 = 0;
 var<private> randomsOffsetsArray = array<f32, 8>(0,0,0,0,0,0,0,0);
 var<private> randomsOffsetsArrayIndex: u32 = 0;
+var<private> useOldRandoms = false;
 
 // we're forcing every routine of the renderer to request a 2D
 // random sample, such that we can make sure that those samples are
@@ -15,7 +16,12 @@ fn getRand2D() -> vec2f {
   var rands = vec2f(0.0);
 
   for (var i = 0; i < 2; i++) {
-    let currentSample = haltonSamples[randomsArrayIndex / 4];
+    var currentSample = vec4f(0.0);
+    if (!useOldRandoms) {
+      currentSample = haltonSamples[randomsArrayIndex / 4];
+    } else {
+      currentSample = haltonSamples2[randomsArrayIndex / 4];
+    }
     let modulo = mod1u(randomsArrayIndex, 4);
     let sample = selectRandomArraySampleComponent(currentSample, modulo);
 
@@ -105,4 +111,42 @@ fn selectRandomArraySampleComponent(sample: vec4f, index: u32) -> f32 {
     default: { return 0.0; } 
   }
 }
+
+var<private> randomsArrayIndex2: u32 = 0;
+var<private> randomsOffset2: f32 = 0.0;
+
+fn initializeRandoms2(tid: vec3u) {
+  randomsArrayIndex2 = 0;
+  randomsOffset2 = 0.0;
+  let pseudoRands = rand4(tid.x * 7189357 + tid.y * 5839261);
+
+  randomsOffset2 = pseudoRands.x;
+  randomsArrayIndex2 = u32(pseudoRands.y * 0.5 * f32(RANDOMS_VEC4F_ARRAY_COUNT-1)) * 2;
+}
+
+fn getRand2D_2() -> vec2f {
+  var rands = vec2f(0.0);
+
+  for (var i = 0; i < 2; i++) {
+    let currentSample = uniformRandom[randomsArrayIndex2 / 4];
+    let modulo = mod1u(randomsArrayIndex2, 4);
+    let sample = selectRandomArraySampleComponent(currentSample, modulo);
+
+    randomsArrayIndex2++;
+    if (randomsArrayIndex2 >= RANDOMS_VEC4F_ARRAY_COUNT) {
+      randomsArrayIndex2 = 0;
+    }
+
+    var offset = randomsOffset2;
+    let value = min(fract(sample + offset), 0.99999999);
+
+    if (i == 0) {
+      rands.x = value;
+    } else {
+      rands.y = value;
+    }
+  }
+
+  return rands;
+};
 `;

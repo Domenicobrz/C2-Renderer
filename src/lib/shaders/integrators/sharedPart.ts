@@ -11,13 +11,13 @@ import { Plane } from '$lib/primitives/plane';
 import { Triangle } from '$lib/primitives/triangle';
 import { PC1D } from '$lib/samplers/PiecewiseConstant1D';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
-import { getRandomPart, getReSTIRRandomPart } from '../parts/getRandom';
 import { mathUtilsPart } from '../parts/mathUtils';
 import { misPart } from '../parts/mis';
 import { pbrtMathUtilsPart } from '../parts/pbrtMathUtils';
 import { randomPart } from '../parts/random';
 import { shadingNormalsPart } from '../parts/shadingNormal';
 import { texturePart } from '../parts/texture';
+import { getReSTIRRandomPart } from './restirRandomPart';
 import { tempDiffCopy } from './tempDiffuseCopy';
 import { tempEmissiveCopy } from './tempEmissiveCopy';
 import { tempShadCopy } from './tempShadCopy';
@@ -34,7 +34,6 @@ ${pbrtMathUtilsPart}
 ${misPart}
 ${texturePart}
 ${shadingNormalsPart}
-${getRandomPart}
 ${getReSTIRRandomPart}
 ${lutManager.getShaderPart()}
 ${Emissive.shaderStruct()}

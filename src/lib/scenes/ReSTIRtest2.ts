@@ -21,59 +21,30 @@ export async function ReSTIRTest2Scene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
   let materials: Material[] = [
     new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
-    new Diffuse({ color: new Color(1, 0.05, 0.05) }),
-    new Diffuse({ color: new Color(0.05, 1, 0.05) }),
-    new Emissive({ color: new Color(1, 1, 1), intensity: 30 })
+    new Emissive({ color: new Color(1, 1, 1), intensity: 1500 })
   ];
 
-  for (let i = 0; i < 5; i++) {
-    let s = 8;
-    let pg = new PlaneGeometry(s, s);
-    pg.translate(0, 0, -s * 0.5);
-    let mi = 0;
+  // let plane = new PlaneGeometry(8, 8);
+  // plane.rotateX(Math.PI * 0.5);
+  // plane.translate(0, 0, 0);
+  // triangles = [...triangles, ...geometryToTriangles(plane, 0)];
 
-    if (i == 0) {
-      pg.rotateY(Math.PI);
-      pg.rotateX(0);
-    }
-    if (i == 1) {
-      pg.rotateY(Math.PI);
-      pg.rotateX(Math.PI * 0.5);
-    }
-    if (i == 2) {
-      pg.rotateY(Math.PI);
-      pg.rotateX(-Math.PI * 0.5);
-    }
-    if (i == 3) {
-      pg.rotateY(Math.PI * 0.5);
-      mi = 2;
-    }
-    if (i == 4) {
-      pg.rotateY(-Math.PI * 0.5);
-      mi = 1;
-    }
+  let plane2 = new PlaneGeometry(8, 8);
+  // plane2.rotateX(Math.PI * 0.5);
+  plane2.translate(0, 0, 4);
+  triangles = [...triangles, ...geometryToTriangles(plane2, 0)];
 
-    triangles = [...triangles, ...geometryToTriangles(pg, mi)];
-  }
+  let lightS = 0.1;
+  let light = new PlaneGeometry(lightS, lightS);
+  light.rotateX(Math.PI * 0.5);
+  light.translate(0, 3, 0);
+  triangles = [...triangles, ...geometryToTriangles(light, 1)];
 
-  for (let i = 0; i < 3050; i++) {
-    let ps = r() * 0.75 + 0.15;
-    let lpg = new PlaneGeometry(ps, ps);
-    lpg.rotateX(r() * Math.PI * 2);
-    lpg.rotateY(r() * Math.PI * 2);
-    lpg.rotateZ(r() * Math.PI * 2);
-    lpg.translate(nr() * 5, nr() * 5, nr() * 5);
-
-    triangles = [...triangles, ...geometryToTriangles(lpg, 0)];
-  }
-
-  for (let i = 0; i < 200; i++) {
-    const rad = 0.003;
-    let lpg = new SphereGeometry(rad, 3, 3);
-    lpg.translate(nr() * 5, nr() * 5, nr() * 5);
-    materials.push(new Emissive({ color: new Color(r(), r(), r()), intensity: 5000 }));
-    triangles = [...triangles, ...geometryToTriangles(lpg, materials.length - 1)];
-  }
+  let lightCs = 3;
+  let lightC = new PlaneGeometry(lightCs, lightCs);
+  lightC.rotateX(Math.PI * 0.5);
+  lightC.translate(0, 2.9, 0);
+  triangles = [...triangles, ...geometryToTriangles(lightC, 0)];
 
   // create & set camera
   const camera = new Orbit();

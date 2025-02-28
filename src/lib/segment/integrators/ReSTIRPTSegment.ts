@@ -41,7 +41,7 @@ export class ReSTIRPTSegment {
   private srBindGroup0: GPUBindGroup | null = null;
   private srBindGroup1: GPUBindGroup[] = [];
 
-  private SPATIAL_REUSE_PASSES = 3; // 3, as recommended in the paper / DQLin's repo
+  private SPATIAL_REUSE_PASSES = 1; // 3, as recommended in the paper / DQLin's repo
 
   private canvasSize: Vector2 | null = null;
   private canvasSizeUniformBuffer: GPUBuffer;

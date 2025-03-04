@@ -48,7 +48,6 @@ fn getRand2D() -> vec2f {
 }
 
 fn initializeRandoms(tid: vec3u, sampleIndex: u32) {
-  // re-setting the variables, in ReSTIR PT we'll call initializeRandoms() more than once
   randomsArrayIndex = 0;
   randomsOffset = 0;
   randomsOffsetsArray = array<f32, 8>(0,0,0,0,0,0,0,0);

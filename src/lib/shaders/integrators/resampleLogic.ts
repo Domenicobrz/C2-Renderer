@@ -1,28 +1,26 @@
 export const resampleLogic = /* wgsl */ `
-const MAX_CONFIDENCE = 15.0;
+const MAX_CONFIDENCE = 20.0;
 
 fn randomReplay(pi: PathInfo, tid: vec3u, i: i32) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
 
-  if (temporalResample && i == 1) {
-    useOldRandoms = true;
-  } else {
-    useOldRandoms = false;
-  }
-
-  // the initial camera ray should be the same of the pixel we are shading,
-  // to make sure we'll always hit the same surface point x1, and avoid
-  // running the risk of one of the random replays to get a camera ray that lands
-  // on an x1 with an invalid gbuffer
-  initializeRandoms(tid, 0);
+  initializeRandoms(pi.seed);
   var rayContribution: f32;
   var ray = getCameraRay(tid, idx, &rayContribution);
 
-  // then we'll use the path-info seed number, and also have to remember to
-  // skip the camera randoms
-  // read segments/integrators/doc1.png to understand why this is necessary
-  initializeRandoms(vec3u(vec2u(pi.seed), 0), 0);
-  getRand2D(); getRand2D();
+  // // the initial camera ray should be the same of the pixel we are shading,
+  // // to make sure we'll always hit the same surface point x1, and avoid
+  // // running the risk of one of the random replays to get a camera ray that lands
+  // // on an x1 with an invalid gbuffer
+  // initializeRandoms(originalSeed);
+  // var rayContribution: f32;
+  // var ray = getCameraRay(tid, idx, &rayContribution);
+
+  // // then we'll use the path-info seed number, and also have to remember to
+  // // skip the camera randoms
+  // // read segments/integrators/doc1.png to understand why this is necessary
+  // initializeRandoms(vec3u(pi.seed));
+  // getRand2D(); getRand2D();
   if (camera.catsEyeBokehEnabled > 0) {
     // *********** ERROR ************
     // *********** ERROR ************
@@ -66,8 +64,9 @@ fn generalizedBalanceHeuristic(
   // in this case I'm dividing by the jacobian because it was computed when going from x->y,
   // and here we want to basically "transform back" y->x, and doing that would result in the inverse
   // of the jacobian that we got from x->y
-  let numerator = Xconfidence * length(X.F) / J;
-  var denominator = Xconfidence * length(X.F) / J;
+  var c = Xconfidence;
+  var numerator = c * length(X.F) / J;
+  var denominator = c * length(X.F) / J;
 
   var M = config.RESTIR_SR_CANDIDATES;
   if (temporalResample) {
@@ -96,7 +95,7 @@ fn generalizedBalanceHeuristic(
     if (XjCandidate.domain.x < 0) { continue; }
 
     // shift Y into Xj's pixel
-    let randomReplayResult = randomReplay(Y, vec3u(vec2u(XjCandidate.domain), 0), i);
+    let randomReplayResult = randomReplay(Y, vec3u(XjCandidate.domain), i);
     if (randomReplayResult.valid > 0) {
       // shift Y -> Xj and evaluate jacobian
       var Xj = Y;
@@ -113,23 +112,26 @@ fn generalizedBalanceHeuristic(
   }
 
   //  TODO: what to do in this case? it did happen
-  if (numerator == 0 && denominator == 0) { return 0; }
+  if (numerator == 0 || denominator == 0) { return 0; }
 
   return numerator / denominator;
 }
 
-fn SpatialResample(candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>, tid: vec3u) -> Reservoir {
+fn SpatialResample(
+  candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>, 
+  domain: vec3u
+) -> Reservoir {
   // ******* important: first candidate is the current pixel's reservoir ***********
   // ******* I should probably update this function to reflect that ***********
 
   var r = Reservoir(
-    // it's important that we set tid.xy as the path seed here, read
+    // it's important that we set the domain here, read
     // the note inside generalizedBalanceHeuristic to understand why.
     // In this case, it's important because for next spatial iterations
     // when we return the reservoir, we have to set it as a valid pixel, by
-    // assigning something other that -1,-1 to the seed value
-    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec2i(tid.xy), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0,
+    // assigning something other that -1,-1 to the domain value
+    PathInfo(vec3f(0.0), 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+    vec3i(domain), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
   );
 
   var M : i32 = config.RESTIR_SR_CANDIDATES;
@@ -146,9 +148,13 @@ fn SpatialResample(candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>, tid: v
     let Xi = candidates[i];
     if (Xi.isNull > 0) {
       // we weren't able to generate a path for this candidate, thus skip it
+
+      // we still need to update the confidence though
+      r.c += Xi.c;
       continue;
     }
-    let randomReplayResult = randomReplay(Xi.Y, tid, i);
+
+    let randomReplayResult = randomReplay(Xi.Y, domain, i);
     // remember that the random-replay will end up creating a new path-info
     // that computed internally a different jacobian compared to the jacobian
     // that is saved in the original path Xi.Y. This is the real difference between
@@ -165,12 +171,15 @@ fn SpatialResample(candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>, tid: v
     var wi = 0.0;
 
     if (randomReplayResult.valid > 0) {
-      let mi = generalizedBalanceHeuristic(X, Y, confidence, i, candidates);
+      var mi = generalizedBalanceHeuristic(X, Y, confidence, i, candidates);
       wi = mi * length(Y.F) * Wxi;
-    } 
-
+    }
+    
     if (wi > 0.0) {
       let updated = updateReservoirWithConfidence(&r, Y, wi, confidence);
+    } else {
+      // we still need to update the confidence even after we fail
+      r.c += Xi.c;
     }
   }
 

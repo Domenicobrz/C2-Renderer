@@ -65,9 +65,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   centralStatusMessage.set('processing bvh and materials');
   await tick(); // will give us the chance of showing the message above
   await computeSegment.updateScene(scene);
-  computeSegment.setDebugPixelTarget(398, 516);
-  // computeSegment.setDebugPixelTarget(156, 571);
-
+  computeSegment.setDebugPixelTarget(406, 515);
   renderSegment = new RenderSegment(context, presentationFormat);
   renderSegment.updateScene(scene);
 
@@ -137,9 +135,7 @@ function onCanvasResize(
 }
 
 let prevRW = '';
-async function renderLoop() {
-  requestAnimationFrame(renderLoop);
-
+function renderLoop() {
   scene.camera.renderLoopUpdate();
 
   let rw = get(renderView);
@@ -157,6 +153,7 @@ async function renderLoop() {
   }
 
   prevRW = rw;
+  requestAnimationFrame(renderLoop);
 }
 
 function previewRenderLoop() {
@@ -169,7 +166,7 @@ function realtimeRenderLoop() {
   previewSegment.render();
 }
 
-function computeRenderLoop() {
+async function computeRenderLoop() {
   if (samplesInfo.count >= samplesInfo.limit) {
     return;
   }

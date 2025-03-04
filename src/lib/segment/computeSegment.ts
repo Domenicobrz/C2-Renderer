@@ -555,7 +555,7 @@ export class ComputeSegment {
     });
   }
 
-  compute() {
+  async compute() {
     if (this.requestShaderCompilation) {
       this.createPipeline();
       this.requestShaderCompilation = false;

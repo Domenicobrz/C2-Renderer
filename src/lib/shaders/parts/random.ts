@@ -5,6 +5,36 @@
 // haven't implemented. I removed all of the ulong types and switched ints for uints
 // I have no idea if the numbers are still correct or not
 export const randomPart = /* wgsl */ `
+
+// MurmurHash3 32-bit mix function
+fn murmurHash3(key: u32, seed: u32) -> u32 {
+  var k = key;
+  k *= 0xcc9e2d51u;
+  k = (k << 15u) | (k >> (32u - 15u));
+  k *= 0x1b873593u;
+  var h = seed;
+  h ^= k;
+  h = (h << 13u) | (h >> (32u - 13u));
+  h = h * 5u + 0xe6546b64u;
+  h ^= h >> 16u;
+  return h;
+}
+
+// Combine pixel coordinates and a CPU seed into a single hash
+fn hashPixelAndSeed(tid: vec2<u32>, cpuSeed: u32) -> u32 {
+  // Pack the coordinates into one 32-bit key.
+  // Assumes tid.x and tid.y are less than 65536.
+  let key = (tid.x << 16u) | (tid.y & 0xffffu);
+  return murmurHash3(key, cpuSeed);
+}
+
+// Combine the base seed with the counter using a robust hash.
+fn hashCounter(baseSeed: u32, count: u32) -> u32 {
+  // Here we use a mixing constant (the golden ratio approximation) to help decorrelate the counter.
+  let combined = baseSeed ^ (count * 0x9e3779b9u);
+  return murmurHash3(combined, 0);
+}
+
 fn seed_per_thread(id: u32) -> u32 {
   return u32(id * 1099087573);
 }
@@ -17,7 +47,8 @@ fn TauStep(z: u32, s1: u32, s2: u32, s3: u32, M: u32) -> u32 {
 
 fn rand4(seedIdx: u32) -> vec4f {
   //STEP 1
-  let seed=seed_per_thread(seedIdx);
+  // let seed=seed_per_thread(seedIdx);
+  let seed=seedIdx;
   var z1=TauStep(seed,13,19,12,429496729);
   var z2=TauStep(seed,2,25,4,4294967288);
   var z3=TauStep(seed,3,11,17,429496280);

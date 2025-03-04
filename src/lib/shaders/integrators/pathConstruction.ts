@@ -36,7 +36,7 @@ fn neePathConstruction(
 
     let pathInfo = PathInfo(
       pHat * mi,
-      vec2i(tid.xy),
+      pi.seed,
       u32(debugInfo.bounce + 1),
       setPathFlags(lobeIndex, 1, 0, 1), // set flags to "path ends by NEE" and "reconnects"
       u32(debugInfo.bounce + 1),        // reconnects at xk, which is the light vertex
@@ -133,7 +133,7 @@ fn emissiveSurfacePathConstruction(
 
     let pathInfo = PathInfo(
       pHat * mi,
-      vec2i(tid.xy),
+      pi.seed,
       u32(debugInfo.bounce),
       setPathFlags(lobeIndex, 0, 1, 0), // set flags to "path ends by NEE" and "reconnects"
       u32(debugInfo.bounce),        // reconnects at xk, which is the light vertex

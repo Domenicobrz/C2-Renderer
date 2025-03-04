@@ -77,27 +77,39 @@ ${resampleLogic}
   }
   debugInfo.sample = samplesCount[idx];
 
+  let domain = vec3u(tid.xy, debugInfo.sample);
+
   var prevReservoir = restirPassOutput[idx];
+  if (debugInfo.sample == 0) {
+    prevReservoir = Reservoir(
+      PathInfo(vec3f(0.0), 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+      vec3i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+    );
+  }
+
   var reservoir = Reservoir(
-    PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec2i(tid.xy), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
+                        // seed will be set inside the loop
+    PathInfo(vec3f(0.0), 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+    vec3i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
   );
 
-  initializeRandoms(tid, debugInfo.sample);
   initializeRandoms2(tid);
 
-  // setting any other number other than 1 will thwart the random replay since the selected
-  // candidate will have a seed that wont reflect the random numbers that have been selected
-  let INITIAL_CANDIDATES_COUNT = 1;
+  let INITIAL_CANDIDATES_COUNT = 10;
 
   for (var ic = 0; ic < INITIAL_CANDIDATES_COUNT; ic++) {
+    let seed = hashPixelAndSeed(tid.xy, u32(haltonSamples[ic].x * f32(1099087573)) + u32(ic) * 21894717);
+    // this line is probably unnecessary since var pi below should take care of that
+    reservoir.Y.seed = seed;
+    initializeRandoms(seed);
+    
     var rayContribution: f32;
     var ray = getCameraRay(tid, idx, &rayContribution);
   
     var pathSampleInfo = PathSampleInfo(
       false, vec3f(0.0), vec3f(0.0), 0, 0, -1, vec3f(1.0), -1
     );
-    var pi = PathInfo(vec3f(0.0), vec2i(tid.xy), 0, 0, 0, 0, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1));
+    var pi = PathInfo(vec3f(0.0), seed, 0, 0, 0, 0, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1));
     var throughput = vec3f(1.0);
     var rad = vec3f(0.0);
     var lastBrdfMis = 1.0;
@@ -139,7 +151,7 @@ ${resampleLogic}
 
 
   // temporal resample if there's temporal data to reuse
-  if (prevReservoir.isNull <= 0.0) {
+  // if (prevReservoir.isNull <= 0.0) {
     var candidates = array<Reservoir, 2>();
     candidates[0] = reservoir;
 
@@ -147,10 +159,8 @@ ${resampleLogic}
     // I could be picking candidates from edges etc.
     candidates[1] = prevReservoir;  
 
-    reservoir = SpatialResample(candidates, tid);
-  }
-
-
+    reservoir = SpatialResample(candidates, domain);
+  // }
 
   // if (debugInfo.isSelectedPixel) {
   //   radianceOutput[idx] += vec3f(100, 0, 100);

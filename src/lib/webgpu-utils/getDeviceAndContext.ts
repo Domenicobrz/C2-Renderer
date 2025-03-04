@@ -7,7 +7,9 @@ export async function getDeviceAndContext(canvas: HTMLCanvasElement) {
     const adapter = await navigator.gpu?.requestAdapter();
     const canTimestamp = adapter?.features.has('timestamp-query');
     const requiredLimits: Partial<GPUSupportedLimits> = {
-      maxStorageBufferBindingSize: 268435456 // 256 mb
+      // maxStorageBufferBindingSize: 268435456 // 256 mb
+      maxStorageBufferBindingSize: 536870912, // 512 mb
+      maxBufferSize: 536870912
     };
 
     const device = await (adapter as any)?.requestDevice({

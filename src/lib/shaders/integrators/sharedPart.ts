@@ -17,9 +17,8 @@ import { pbrtMathUtilsPart } from '../parts/pbrtMathUtils';
 import { randomPart } from '../parts/random';
 import { shadingNormalsPart } from '../parts/shadingNormal';
 import { texturePart } from '../parts/texture';
+import { reservoirShaderPart } from './reservoir';
 import { getReSTIRRandomPart } from './restirRandomPart';
-import { tempDiffCopy } from './tempDiffuseCopy';
-import { tempEmissiveCopy } from './tempEmissiveCopy';
 import { tempShadCopy } from './tempShadCopy';
 
 export function getReSTIRPTSharedPart(lutManager: LUTManager) {
@@ -86,31 +85,7 @@ fn debugLog(value: f32) {
   }
 }
 
-// this struct will be saved in the reservoir
-struct PathInfo {
-  F: vec3f,
-  seed: vec2i,
-  bounceCount: u32,
-  /* 
-    bit 0: path-end sampled by Light boolean
-    bit 1: path-end sampled by BRDF boolean
-    bit 2: path ends by escape boolean
-    bit 3: path reconnects / doesn't reconnect boolean
-    in theory, the remaining bits could contain the bounce count
-    bit 16 onward: lobe index
-    theoretically, flags could also contain the bounce count
-  */
-  flags: u32,
-  reconnectionBounce: u32,
-  reconnectionTriangleIndex: i32,
-  // these are the barycentric coordinates of the triangle, not the uvs.
-  // to define a point within a triangle, we can't use texture uvs (they could be scaled/repeated)
-  reconnectionBarycentrics: vec2f,  
-  reconnectionRadiance: vec3f,
-  reconnectionDirection: vec3f,
-  jacobian: vec2f, 
-  reconnectionLobes: vec2i, // .x is the xk-1 vertex, and .y is xk 
-}
+${reservoirShaderPart}
 
 // this struct does not have to be saved in the reservoir,
 // hence why we're creating a separate struct
@@ -125,20 +100,6 @@ struct PathSampleInfo {
   reconnectionVertexIndex: i32, // -1 signals no reconnection
   postfixThroughput: vec3f,
   prevLobeIndex: i32,
-}
-
-struct Reservoir {
-  Y: PathInfo,
-  // this will be used to make sure the path-shift selects the correct first bounce
-  // remember that after the first SR reuse, we may end up using a seed that is different
-  // from the seed that generated the first bounce hit. And the pixel-shift always have to land
-  // on the original first bounce hit to be useable in the Generalized Balance Heuristic
-  domain: vec2i,
-  Gbuffer: vec4f, // normal.xyz, depth at first bounce. depth = -1 if no intersection was found
-  Wy: f32,  // probability chain
-  c: f32,
-  wSum: f32,
-  isNull: f32,
 }
 
 struct RandomReplayResult {

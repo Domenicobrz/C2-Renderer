@@ -20,6 +20,7 @@ import { loadTexture } from '$lib/webgpu-utils/getTexture';
 import { CustomR2Sampler } from '$lib/samplers/CustomR2';
 import { getReSTIRPTShader } from '$lib/shaders/integrators/ReSTIRPTShader';
 import { getReSTIRPTSRShader } from '$lib/shaders/integrators/ReSTIRPTSRShader';
+import { ReservoirToRadianceSegment } from '../reservoirToRadSegment';
 
 export class ReSTIRPTSegment {
   public passPerformance: ComputePassPerformance;
@@ -32,16 +33,18 @@ export class ReSTIRPTSegment {
   private layout: GPUPipelineLayout;
   private configManager = configManager;
 
+  private reservoirToRadSegment = new ReservoirToRadianceSegment();
+
   private textureArraySegment: TextureArraysSegment = new TextureArraysSegment();
 
   private bindGroup0: GPUBindGroup | null = null;
   private bindGroup1: GPUBindGroup | null = null;
   private bindGroup2: GPUBindGroup | null = null;
   private bindGroup3: GPUBindGroup | null = null;
-  private srBindGroup0: GPUBindGroup | null = null;
+  private srBindGroup0: GPUBindGroup[] = [];
   private srBindGroup1: GPUBindGroup[] = [];
 
-  private SPATIAL_REUSE_PASSES = 1; // 3, as recommended in the paper / DQLin's repo
+  private SPATIAL_REUSE_PASSES = 3; // 3, as recommended in the paper / DQLin's repo
 
   private canvasSize: Vector2 | null = null;
   private canvasSizeUniformBuffer: GPUBuffer;
@@ -52,7 +55,7 @@ export class ReSTIRPTSegment {
   private randomsUniformBuffer: GPUBuffer;
   private srRandomsUniformBuffer: GPUBuffer[] = [];
   private RANDOMS_BUFFER_COUNT = 200;
-  private RESERVOIR_SIZE = 128;
+  private RESERVOIR_SIZE = 160;
 
   private configUniformBuffer: GPUBuffer;
 
@@ -61,7 +64,9 @@ export class ReSTIRPTSegment {
   private debugPixelTargetBuffer: GPUBuffer;
   private debugReadBuffer: GPUBuffer;
 
-  private restirPassBuffer!: GPUBuffer;
+  private restirPassBuffer1!: GPUBuffer;
+  private restirPassBuffer2!: GPUBuffer;
+  private workBuffer!: GPUBuffer;
 
   private trianglesBuffer: GPUBuffer | undefined;
   private materialsBuffer: GPUBuffer | undefined;
@@ -532,10 +537,12 @@ export class ReSTIRPTSegment {
     const restirPassInput = new Float32Array(
       this.canvasSize!.x * this.canvasSize!.y * this.RESERVOIR_SIZE
     );
-    this.device.queue.writeBuffer(this.restirPassBuffer, 0, restirPassInput);
+    this.device.queue.writeBuffer(this.restirPassBuffer1, 0, restirPassInput);
+    this.device.queue.writeBuffer(this.restirPassBuffer2, 0, restirPassInput);
   }
 
   resize(canvasSize: Vector2, workBuffer: GPUBuffer, samplesCountBuffer: GPUBuffer) {
+    this.workBuffer = workBuffer;
     this.resetSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
 
     this.resetSamplesAndTile();
@@ -552,34 +559,54 @@ export class ReSTIRPTSegment {
       'This gets very close to the default size limit of 256mb, my GPU supports up to 2gb but needs to be requested separately on the adapter'
     );
     const restirPassInput = new Float32Array(canvasSize.x * canvasSize.y * this.RESERVOIR_SIZE);
-    this.restirPassBuffer = this.device.createBuffer({
+    this.restirPassBuffer1 = this.device.createBuffer({
       label: 'restir pass data buffer',
       size: restirPassInput.byteLength,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
-    this.device.queue.writeBuffer(this.restirPassBuffer, 0, restirPassInput);
+    this.restirPassBuffer2 = this.device.createBuffer({
+      label: 'restir pass data buffer',
+      size: restirPassInput.byteLength,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+    });
+    this.device.queue.writeBuffer(this.restirPassBuffer1, 0, restirPassInput);
+    this.device.queue.writeBuffer(this.restirPassBuffer2, 0, restirPassInput);
 
     this.bindGroup0 = this.device.createBindGroup({
       label: 'compute bindgroup',
       layout: this.bindGroupLayouts[0],
       entries: [
-        { binding: 0, resource: { buffer: this.restirPassBuffer } },
+        // ************* important note ****************
+        // it's not necessary to use anything else other than this.restirPassBuffer1 here because
+        // even if the final result is saved in restirPassBuffer2, reservoirToRadSegment will copy
+        // the result into restirPassBuffer1 before we start the next iteration
+        { binding: 0, resource: { buffer: this.restirPassBuffer1 } },
         { binding: 1, resource: { buffer: samplesCountBuffer } },
         { binding: 2, resource: { buffer: this.canvasSizeUniformBuffer } }
       ]
     });
 
-    // we need to re-create the bindgroup since workBuffer
-    // is a new buffer
-    this.srBindGroup0 = this.device.createBindGroup({
-      label: 'compute bindgroup',
-      layout: this.bindGroupLayouts[0],
-      entries: [
-        { binding: 0, resource: { buffer: this.restirPassBuffer } },
-        { binding: 1, resource: { buffer: workBuffer } },
-        { binding: 2, resource: { buffer: this.canvasSizeUniformBuffer } }
-      ]
-    });
+    for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
+      // we need to re-create the bindgroup since workBuffer
+      // is a new buffer
+      this.srBindGroup0.push(
+        this.device.createBindGroup({
+          label: 'spatial reuse bindgroup 0',
+          layout: this.bindGroupLayouts[0],
+          entries: [
+            {
+              binding: 0,
+              resource: { buffer: i % 2 == 0 ? this.restirPassBuffer1 : this.restirPassBuffer2 }
+            },
+            {
+              binding: 1,
+              resource: { buffer: i % 2 == 0 ? this.restirPassBuffer2 : this.restirPassBuffer1 }
+            },
+            { binding: 2, resource: { buffer: this.canvasSizeUniformBuffer } }
+          ]
+        })
+      );
+    }
   }
 
   resetSamplesAndTile() {
@@ -652,7 +679,7 @@ export class ReSTIRPTSegment {
     });
   }
 
-  compute() {
+  async compute() {
     if (this.requestShaderCompilation) {
       this.createPipeline();
       this.requestShaderCompilation = false;
@@ -713,13 +740,23 @@ export class ReSTIRPTSegment {
       };
       const srPass = encoder.beginComputePass(srPassDescriptor);
       srPass.setPipeline(this.srPipeline);
-      srPass.setBindGroup(0, this.srBindGroup0);
+      srPass.setBindGroup(0, this.srBindGroup0[i]);
       srPass.setBindGroup(1, this.srBindGroup1[i]);
       srPass.setBindGroup(2, this.bindGroup2);
       srPass.setBindGroup(3, this.bindGroup3);
       srPass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
       srPass.end();
     }
+
+    // this segment also copies the content of one reservoir buffer to the other reservoir buffer
+    // this is necessary because the next iteration of RestirPTShader will always use restirPassBuffer1
+    this.reservoirToRadSegment.setBuffers(
+      this.SPATIAL_REUSE_PASSES % 2 == 0 ? this.restirPassBuffer1 : this.restirPassBuffer2,
+      this.SPATIAL_REUSE_PASSES % 2 == 0 ? this.restirPassBuffer2 : this.restirPassBuffer1,
+      this.workBuffer,
+      this.canvasSizeUniformBuffer
+    );
+    this.reservoirToRadSegment.addPass(encoder, this.canvasSize);
 
     this.passPerformance.resolve(encoder);
 
@@ -728,6 +765,9 @@ export class ReSTIRPTSegment {
     // Finish encoding and submit the commands
     const computeCommandBuffer = encoder.finish();
     this.device.queue.submit([computeCommandBuffer]);
+
+    // await this.device.queue.onSubmittedWorkDone();
+    // await this.logDebugResult();
 
     samplesInfo.increment();
   }

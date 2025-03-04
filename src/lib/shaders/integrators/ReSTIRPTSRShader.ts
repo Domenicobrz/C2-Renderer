@@ -8,7 +8,7 @@ export function getReSTIRPTSRShader(lutManager: LUTManager) {
   ${getReSTIRPTSharedPart(lutManager)}
 
 @group(0) @binding(0) var<storage, read_write> restirPassInput: array<Reservoir>;
-@group(0) @binding(1) var<storage, read_write> radianceOutput: array<vec3f>;
+@group(0) @binding(1) var<storage, read_write> restirPassOutput: array<Reservoir>;
 @group(0) @binding(2) var<uniform> canvasSize: vec2u;
 
 // on a separate bind group since camera changes more often than data/canvasSize
@@ -96,9 +96,11 @@ ${resampleLogic}
     var candidates = array<Reservoir, MAX_SR_CANDIDATES_COUNT>();
     var normal0 = vec3f(0.0);
     var depth0 = 0.0;
+    var currConfidence = 0.0;
     for (var i = 0; i < config.RESTIR_SR_CANDIDATES; i++) {
       if (i == 0) {
-        candidates[i] = restirPassInput[idx];
+        candidates[0] = restirPassInput[idx];
+        currConfidence = candidates[0].c;
         normal0 = candidates[i].Gbuffer.xyz;
         depth0 = candidates[i].Gbuffer.w;
       } else {
@@ -123,31 +125,33 @@ ${resampleLogic}
 
           if (dot(normal1, normal0) < 0.9) {
             candidates[i] = Reservoir(
-              PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-              vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
+              PathInfo(vec3f(0.0), 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+              vec3i(-1, -1, -1), vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0),
             );
           }
         } else {
           candidates[i] = Reservoir(
-            PathInfo(vec3f(0.0), vec2i(-1, -1), 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-            vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0,
+            PathInfo(vec3f(0.0), 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+            vec3i(-1, -1, -1), vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0),
           );
         }
       }
     }
 
-    reservoir = SpatialResample(candidates, tid);
+    // canonical candidate's domain
+    let domain = candidates[0].domain;
+    reservoir = SpatialResample(candidates, vec3u(domain));
     if (reservoir.isNull < 0.0) {
       // theoretically we shouldn't re-use Y.F but for now we'll do it
       rad = reservoir.Y.F * reservoir.Wy;
     }
   }
 
-  // https://www.w3.org/TR/WGSL/#storageBarrier-builtin
-  // https://stackoverflow.com/questions/72035548/what-does-storagebarrier-in-webgpu-actually-do
-  // "storageBarrier coordinates access by invocations in single workgroup
-  // to buffers in 'storage' address space."
-  storageBarrier();
+  // // https://www.w3.org/TR/WGSL/#storageBarrier-builtin
+  // // https://stackoverflow.com/questions/72035548/what-does-storagebarrier-in-webgpu-actually-do
+  // // "storageBarrier coordinates access by invocations in single workgroup
+  // // to buffers in 'storage' address space."
+  // storageBarrier();
 
   // every thread needs to be able to reach the storageBarrier for us to be able to use it,
   // so early returns can only happen afterwards
@@ -155,13 +159,13 @@ ${resampleLogic}
     return;
   }
 
-  restirPassInput[idx] = reservoir;
+  restirPassOutput[idx] = reservoir;
 
   if (finalPass == 1) {
     if (debugInfo.isSelectedPixel) {
-      radianceOutput[idx] += vec3f(1, 0, 0);
+      restirPassOutput[idx].rad += vec3f(1, 0, 0);
     } else {
-      radianceOutput[idx] += rad;
+      restirPassOutput[idx].rad += rad;
     }
   }
 }

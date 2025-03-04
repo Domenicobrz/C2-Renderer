@@ -110,6 +110,16 @@ fn rrPathConstruction(
       mi = getMisWeight(lightPdf, brdfPdf);
     }
 
+    if (p <= 0.0) {
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      rrStepResult.valid = 0;
+      rrStepResult.shouldTerminate = true;
+      return rrStepResult;
+    }
+
     var jacobian = vec2f(
       p, 
       abs(dot(w_km1, triangle.geometricNormal)) / dot(w_vec, w_vec)
@@ -208,6 +218,16 @@ fn rrPathConstruction(
       mi = 1.0;
     }
 
+    if (p <= 0.0) {
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      rrStepResult.valid = 0;
+      rrStepResult.shouldTerminate = true;
+      return rrStepResult;
+    }
+
     var jacobian = vec2f(
       p, 
       abs(dot(w_km1, triangle.geometricNormal)) / dot(w_vec, w_vec)
@@ -294,6 +314,16 @@ fn rrPathConstruction(
     );
     var mi = 1.0;
     p *= brdfPdfXk * probability_of_sampling_lobe;
+
+    if (p <= 0.0) {
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      // shift failed, should terminate
+      rrStepResult.valid = 0;
+      rrStepResult.shouldTerminate = true;
+      return rrStepResult;
+    }
 
     var jacobian = vec2f(
       p, 

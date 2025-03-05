@@ -21,14 +21,54 @@ fn rrPathConstruction(
 ) -> RandomReplayResult {
   var rrStepResult = RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
 
-  let isConnectible = psi.wasPrevVertexRough && isRough;
+  let w_vec = psi.prevVertexPosition - ires.hitPoint;
+  let isTooShort = isSegmentTooShortForReconnection(w_vec);
+  var isCurrentVertexConnectible = psi.wasPrevVertexRough && isRough && !isTooShort;
+  
   // invertibility check
-  if (isConnectible && u32(debugInfo.bounce) < pi.reconnectionBounce) {
+  if (isCurrentVertexConnectible && pathReconnects(*pi) && u32(debugInfo.bounce) < pi.reconnectionBounce) {
     rrStepResult.valid = 0;
     rrStepResult.shouldTerminate = true;
     return rrStepResult;
   }
 
+  // invertibility check
+  if (isCurrentVertexConnectible && pathDoesNotReconnect(*pi)) {
+    rrStepResult.valid = 0;
+    rrStepResult.shouldTerminate = true;
+    return rrStepResult;
+  }
+
+  // pure random replay path
+  if (pathDoesNotReconnect(*pi)) {
+    if (pathIsBrdfSampled(*pi) && u32(debugInfo.bounce) == pi.bounceCount) {
+      let mi = *lastBrdfMis; // will be 1 in this case
+      let pHat = emissive * *throughput; // throughput will be 1 in this case
+
+      rrStepResult.valid = 1;
+      rrStepResult.shouldTerminate = true;
+      rrStepResult.jacobian = vec2f(1.0);
+      rrStepResult.pHat = pHat * mi;
+      return rrStepResult;
+    }
+    if (pathIsLightSampled(*pi) && u32(debugInfo.bounce + 1) == pi.bounceCount) {
+      let lightDirectionSample = sampleLight(materialData, ray, surfaceAttributes, normals);
+      let lightSampleRadiance = lightDirectionSample.ls.radiance;
+      let lightSampleSuccessful = dot(lightSampleRadiance, lightSampleRadiance) > 0.0;
+      
+      if (lightSampleSuccessful) {
+        var mi = lightDirectionSample.mis;
+        let pHat = lightSampleRadiance * (1.0 / lightDirectionSample.pdf) * *throughput * 
+                   lightDirectionSample.brdf * max(dot(normals.shading, lightDirectionSample.dir), 0.0);
+    
+        rrStepResult.valid = 1;
+        rrStepResult.shouldTerminate = true;
+        rrStepResult.jacobian = vec2f(1.0);
+        rrStepResult.pHat = pHat * mi;
+        return rrStepResult;
+      }
+    }
+  }
 
   // directly hitting light source at bounce 0, no need to check if emissive > 0.0
   if (
@@ -45,7 +85,6 @@ fn rrPathConstruction(
     return rrStepResult;
   }
 
-
   // next vertex is the reconnection vertex, which is also a light source
   if (
     pathReconnectsAtLightVertex(*pi) && 
@@ -53,11 +92,18 @@ fn rrPathConstruction(
   ) {
     let triangle = triangles[pi.reconnectionTriangleIndex];
     let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
-    var isConnectible = true; // check distance condition
 
+    // at the start of the function, we were trying to test if the current vertex was a reconnection
+    // vertex, with the chance of it breaking invertibility. Now, we're considering the NEXT vertex
+    // as the potential reconnection vertex, so we need to re-test for connectibility here. We'll
+    // assume that the next vertex is rough enough and that it has the correct reconnection lobe,
+    // because we know that Xk = Yk
+    let w_vec = nextVertexPosition - ires.hitPoint;
+    let isTooShort = isSegmentTooShortForReconnection(w_vec);
     // next vertex lobe will necessarily be identical since we're reconnecting to the same
     // xk, however for the previous vertex, xk-1, which is this vertex, we have to make this check
-    if (i32(lobeIndex) != pi.reconnectionLobes.x) { isConnectible = false; }
+    let hasDifferentLobes = i32(lobeIndex) != pi.reconnectionLobes.x;
+    let isConnectible = isRough && !isTooShort && !hasDifferentLobes;
 
     if (!isConnectible) {
       // shift failed, should terminate
@@ -87,7 +133,6 @@ fn rrPathConstruction(
     }
 
     // reconnection is successful
-    let w_vec = nextVertexPosition - ires.hitPoint;
     let w_km1 = normalize(w_vec);
     let probability_of_sampling_lobe = 1.0;
 
@@ -141,11 +186,18 @@ fn rrPathConstruction(
   ) {
     let triangle = triangles[pi.reconnectionTriangleIndex];
     let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
-    var isConnectible = true; // check distance condition
     
+    // at the start of the function, we were trying to test if the current vertex was a reconnection
+    // vertex, with the chance of it breaking invertibility. Now, we're considering the NEXT vertex
+    // as the potential reconnection vertex, so we need to re-test for connectibility here. We'll
+    // assume that the next vertex is rough enough and that it has the correct reconnection lobe,
+    // because we know that Xk = Yk
+    let w_vec = nextVertexPosition - ires.hitPoint;
+    let isTooShort = isSegmentTooShortForReconnection(w_vec);
     // next vertex lobe will necessarily be identical since we're reconnecting to the same
     // xk, however for the previous vertex, xk-1, which is this vertex, we have to make this check
-    if (i32(lobeIndex) != pi.reconnectionLobes.x) { isConnectible = false; }
+    let hasDifferentLobes = i32(lobeIndex) != pi.reconnectionLobes.x;
+    let isConnectible = isRough && !isTooShort && !hasDifferentLobes;
     
     if (!isConnectible) {
       // shift failed, should terminate
@@ -175,7 +227,6 @@ fn rrPathConstruction(
     }
 
     // reconnection is successful
-    let w_vec = nextVertexPosition - ires.hitPoint;
     let w_km1 = normalize(w_vec);
     let probability_of_sampling_lobe = 1.0;
     
@@ -251,11 +302,18 @@ fn rrPathConstruction(
   ) {
     let triangle = triangles[pi.reconnectionTriangleIndex];
     let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
-    var isConnectible = true; // check distance condition
   
+    // at the start of the function, we were trying to test if the current vertex was a reconnection
+    // vertex, with the chance of it breaking invertibility. Now, we're considering the NEXT vertex
+    // as the potential reconnection vertex, so we need to re-test for connectibility here. We'll
+    // assume that the next vertex is rough enough and that it has the correct reconnection lobe,
+    // because we know that Xk = Yk
+    let w_vec = nextVertexPosition - ires.hitPoint;
+    let isTooShort = isSegmentTooShortForReconnection(w_vec);
     // next vertex lobe will necessarily be identical since we're reconnecting to the same
     // xk, however for the previous vertex, xk-1, which is this vertex, we have to make this check
-    if (i32(lobeIndex) != pi.reconnectionLobes.x) { isConnectible = false; }
+    let hasDifferentLobes = i32(lobeIndex) != pi.reconnectionLobes.x;
+    let isConnectible = isRough && !isTooShort && !hasDifferentLobes;
   
     if (!isConnectible) {
       // shift failed, should terminate
@@ -285,7 +343,6 @@ fn rrPathConstruction(
     }
 
     // reconnection is successful
-    let w_vec = nextVertexPosition - ires.hitPoint;
     let w_km1 = normalize(w_vec);
     let probability_of_sampling_lobe = 1.0;
   

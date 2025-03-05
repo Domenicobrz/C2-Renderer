@@ -350,8 +350,13 @@ fn shade(
   }
 
   if (isRandomReplay) {
-    // skip sampleLight(...) randoms
-    if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
+    // skip sampleLight(...) randoms...
+    if (
+      debugInfo.bounce < config.BOUNCES_COUNT - 1 &&
+      // ...unless this path is a pure random replay path that is supposed to end with a light sample
+      // exactly at this bounce. inside rrPathConstruction we'll create the light sample
+      !(pathDoesNotReconnect(*pi) && pathIsLightSampled(*pi) && u32(debugInfo.bounce + 1) == pi.bounceCount)
+    ) {
       let rands = vec4f(getRand2D(), getRand2D());
     }
 

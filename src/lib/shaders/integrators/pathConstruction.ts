@@ -16,40 +16,65 @@ fn neePathConstruction(
   let lightPointSample = lightDirectionSample.ls;
   let lightSampleRadiance = lightPointSample.radiance;
 
-  // if we haven't found a reconnection vertex, and the previous vertex was not rough enough,
-  // create and save a NEE path since this vertex is rough and all light source vertices are
-  // treated as rough      
-  if ((*psi).reconnectionVertexIndex == -1 && !psi.wasPrevVertexRough) {
+  // if we haven't found a reconnection vertex, 
+  // try to create and save a NEE path, if it's not possible
+  // create a pure random-replay path
+  if ((*psi).reconnectionVertexIndex == -1) {
     var mi = lightDirectionSample.mis;
     let pHat = lightSampleRadiance * (1.0 / lightDirectionSample.pdf) * *throughput * 
                lightDirectionSample.brdf * max(dot(N, lightDirectionSample.dir), 0.0);
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
 
-    let isConnectible = true; // we'll assume they're both rough and distant enough
-
     let w_vec = lightPointSample.hitPoint - ires.hitPoint;
-    let w_km1 = normalize(w_vec);
-    let probability_of_sampling_lobe = 1.0;
-    let p = lightDirectionSample.pdf * probability_of_sampling_lobe;
-    let jacobian = vec2f(p, abs(dot(w_km1, lightPointSample.geometricNormal)) / dot(w_vec, w_vec));
 
-    let pathInfo = PathInfo(
-      pHat * mi,
-      pi.seed,
-      u32(debugInfo.bounce + 1),
-      setPathFlags(lobeIndex, 1, 0, 1), // set flags to "path ends by NEE" and "reconnects"
-      u32(debugInfo.bounce + 1),        // reconnects at xk, which is the light vertex
-      lightPointSample.triangleIndex, 
-      lightPointSample.barycentrics, 
-      lightPointSample.radiance, 
-      vec3f(0),
-      jacobian,
-      vec2i(i32(lobeIndex), 2) // 2 is the emissive lobe-index
-    );
+    // since we're creating the reconnection vertex here, we also have to check the distance condition
+    let isRough = true; // we'll assume they're both rough, but we should fix this at some point
+    let isTooShort = isSegmentTooShortForReconnection(w_vec);
+    let isConnectible = !isTooShort && isRough; 
+
+    if (isConnectible) {
+      let w_km1 = normalize(w_vec);
+      let probability_of_sampling_lobe = 1.0;
+      let p = lightDirectionSample.pdf * probability_of_sampling_lobe;
+      let jacobian = vec2f(p, abs(dot(w_km1, lightPointSample.geometricNormal)) / dot(w_vec, w_vec));
   
-    // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
-    updateReservoir(reservoir, pathInfo, wi);
+      let pathInfo = PathInfo(
+        pHat * mi,
+        pi.seed,
+        u32(debugInfo.bounce + 1),
+        setPathFlags(lobeIndex, 1, 0, 1), // set flags to "path ends by NEE" and "reconnects"
+        u32(debugInfo.bounce + 1),        // reconnects at xk, which is the light vertex
+        lightPointSample.triangleIndex, 
+        lightPointSample.barycentrics, 
+        lightPointSample.radiance, 
+        vec3f(0),
+        jacobian,
+        vec2i(i32(lobeIndex), 2) // 2 is the emissive lobe-index
+      );
+    
+      // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
+      updateReservoir(reservoir, pathInfo, wi);
+    } else {
+      // non reconnectible path, we'll do pure Random-replay
+      let pathInfo = PathInfo(
+        pHat * mi,
+        pi.seed,
+        u32(debugInfo.bounce + 1),
+        // set flags to "path ends by NEE" and "doesn't reconnect"
+        setPathFlags(lobeIndex, 1, 0, 0), 
+        0,        
+        -1, 
+        vec2f(0), 
+        vec3f(0), 
+        vec3f(0),
+        vec2f(1.0),
+        vec2i(-1, -1) // 2 is the emissive lobe-index
+      );
+    
+      // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
+      updateReservoir(reservoir, pathInfo, wi);
+    }
   }
 
   // if this vertex is a reconnection vertex, use the light-sample path as a candidate. 
@@ -62,7 +87,6 @@ fn neePathConstruction(
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
 
-    let isConnectible = true; // we'll assume they're both rough and distant enough
     let w_vec = psi.prevVertexPosition - ires.hitPoint;
     let w_km1 = normalize(w_vec);
     let probability_of_sampling_lobe = 1.0;
@@ -135,8 +159,8 @@ fn emissiveSurfacePathConstruction(
       pHat * mi,
       pi.seed,
       u32(debugInfo.bounce),
-      setPathFlags(lobeIndex, 0, 1, 0), // set flags to "path ends by NEE" and "reconnects"
-      u32(debugInfo.bounce),        // reconnects at xk, which is the light vertex
+      setPathFlags(lobeIndex, 0, 1, 0), // set flags to "path ends by NEE" and "doesn't reconnect"
+      0,        
       -1, 
       vec2f(0.0), 
       vec3f(0.0), 
@@ -149,14 +173,31 @@ fn emissiveSurfacePathConstruction(
     updateReservoir(reservoir, pathInfo, wi);
   }
 
-  // if we haven't found a reconnection vertex, and the previous vertex was not rough enough,
-  // create and save a pure random replay path     
-  if ((*psi).reconnectionVertexIndex == -1 && !psi.wasPrevVertexRough) {
-    // ************************************
-    // ************************************
-    // TODO: NOT IMPLEMENTED
-    // ************************************
-    // ************************************
+  // if we haven't found a reconnection vertex, (which also means this vertex couldn't  
+  // be used as a reconnection vertex) then save a pure RR path   
+  if ((*psi).reconnectionVertexIndex == -1) {
+    let mi = *lastBrdfMis; // will be 1 in this case
+    let pHat = emissive * *throughput; // throughput will be 1 in this case
+    let wi = mi * length(pHat);
+
+    // non reconnectible path, we'll do pure Random-replay
+    let pathInfo = PathInfo(
+      pHat * mi,
+      pi.seed,
+      u32(debugInfo.bounce),
+      // set flags to "path ends by BRDF" and "doesn't reconnect"
+      setPathFlags(lobeIndex, 0, 1, 0), 
+      0,        
+      -1, 
+      vec2f(0), 
+      vec3f(0), 
+      vec3f(0),
+      vec2f(1.0),
+      vec2i(-1, -1) // 2 is the emissive lobe-index
+    );
+  
+    // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
+    updateReservoir(reservoir, pathInfo, wi);
   }
 
   // if this vertex is a reconnection vertex, and we haven't found another one sooner,
@@ -168,7 +209,6 @@ fn emissiveSurfacePathConstruction(
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
 
-    let isConnectible = psi.wasPrevVertexRough; // we'll assume they're both rough and distant enough
     // ******************* TODO ******************
     // ******************* TODO ******************
     // I think this direction is wrong? but the fact that we're doing
@@ -209,7 +249,6 @@ fn emissiveSurfacePathConstruction(
     var mi = *lastBrdfMis;
     let pHat = emissive * *throughput;
 
-    let isConnectible = psi.wasPrevVertexRough; // we'll assume they're both rough and distant enough
     let w_vec = psi.prevVertexPosition - ires.hitPoint;
     let w_km1 = normalize(w_vec);
 
@@ -258,8 +297,9 @@ fn setReconnectionVertex(
   tid: vec3u,
 ) {
   let isRough = true;
-  let isConnectible = psi.wasPrevVertexRough && isRough;
-
+  let isTooShort = isSegmentTooShortForReconnection(psi.prevVertexPosition - ires.hitPoint);
+  let isConnectible = psi.wasPrevVertexRough && isRough && !isTooShort;
+  
   // if this is a reconnection vertex, we'll have to prepare
   // the jacobian such that successive bounces can use it 
   // while saving new pathinfos in the reservoir

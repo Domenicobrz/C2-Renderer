@@ -98,9 +98,9 @@ ${resampleLogic}
   let INITIAL_CANDIDATES_COUNT = 10;
 
   for (var ic = 0; ic < INITIAL_CANDIDATES_COUNT; ic++) {
-    let seed = hashPixelAndSeed(tid.xy, u32(haltonSamples[ic].x * f32(1099087573)) + u32(ic) * 21894717);
-    // this line is probably unnecessary since var pi below should take care of that
-    reservoir.Y.seed = seed;
+    // if Path info will be accepted, it will also take this seed and save it in the reservoir
+    let seed = hashPixelAndSeed(tid.xy, u32(haltonSamples[ic].x * f32(1099087573)));
+
     initializeRandoms(seed);
     
     var rayContribution: f32;
@@ -148,7 +148,6 @@ ${resampleLogic}
   if (reservoir.isNull <= 0.0) {
     reservoir.Wy = (1 / length(reservoir.Y.F)) * reservoir.wSum;
   }
-
 
   // temporal resample if there's temporal data to reuse
   // if (prevReservoir.isNull <= 0.0) {

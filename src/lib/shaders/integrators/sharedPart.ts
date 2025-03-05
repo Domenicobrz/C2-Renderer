@@ -109,6 +109,14 @@ struct RandomReplayResult {
   jacobian: vec2f,
 }
 
+fn isSegmentTooShortForReconnection(segment: vec3f) -> bool {
+  // return length(segment) < 0.05;
+  return length(segment) < 0.15;
+  // return length(segment) < 0.5;
+  // return length(segment) < 2.5;
+  // return false;
+}
+
 fn pathIsLightSampled(pi: PathInfo) -> bool {
   return (pi.flags & 1) > 0;
 }

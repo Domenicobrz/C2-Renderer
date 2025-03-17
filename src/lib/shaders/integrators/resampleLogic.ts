@@ -174,7 +174,7 @@ fn SpatialResample(
       var mi = generalizedBalanceHeuristic(X, Y, confidence, i, candidates);
       wi = mi * length(Y.F) * Wxi;
     }
-    
+
     if (wi > 0.0) {
       let updated = updateReservoirWithConfidence(&r, Y, wi, confidence);
     } else {

@@ -3,6 +3,7 @@ import { pathConstruction } from './pathConstruction';
 import { rrPathConstruction } from './rrPathConstruction';
 import { tempDiffuse2 } from './tempDiffuse2';
 import { tempEmissive2 } from './tempEmissive2';
+import { tempTorranceSparrow } from './tempTorranceSparrow';
 
 export const tempShadCopy = /*wgsl*/ `
 const MATERIAL_DATA_ELEMENTS = 20;
@@ -11,12 +12,6 @@ struct SurfaceDescriptor {
   triangleIndex: i32,
   barycentrics: vec2f,
 };
-
-struct SurfaceNormals {
-  geometric: vec3f,
-  vertex: vec3f,
-  shading: vec3f,
-}
 
 struct BrdfDirectionSample {
   brdf: vec3f,
@@ -35,6 +30,7 @@ struct LightDirectionSample {
 
 ${tempDiffuse2}
 ${tempEmissive2}
+${tempTorranceSparrow}
 ${pathConstruction}
 ${rrPathConstruction}
 
@@ -53,6 +49,10 @@ fn evaluateLobePdf(
 
   if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
     return evaluatePdfEmissiveLobe();
+  }
+
+  if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
+    return evaluatePdfTSLobe(wo, wi, materialData);
   }
 
   return 0.0;
@@ -75,6 +75,10 @@ fn evaluateBrdf(
     return evaluateEmissiveBrdf();
   }
 
+  if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
+    return evaluateTSBrdf(wo, wi, materialData);
+  }
+
   return vec3f(0);
 }
 
@@ -94,6 +98,10 @@ fn sampleBrdf(
     return sampleEmissiveBrdf(materialData, ray, surfaceAttributes, surfaceNormals);
   }
 
+  if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
+    return sampleTSBrdf(materialData, ray, surfaceAttributes, surfaceNormals);
+  }
+
   return BrdfDirectionSample(vec3f(0), 0, 0, vec3f(0));
 }
 
@@ -111,6 +119,10 @@ fn sampleLight(
 
   if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
     return sampleEmissiveLight(materialData, ray, surfaceAttributes, surfaceNormals);
+  }
+
+  if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
+    return sampleTSLight(materialData, ray, surfaceAttributes, surfaceNormals);
   }
 
   return LightDirectionSample(vec3f(0), 0, 0, vec3f(0), LightSample());
@@ -158,7 +170,10 @@ fn getEmissiveMaterialData(offset: u32) -> array<f32, MATERIAL_DATA_ELEMENTS> {
   return data;
 }
 
-fn evaluateMaterialAtSurfacePoint(surface: SurfaceDescriptor) -> array<f32, MATERIAL_DATA_ELEMENTS> {
+fn evaluateMaterialAtSurfacePoint(
+  surface: SurfaceDescriptor,
+  surfaceAttributes: SurfaceAttributes
+) -> array<f32, MATERIAL_DATA_ELEMENTS> {
   let materialOffset = triangles[surface.triangleIndex].materialOffset;
   let materialType = materialsData[materialOffset];
 
@@ -168,6 +183,10 @@ fn evaluateMaterialAtSurfacePoint(surface: SurfaceDescriptor) -> array<f32, MATE
 
   if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
     return getEmissiveMaterialData(materialOffset);
+  }
+
+  if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
+    return getTSMaterialData(surfaceAttributes, materialOffset);
   }
 
   return array<f32,MATERIAL_DATA_ELEMENTS>();
@@ -275,7 +294,7 @@ fn shade(
 
   let surface = SurfaceDescriptor(ires.triangleIndex, ires.barycentrics); 
   let surfaceAttributes = getSurfaceAttributes(triangle, ires.barycentrics);
-  let materialData = evaluateMaterialAtSurfacePoint(surface);
+  let materialData = evaluateMaterialAtSurfacePoint(surface, surfaceAttributes);
   let materialType = materialData[0];
 
   var bumpOffset = 0.0;
@@ -293,6 +312,10 @@ fn shade(
   if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
     isRough = true;
     lobeIndex = 2;
+  }  
+  if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
+    isRough = true;
+    lobeIndex = 3;
   }
 
   // TODO:

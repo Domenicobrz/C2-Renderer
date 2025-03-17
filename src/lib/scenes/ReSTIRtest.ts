@@ -75,8 +75,8 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
   // let mesh = new Mesh(new PlaneGeometry(4, 4));
   // mesh.position.set(0, -2, 0);
 
-  let mat = new Diffuse({ color: new Color(1, 1, 1) });
-  // let mat = new TorranceSparrow({ color: new Color(1, 1, 1), roughness: 0.7, anisotropy: 0 });
+  // let mat = new Diffuse({ color: new Color(1, 1, 1) });
+  let mat = new TorranceSparrow({ color: new Color(1, 1, 1), roughness: 0.25, anisotropy: 0 });
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
 
@@ -84,7 +84,8 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
   const lsc = 3;
   let lcpg = new PlaneGeometry(lsc, lsc);
   lcpg.rotateX(Math.PI * 0.5);
-  lcpg.translate(0, 3.5, 0);
+  // lcpg.translate(0, 3.5, 0);
+  lcpg.translate(0, 2.1, 0);
   triangles = [...triangles, ...geometryToTriangles(lcpg, 0)];
 
   // create & set camera

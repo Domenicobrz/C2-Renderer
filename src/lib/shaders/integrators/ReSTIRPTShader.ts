@@ -149,8 +149,11 @@ ${resampleLogic}
     reservoir.Wy = (1 / length(reservoir.Y.F)) * reservoir.wSum;
   }
 
+  // let prevPathReconnects = prevReservoir.isNull <= 0.0 && pathReconnects(prevReservoir.Y);
+
   // temporal resample if there's temporal data to reuse
   // if (prevReservoir.isNull <= 0.0) {
+  // if (prevPathReconnects) {
     var candidates = array<Reservoir, 2>();
     candidates[0] = reservoir;
 

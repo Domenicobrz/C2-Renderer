@@ -38,15 +38,15 @@ ${lutManager.getShaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
 ${'' /* Emissive.shaderShadeEmissive() */}
-${Diffuse.shaderStruct()}
-${Diffuse.shaderCreateStruct()}
+${'' /* Diffuse.shaderStruct() */}
+${'' /* Diffuse.shaderCreateStruct() */}
 ${'' /* Diffuse.shaderShadeDiffuse() */}
 ${'' /* EONDiffuse.shaderStruct() */}
 ${'' /* EONDiffuse.shaderCreateStruct() */}
 ${'' /* EONDiffuse.shaderShadeEONDiffuse() */}
 ${'' /* TorranceSparrow.shaderStruct() */}
 ${'' /* TorranceSparrow.shaderCreateStruct() */}
-${'' /* TorranceSparrow.shaderBRDF() */}
+${TorranceSparrow.shaderBRDF()}
 ${'' /* TorranceSparrow.shaderShadeTorranceSparrow() */}
 ${'' /* Dielectric.shaderStruct() */}
 ${'' /* Dielectric.shaderCreateStruct() */}
@@ -115,6 +115,7 @@ fn isSegmentTooShortForReconnection(segment: vec3f) -> bool {
   // return length(segment) < 0.5;
   // return length(segment) < 2.5;
   // return false;
+  // return true;
 }
 
 fn pathIsLightSampled(pi: PathInfo) -> bool {

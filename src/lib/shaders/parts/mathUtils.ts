@@ -108,4 +108,27 @@ fn mod3f(a: vec3f, b: vec3f) -> vec3f {
     a.z - b.z * floor(a.z / b.z),
   );
 }
+
+
+fn transformToLocalSpace(
+  wo: ptr<function, vec3f>, 
+  wi: ptr<function, vec3f>, 
+  surfaceAttributes: SurfaceAttributes, 
+  surfaceNormals: SurfaceNormals,
+) {
+  var tangent = vec3f(0.0);
+  var bitangent = vec3f(0.0);
+  getTangentFromTriangle(
+    surfaceAttributes.tangent, surfaceNormals.geometric, surfaceNormals.shading, 
+    &tangent, &bitangent
+  );
+  
+  // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+  let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
+  // to transform vectors from world space to tangent space, we multiply by
+  // the inverse of the TBN
+  let TBNinverse = transpose(TBN);
+  *wo = TBNinverse * *wo;
+  *wi = TBNinverse * *wi;
+}
 `;

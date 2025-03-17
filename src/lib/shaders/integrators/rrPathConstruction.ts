@@ -136,11 +136,16 @@ fn rrPathConstruction(
     let w_km1 = normalize(w_vec);
     let probability_of_sampling_lobe = 1.0;
 
+
+    var wo = -(*ray).direction;
+    var wi = w_km1;
+    transformToLocalSpace(&wo, &wi, surfaceAttributes, normals);
+
     let brdf = evaluateBrdf(
-      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+      materialData, wo, wi, surfaceAttributes, normals
     );
     let brdfPdf = evaluateLobePdf(
-      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+      materialData, wo, wi, surfaceAttributes, normals
     );
     let lightPdf = getLightPDF(Ray(ires.hitPoint + w_km1 * 0.0001, w_km1));
 
@@ -230,11 +235,15 @@ fn rrPathConstruction(
     let w_km1 = normalize(w_vec);
     let probability_of_sampling_lobe = 1.0;
     
+    var wo = -(*ray).direction;
+    var wi = w_km1;
+    transformToLocalSpace(&wo, &wi, surfaceAttributes, normals);
+
     let brdf = evaluateBrdf(
-      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+      materialData, wo, wi, surfaceAttributes, normals
     );
     let brdfPdf = evaluateLobePdf(
-      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+      materialData, wo, wi, surfaceAttributes, normals
     );
     var p = probability_of_sampling_lobe * brdfPdf;
 
@@ -242,17 +251,21 @@ fn rrPathConstruction(
     // pick surface information of vertex Xk
     let surfaceXk = SurfaceDescriptor(visibilityRes.triangleIndex, visibilityRes.barycentrics); 
     let surfaceAttributesXk = getSurfaceAttributes(triangle, visibilityRes.barycentrics);
-    let materialDataXk = evaluateMaterialAtSurfacePoint(surfaceXk);
+    let materialDataXk = evaluateMaterialAtSurfacePoint(surfaceXk, surfaceAttributesXk);
     var bumpOffset: f32; var isBackFacing: bool;
     let normalsXk = getNormalsAtPoint(
       materialDataXk, &visibilityRay, surfaceAttributesXk, triangle, &bumpOffset, &isBackFacing,
     );
 
+    var woXk = -w_km1;
+    var wiXk = pi.reconnectionDirection;
+    transformToLocalSpace(&woXk, &wiXk, surfaceAttributesXk, normalsXk);
+
     let brdfXk = evaluateBrdf(
-      materialDataXk, w_km1, pi.reconnectionDirection, surfaceAttributesXk, normalsXk
+      materialDataXk, woXk, wiXk, surfaceAttributesXk, normalsXk
     );
     let brdfPdfXk = evaluateLobePdf(
-      materialDataXk, w_km1, pi.reconnectionDirection, surfaceAttributesXk, normalsXk
+      materialDataXk, woXk, wiXk, surfaceAttributesXk, normalsXk
     );
     let lightPdfXk = getLightPDF(Ray(visibilityRes.hitPoint + pi.reconnectionDirection * 0.0001, pi.reconnectionDirection));
     var mi = 0.0;
@@ -346,28 +359,36 @@ fn rrPathConstruction(
     let w_km1 = normalize(w_vec);
     let probability_of_sampling_lobe = 1.0;
   
+    var wo = -(*ray).direction;
+    var wi = w_km1;
+    transformToLocalSpace(&wo, &wi, surfaceAttributes, normals);
+
     let brdf = evaluateBrdf(
-      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+      materialData, wo, wi, surfaceAttributes, normals
     );
     let brdfPdf = evaluateLobePdf(
-      materialData, (*ray).direction, w_km1, surfaceAttributes, normals
+      materialData, wo, wi, surfaceAttributes, normals
     );
     var p = probability_of_sampling_lobe * brdfPdf;
 
     // now calculate probabilities for vertex xk
     let surfaceXk = SurfaceDescriptor(visibilityRes.triangleIndex, visibilityRes.barycentrics); 
     let surfaceAttributesXk = getSurfaceAttributes(triangle, visibilityRes.barycentrics);
-    let materialDataXk = evaluateMaterialAtSurfacePoint(surfaceXk);
+    let materialDataXk = evaluateMaterialAtSurfacePoint(surfaceXk, surfaceAttributesXk);
     var bumpOffset: f32; var isBackFacing: bool;
     let normalsXk = getNormalsAtPoint(
       materialDataXk, &visibilityRay, surfaceAttributesXk, triangle, &bumpOffset, &isBackFacing,
     );
 
+    var woXk = -w_km1;
+    var wiXk = pi.reconnectionDirection;
+    transformToLocalSpace(&woXk, &wiXk, surfaceAttributesXk, normalsXk);
+
     let brdfXk = evaluateBrdf(
-      materialDataXk, w_km1, pi.reconnectionDirection, surfaceAttributesXk, normalsXk
+      materialDataXk, woXk, wiXk, surfaceAttributesXk, normalsXk
     );
     let brdfPdfXk = evaluateLobePdf(
-      materialDataXk, w_km1, pi.reconnectionDirection, surfaceAttributesXk, normalsXk
+      materialDataXk, woXk, wiXk, surfaceAttributesXk, normalsXk
     );
     var mi = 1.0;
     p *= brdfPdfXk * probability_of_sampling_lobe;

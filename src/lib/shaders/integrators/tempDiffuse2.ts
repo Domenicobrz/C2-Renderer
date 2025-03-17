@@ -3,7 +3,8 @@ fn evaluatePdfDiffuseLobe(
   wi: vec3f,
   surfaceNormals: SurfaceNormals,
 ) -> f32 {
-  let cosTheta = dot(wi, surfaceNormals.shading);
+  // assuming wi is in local-space
+  let cosTheta = wi.z;
   let brdfSamplePdf = cosTheta / PI;
   return brdfSamplePdf;
 }
@@ -53,8 +54,8 @@ fn sampleDiffuseBrdf(
   let theta = acos(sqrt(rand_2));
   let cosTheta = cos(theta);
   let sinTheta = sin(theta);
-  // local space new ray direction
-  let newDir = vec3f(cos(phi) * sinTheta, cosTheta, sin(phi) * sinTheta);
+  // local space new ray direction. Z points up to follow pbrt's convention
+  let newDir = vec3f(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
   var tangent = vec3f(0.0);
   var bitangent = vec3f(0.0);
   getTangentFromTriangle(
@@ -66,10 +67,10 @@ fn sampleDiffuseBrdf(
   let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
 
   // from tangent space to world space
-  let newDirection = normalize(TBN * newDir.xzy);
+  let newDirection = normalize(TBN * newDir);
 
   let brdf = evaluateDiffuseBrdf(materialData, surfaceAttributes);
-  var brdfSamplePdf = evaluatePdfDiffuseLobe(newDirection, surfaceNormals);
+  var brdfSamplePdf = evaluatePdfDiffuseLobe(newDir, surfaceNormals);
 
   let lightSamplePdf = getLightPDF(Ray((*ray).origin, newDirection));
   let misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
@@ -114,7 +115,8 @@ fn sampleDiffuseLight(
   }
 
   let brdf = evaluateDiffuseBrdf(materialData, surfaceAttributes);
-  let brdfSamplePdf = evaluatePdfDiffuseLobe(newDirection, surfaceNormals);
+  let simplifiedLocalSpaceDirection = vec3f(0.0, 0.0, dot(newDirection, surfaceNormals.shading));
+  let brdfSamplePdf = evaluatePdfDiffuseLobe(simplifiedLocalSpaceDirection, surfaceNormals);
   let mis = getMisWeight(lightSample.pdf, brdfSamplePdf);
 
   return LightDirectionSample(

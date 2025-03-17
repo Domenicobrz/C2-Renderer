@@ -295,22 +295,22 @@ export class TorranceSparrow extends Material {
       
       return f;
     }
+
+    // https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf
+    fn multiScatterCompensationTorranceSparrow(F0: vec3f, wo: vec3f, roughness: f32) -> vec3f {
+      let ESSwo = getLUTvalue(
+        vec3f(roughness, saturate(wo.z /* dot(wo, norm) */), 0),
+        LUT_MultiScatterTorranceSparrow, 
+      ).x;
+  
+      let multiScatteringCoefficient = (1.0 + F0 * (1.0 - ESSwo) / ESSwo);
+      return multiScatteringCoefficient;
+    }
   `;
   }
 
   static shaderShadeTorranceSparrow(): string {
     return /* wgsl */ `
-      // https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf
-      fn multiScatterCompensationTorranceSparrow(F0: vec3f, wo: vec3f, roughness: f32) -> vec3f {
-        let ESSwo = getLUTvalue(
-          vec3f(roughness, saturate(wo.z /* dot(wo, norm) */), 0),
-          LUT_MultiScatterTorranceSparrow, 
-        ).x;
-
-        let multiScatteringCoefficient = (1.0 + F0 * (1.0 - ESSwo) / ESSwo);
-        return multiScatteringCoefficient;
-      }
-
       fn shadeTorranceSparrowSampleBRDF(
         rands: vec4f, 
         material: TORRANCE_SPARROW,

@@ -237,6 +237,12 @@ export class Triangle {
         tangent: vec3f,
       }
 
+      struct SurfaceNormals {
+        geometric: vec3f,
+        vertex: vec3f,
+        shading: vec3f,
+      }
+
       struct TriangleSampleResult {
         point: vec3f,
         barycentrics: vec2f,

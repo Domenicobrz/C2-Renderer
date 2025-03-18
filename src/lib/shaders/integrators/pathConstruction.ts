@@ -10,6 +10,7 @@ fn neePathConstruction(
   psi: ptr<function, PathSampleInfo>,
   lastBrdfMis: ptr<function, f32>, 
   lobeIndex: u32,
+  isRough: bool,
   N: vec3f,
   tid: vec3u,
 ) {
@@ -29,7 +30,6 @@ fn neePathConstruction(
     let w_vec = lightPointSample.hitPoint - ires.hitPoint;
 
     // since we're creating the reconnection vertex here, we also have to check the distance condition
-    let isRough = true; // we'll assume they're both rough, but we should fix this at some point
     let isTooShort = isSegmentTooShortForReconnection(w_vec);
     let isConnectible = !isTooShort && isRough; 
 
@@ -294,9 +294,9 @@ fn setReconnectionVertex(
   pi: ptr<function, PathInfo>,
   psi: ptr<function, PathSampleInfo>,
   lobeIndex: u32,
+  isRough: bool,
   tid: vec3u,
 ) {
-  let isRough = true;
   let isTooShort = isSegmentTooShortForReconnection(psi.prevVertexPosition - ires.hitPoint);
   let isConnectible = psi.wasPrevVertexRough && isRough && !isTooShort;
   

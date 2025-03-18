@@ -314,7 +314,9 @@ fn shade(
     lobeIndex = 2;
   }  
   if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-    isRough = true;
+    let ax = materialData[4];
+    let ay = materialData[5];
+    isRough = min(ax, ay) > 0.15;
     lobeIndex = 3;
   }
 
@@ -347,7 +349,7 @@ fn shade(
       (*reservoir).Gbuffer = vec4f(normals.shading, length((*ray).origin - ires.hitPoint));
     }
 
-    setReconnectionVertex(brdfSample, ires, pi, psi, u32(lobeIndex), tid);
+    setReconnectionVertex(brdfSample, ires, pi, psi, u32(lobeIndex), isRough, tid);
 
     // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
     if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
@@ -358,7 +360,7 @@ fn shade(
       if (lightSampleSuccessful) {
         neePathConstruction( 
           lightSample, brdfSample, ires,  ray, reservoir, throughput, 
-          pi, psi, lastBrdfMis, u32(lobeIndex), normals.shading, tid
+          pi, psi, lastBrdfMis, u32(lobeIndex), isRough, normals.shading, tid
         );
       }
     }

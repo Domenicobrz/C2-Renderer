@@ -339,7 +339,7 @@ fn shade(
 
   // !!!! careful !!!!
   // !!!! careful !!!!
-  // sampleBrdf and sampleLight should *always* use the same number of rands
+  // sampleBrdf and sampleLight should *always* use the same number of rands in every material
   // otherwise we can't properly do the RandomReplay
 
   let brdfSample = sampleBrdf(materialData, ray, surfaceAttributes, normals);

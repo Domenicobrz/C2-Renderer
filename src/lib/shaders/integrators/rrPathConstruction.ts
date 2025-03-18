@@ -154,6 +154,11 @@ fn rrPathConstruction(
     if (pathIsBrdfSampled(*pi)) {
       p *= brdfPdf * probability_of_sampling_lobe;
       mi = getMisWeight(brdfPdf, lightPdf);
+      // emitters have no mi. This however should be fixed. Also notice how here we're looking for
+      // reconnection lobe x, whereas in the next case we'll be checking lobe y 
+      if (pi.reconnectionLobes.x == 2) {  
+        mi = 1.0;
+      }
     }
     if (pathIsLightSampled(*pi)) {
       p *= lightPdf * probability_of_sampling_lobe;
@@ -273,13 +278,15 @@ fn rrPathConstruction(
     if (pathIsBrdfSampled(*pi)) {
       p *= brdfPdfXk * probability_of_sampling_lobe;
       mi = getMisWeight(brdfPdfXk, lightPdfXk);
+
+      // emitters have no mi. This however should be fixed
+      if (pi.reconnectionLobes.y == 2) {  
+        mi = 1.0;
+      }
     }
     if (pathIsLightSampled(*pi)) {
       p *= lightPdfXk * probability_of_sampling_lobe;
       mi = getMisWeight(lightPdfXk, brdfPdfXk);
-    }
-    if (pi.reconnectionLobes.y == 2) {
-      mi = 1.0;
     }
 
     if (p <= 0.0) {
@@ -390,7 +397,7 @@ fn rrPathConstruction(
     let brdfPdfXk = evaluateLobePdf(
       materialDataXk, woXk, wiXk, surfaceAttributesXk, normalsXk
     );
-    var mi = 1.0;
+    var mi = 1.0; // no mis weights since this part of the path is brdf-only
     p *= brdfPdfXk * probability_of_sampling_lobe;
 
     if (p <= 0.0) {

@@ -101,9 +101,12 @@ fn evaluateTSBrdf(
   let color = vec3f(materialData[1], materialData[2], materialData[3]);
   let ax = materialData[4];
   let ay = materialData[5];
+  let roughness = materialData[7];
 
   // we're assuming wo and wi are in local-space 
-  let brdf = TS_f(wo, wi, ax, ay, color);
+  var brdf = TS_f(wo, wi, ax, ay, color);
+  brdf *= multiScatterCompensationTorranceSparrow(color, wo, roughness);
+  
   return brdf;
 }
 

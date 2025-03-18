@@ -154,14 +154,14 @@ ${resampleLogic}
   // temporal resample if there's temporal data to reuse
   // if (prevReservoir.isNull <= 0.0) {
   // if (prevPathReconnects) {
-    var candidates = array<Reservoir, 2>();
-    candidates[0] = reservoir;
+    // var candidates = array<Reservoir, 2>();
+    // candidates[0] = reservoir;
 
-    // in theory, I should compare the normals / depth etc. since
-    // I could be picking candidates from edges etc.
-    candidates[1] = prevReservoir;  
+    // // in theory, I should compare the normals / depth etc. since
+    // // I could be picking candidates from edges etc.
+    // candidates[1] = prevReservoir;  
 
-    reservoir = SpatialResample(candidates, domain);
+    // reservoir = SpatialResample(candidates, domain);
   // }
 
   // if (debugInfo.isSelectedPixel) {

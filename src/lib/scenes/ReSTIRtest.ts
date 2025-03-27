@@ -79,10 +79,10 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
   // let mat = new Diffuse({ color: new Color(1, 1, 1) });
   // let mat = new TorranceSparrow({ color: new Color(1, 1, 1), roughness: 0.05, anisotropy: 0 });
   let mat = new Dielectric({
-    absorption: new Color(0, 0, 0),
-    roughness: 0.05,
+    absorption: new Color(0, 0.3, 0.6),
+    roughness: 0.095,
     anisotropy: 0,
-    eta: 1.6
+    eta: 1.55
   });
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];

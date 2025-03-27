@@ -1,5 +1,5 @@
 export const resampleLogic = /* wgsl */ `
-const MAX_CONFIDENCE = 20.0;
+const MAX_CONFIDENCE = 5.0;
 
 fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u, i: i32) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;

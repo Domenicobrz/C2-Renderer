@@ -122,7 +122,6 @@ fn transformToLocalSpace(
     surfaceAttributes.tangent, surfaceNormals.geometric, surfaceNormals.shading, 
     &tangent, &bitangent
   );
-  
   // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
   let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
   // to transform vectors from world space to tangent space, we multiply by

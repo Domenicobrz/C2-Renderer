@@ -82,14 +82,14 @@ ${resampleLogic}
   var prevReservoir = restirPassOutput[idx];
   if (debugInfo.sample == 0) {
     prevReservoir = Reservoir(
-      PathInfo(vec3f(0.0), 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+      PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
       vec3i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
     );
   }
 
   var reservoir = Reservoir(
                         // seed will be set inside the loop
-    PathInfo(vec3f(0.0), 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
     vec3i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
   );
 
@@ -100,6 +100,7 @@ ${resampleLogic}
   for (var ic = 0; ic < INITIAL_CANDIDATES_COUNT; ic++) {
     // if Path info will be accepted, it will also take this seed and save it in the reservoir
     let seed = hashPixelAndSeed(tid.xy, u32(haltonSamples[ic].x * f32(1099087573)));
+    let firstVertexSeed = seed;
 
     initializeRandoms(seed);
     
@@ -109,7 +110,7 @@ ${resampleLogic}
     var pathSampleInfo = PathSampleInfo(
       false, vec3f(0.0), vec3f(0.0), 0, 0, -1, vec3f(1.0), -1
     );
-    var pi = PathInfo(vec3f(0.0), seed, 0, 0, 0, 0, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1));
+    var pi = PathInfo(vec3f(0.0), firstVertexSeed, seed, 0, 0, 0, 0, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1));
     var throughput = vec3f(1.0);
     var rad = vec3f(0.0);
     var lastBrdfMis = 1.0;

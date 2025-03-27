@@ -4,6 +4,7 @@ import { configManager } from '$lib/config';
 import { Camera } from '$lib/controls/Camera';
 import { Envmap } from '$lib/envmap/envmap';
 import type { LUTManager } from '$lib/managers/lutManager';
+import { Dielectric } from '$lib/materials/dielectric';
 import { Diffuse } from '$lib/materials/diffuse';
 import { Emissive } from '$lib/materials/emissive';
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
@@ -50,7 +51,7 @@ ${TorranceSparrow.shaderBRDF()}
 ${'' /* TorranceSparrow.shaderShadeTorranceSparrow() */}
 ${'' /* Dielectric.shaderStruct() */}
 ${'' /* Dielectric.shaderCreateStruct() */}
-${'' /* Dielectric.shaderBRDF() */}
+${Dielectric.shaderBRDF()}
 ${'' /* Dielectric.shaderShadeDielectric() */}
 ${'' /* Material.shaderShade() */}
 ${Camera.shaderStruct()}

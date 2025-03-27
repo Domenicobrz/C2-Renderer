@@ -1,26 +1,19 @@
 export const resampleLogic = /* wgsl */ `
 const MAX_CONFIDENCE = 20.0;
 
-fn randomReplay(pi: PathInfo, tid: vec3u, i: i32) -> RandomReplayResult {
+fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u, i: i32) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
 
-  initializeRandoms(pi.seed);
+  // explained in segment/integrators/firstVertexSeed.md
+  initializeRandoms(firstVertexSeed);
   var rayContribution: f32;
   var ray = getCameraRay(tid, idx, &rayContribution);
 
-  // // the initial camera ray should be the same of the pixel we are shading,
-  // // to make sure we'll always hit the same surface point x1, and avoid
-  // // running the risk of one of the random replays to get a camera ray that lands
-  // // on an x1 with an invalid gbuffer
-  // initializeRandoms(originalSeed);
-  // var rayContribution: f32;
-  // var ray = getCameraRay(tid, idx, &rayContribution);
-
-  // // then we'll use the path-info seed number, and also have to remember to
-  // // skip the camera randoms
-  // // read segments/integrators/doc1.png to understand why this is necessary
-  // initializeRandoms(vec3u(pi.seed));
-  // getRand2D(); getRand2D();
+  // then we'll use the path-info seed number, and also have to remember to
+  // skip the camera randoms
+  // read segments/integrators/doc1.png to understand why this is necessary
+  initializeRandoms(pi.seed);
+  getRand2D(); getRand2D();
   if (camera.catsEyeBokehEnabled > 0) {
     // *********** ERROR ************
     // *********** ERROR ************
@@ -95,7 +88,7 @@ fn generalizedBalanceHeuristic(
     if (XjCandidate.domain.x < 0) { continue; }
 
     // shift Y into Xj's pixel
-    let randomReplayResult = randomReplay(Y, vec3u(XjCandidate.domain), i);
+    let randomReplayResult = randomReplay(Y, XjCandidate.Y.firstVertexSeed, vec3u(XjCandidate.domain), i);
     if (randomReplayResult.valid > 0) {
       // shift Y -> Xj and evaluate jacobian
       var Xj = Y;
@@ -130,7 +123,7 @@ fn SpatialResample(
     // In this case, it's important because for next spatial iterations
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the domain value
-    PathInfo(vec3f(0.0), 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
     vec3i(domain), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
   );
 
@@ -138,6 +131,8 @@ fn SpatialResample(
   if (temporalResample) {
     M = config.RESTIR_TEMP_CANDIDATES;
   }
+
+  let canonicalFirstVertexSeed = candidates[0].Y.firstVertexSeed;
 
   for (var i: i32 = 0; i < M; i++) {
     /*
@@ -154,7 +149,7 @@ fn SpatialResample(
       continue;
     }
 
-    let randomReplayResult = randomReplay(Xi.Y, domain, i);
+    let randomReplayResult = randomReplay(Xi.Y, canonicalFirstVertexSeed, domain, i);
     // remember that the random-replay will end up creating a new path-info
     // that computed internally a different jacobian compared to the jacobian
     // that is saved in the original path Xi.Y. This is the real difference between
@@ -185,6 +180,9 @@ fn SpatialResample(
 
   if (r.isNull <= 0.0) {
     r.Wy = 1 / length(r.Y.F) * r.wSum;
+    // we want to make sure that new samples don't alter
+    // the first vertex seed, explanation in firstVertexSeed.md
+    r.Y.firstVertexSeed = canonicalFirstVertexSeed;
   }
 
   r.c = clamp(r.c, 1.0, MAX_CONFIDENCE);

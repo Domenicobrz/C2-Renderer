@@ -17,6 +17,7 @@ import type { C2Scene } from '$lib/createScene';
 import { Orbit } from '$lib/controls/Orbit';
 import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
+import { Dielectric } from '$lib/materials/dielectric';
 
 export async function ReSTIRTestScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -76,7 +77,13 @@ export async function ReSTIRTestScene(): Promise<C2Scene> {
   // mesh.position.set(0, -2, 0);
 
   // let mat = new Diffuse({ color: new Color(1, 1, 1) });
-  let mat = new TorranceSparrow({ color: new Color(1, 1, 1), roughness: 0.05, anisotropy: 0 });
+  // let mat = new TorranceSparrow({ color: new Color(1, 1, 1), roughness: 0.05, anisotropy: 0 });
+  let mat = new Dielectric({
+    absorption: new Color(0, 0, 0),
+    roughness: 0.05,
+    anisotropy: 0,
+    eta: 1.6
+  });
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
 

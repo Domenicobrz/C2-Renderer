@@ -11,6 +11,7 @@ fn neePathConstruction(
   lastBrdfMis: ptr<function, f32>, 
   lobeIndex: u32,
   isRough: bool,
+  materialData: array<f32, MATERIAL_DATA_ELEMENTS>,
   N: vec3f,
   tid: vec3u,
 ) {
@@ -23,7 +24,7 @@ fn neePathConstruction(
   if ((*psi).reconnectionVertexIndex == -1) {
     var mi = lightDirectionSample.mis;
     let pHat = lightSampleRadiance * (1.0 / lightDirectionSample.pdf) * *throughput * 
-               lightDirectionSample.brdf * max(dot(N, lightDirectionSample.dir), 0.0);
+               lightDirectionSample.brdf * cosTerm(N, lightDirectionSample.dir, materialData[0]);
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
 
@@ -42,6 +43,7 @@ fn neePathConstruction(
       let pathInfo = PathInfo(
         pHat * mi,
         pi.seed,
+        pi.seed,
         u32(debugInfo.bounce + 1),
         setPathFlags(lobeIndex, 1, 0, 1), // set flags to "path ends by NEE" and "reconnects"
         u32(debugInfo.bounce + 1),        // reconnects at xk, which is the light vertex
@@ -59,6 +61,7 @@ fn neePathConstruction(
       // non reconnectible path, we'll do pure Random-replay
       let pathInfo = PathInfo(
         pHat * mi,
+        pi.seed,
         pi.seed,
         u32(debugInfo.bounce + 1),
         // set flags to "path ends by NEE" and "doesn't reconnect"
@@ -83,7 +86,7 @@ fn neePathConstruction(
   if (psi.reconnectionVertexIndex == debugInfo.bounce) {
     var mi = lightDirectionSample.mis;
     let pHat = lightSampleRadiance * (1.0 / lightDirectionSample.pdf) * *throughput * 
-               lightDirectionSample.brdf * max(dot(N, lightDirectionSample.dir), 0.0);
+               lightDirectionSample.brdf * cosTerm(N, lightDirectionSample.dir, materialData[0]);
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
 
@@ -118,7 +121,7 @@ fn neePathConstruction(
   ) {
     var mi = lightDirectionSample.mis;
     let lsThroughput = (lightDirectionSample.brdf / lightDirectionSample.pdf) *
-      max(dot(N, lightDirectionSample.dir), 0.0);
+      cosTerm(N, lightDirectionSample.dir, materialData[0]);
     let pHat = lightSampleRadiance * lsThroughput * *throughput;
                
     let Wxi = 1.0;
@@ -158,6 +161,7 @@ fn emissiveSurfacePathConstruction(
     let pathInfo = PathInfo(
       pHat * mi,
       pi.seed,
+      pi.seed,
       u32(debugInfo.bounce),
       setPathFlags(lobeIndex, 0, 1, 0), // set flags to "path ends by NEE" and "doesn't reconnect"
       0,        
@@ -183,6 +187,7 @@ fn emissiveSurfacePathConstruction(
     // non reconnectible path, we'll do pure Random-replay
     let pathInfo = PathInfo(
       pHat * mi,
+      pi.seed,
       pi.seed,
       u32(debugInfo.bounce),
       // set flags to "path ends by BRDF" and "doesn't reconnect"

@@ -125,13 +125,13 @@ ${resampleLogic}
 
           if (dot(normal1, normal0) < 0.9) {
             candidates[i] = Reservoir(
-              PathInfo(vec3f(0.0), 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+              PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
               vec3i(-1, -1, -1), vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0),
             );
           }
         } else {
           candidates[i] = Reservoir(
-            PathInfo(vec3f(0.0), 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+            PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
             vec3i(-1, -1, -1), vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0),
           );
         }

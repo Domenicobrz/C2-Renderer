@@ -1,0 +1,212 @@
+import { Dielectric } from '$lib/materials/dielectric';
+
+export let tempDielectric = /* wgsl */ `
+
+fn getDielectricMaterialData(
+  surfaceAttributes: SurfaceAttributes, offset: u32
+) -> array<f32, MATERIAL_DATA_ELEMENTS> {
+  var data = array<f32,MATERIAL_DATA_ELEMENTS>();
+  
+  // material type
+  data[0] = materialsData[offset + 0];
+
+  // absorption 
+  data[1] = materialsData[offset + 1]; 
+  data[2] = materialsData[offset + 2]; 
+  data[3] = materialsData[offset + 3]; 
+
+  // ax, ay, assigned later in this function
+  data[4] = 0; 
+  data[5] = 0;
+
+  // roughness, anisotropy
+  var roughness = materialsData[offset + 4]; 
+  let anisotropy = materialsData[offset + 5]; 
+
+  // eta
+  data[6] = materialsData[offset + 6]; 
+
+  // bump strength
+  data[7] = materialsData[offset + 7]; 
+
+  let uvRepeat = vec2f(
+    materialsData[offset + 8],
+    materialsData[offset + 9],
+  );
+  let mapUvRepeat = vec2f(
+    materialsData[offset + 10],
+    materialsData[offset + 11],
+  );
+
+  let absorptionMapLocation = vec2i(
+    bitcast<i32>(materialsData[offset + 12]),
+    bitcast<i32>(materialsData[offset + 13]),
+  );
+  let roughnessMapLocation = vec2i(
+    bitcast<i32>(materialsData[offset + 14]),
+    bitcast<i32>(materialsData[offset + 15]),
+  );
+  let bumpMapLocation = vec2i(
+    bitcast<i32>(materialsData[offset + 16]),
+    bitcast<i32>(materialsData[offset + 17]),
+  );
+
+  if (absorptionMapLocation.x > -1) {
+    let texelColor = getTexelFromTextureArrays(
+      absorptionMapLocation, surfaceAttributes.uv, mapUvRepeat
+    ).xyz;
+
+    // absorption
+    data[1] *= texelColor.x;
+    data[2] *= texelColor.y;
+    data[3] *= texelColor.z;
+  }
+  if (roughnessMapLocation.x > -1) {
+    let roughnessTexel = getTexelFromTextureArrays(
+      roughnessMapLocation, surfaceAttributes.uv, uvRepeat
+    ).xy;
+
+    // roughness
+    roughness *= roughnessTexel.x;
+    roughness = max(roughness, ${Dielectric.MIN_INPUT_ROUGHNESS});
+  }
+
+  let axay = anisotropyRemap(roughness, anisotropy);
+  data[4] = axay.x;
+  data[5] = axay.y;
+
+  // we'll assign roughness to data[8]
+  data[8] = roughness;
+
+  return data;
+}
+
+fn evaluatePdfDielectricLobe(
+  wo: vec3f,
+  wi: vec3f,
+  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+) -> f32 {
+  let ax = materialData[4];
+  let ay = materialData[5];
+  let eta = materialData[6];
+
+  // we're assuming wo and wi are in local-space 
+  var brdfSamplePdf = Dielectric_PDF(wo, wi, eta, ax, ay);
+  return brdfSamplePdf;
+}
+
+fn evaluateDielectricBrdf(
+  wo: vec3f,
+  wi: vec3f,
+  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+) -> vec3f {
+  let color = vec3f(materialData[1], materialData[2], materialData[3]);
+  let ax = materialData[4];
+  let ay = materialData[5];
+  let eta = materialData[6];
+  let roughness = materialData[8];
+
+  // we're assuming wo and wi are in local-space 
+  var brdf = Dielectric_f(wo, wi, eta, ax, ay);
+  brdf /= dielectricMultiScatteringFactor(wo, roughness, eta);
+  
+  return brdf;
+}
+
+fn sampleDielectricBrdf(
+  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  ray: ptr<function, Ray>,
+  surfaceAttributes: SurfaceAttributes,
+  surfaceNormals: SurfaceNormals,
+) -> BrdfDirectionSample {
+  let rands = vec4f(getRand2D(), getRand2D());
+
+  var tangent = vec3f(0.0);
+  var bitangent = vec3f(0.0);
+  getTangentFromTriangle(
+    surfaceAttributes.tangent, surfaceNormals.geometric, surfaceNormals.shading, 
+    &tangent, &bitangent
+  );
+  
+  // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+  let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
+  // to transform vectors from world space to tangent space, we multiply by
+  // the inverse of the TBN
+  let TBNinverse = transpose(TBN);
+  let wo = TBNinverse * -(*ray).direction;
+  var wi = vec3f(0.0);
+
+  let ax = materialData[4];
+  let ay = materialData[5];
+  let eta = materialData[6];
+  let roughness = materialData[8];
+
+  var brdfSamplePdf = 0.0;
+  var brdf = vec3f(0.0);
+  Dielectric_Sample_f(wo, eta, ax, ay, rands, &wi, &brdfSamplePdf, &brdf);
+  let msCompensation = dielectricMultiScatteringFactor(wo, roughness, eta);
+  brdf /= msCompensation;
+  
+  let lightSamplePdf = getLightPDF(Ray((*ray).origin, normalize(TBN * wi)));
+  let misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
+  let newDirection = normalize(TBN * wi);
+
+  return BrdfDirectionSample(
+    brdf,
+    brdfSamplePdf,
+    misWeight,
+    newDirection,
+  );
+}
+
+fn sampleDielectricLight(
+  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  ray: ptr<function, Ray>,
+  surfaceAttributes: SurfaceAttributes,
+  surfaceNormals: SurfaceNormals,
+) -> LightDirectionSample {
+  let rands = vec4f(getRand2D(), getRand2D());
+
+  let lightSample = getLightSample(ray.origin, rands);
+  let pdf = lightSample.pdf;
+
+  var wo = -(*ray).direction;
+  var wi = lightSample.direction;
+
+  // from world-space to tangent-space
+  transformToLocalSpace(&wo, &wi, surfaceAttributes, surfaceNormals);
+
+  let ax = materialData[4];
+  let ay = materialData[5];
+  let eta = materialData[6];
+  let roughness = materialData[8];
+
+  var brdfSamplePdf = Dielectric_PDF(wo, wi, eta, ax, ay);
+
+  var brdf = Dielectric_f(wo, wi, eta, ax, ay);
+  brdf /= dielectricMultiScatteringFactor(wo, roughness, eta);
+
+  if (
+    brdfSamplePdf == 0.0 || 
+    lightSample.pdf == 0.0
+  ) {
+    return LightDirectionSample(
+      vec3f(0.0),
+      1,
+      0,
+      vec3f(0.0),
+      lightSample,
+    );
+  }
+
+  let mis = getMisWeight(lightSample.pdf, brdfSamplePdf);
+
+  return LightDirectionSample(
+    brdf,
+    pdf,
+    mis,
+    lightSample.direction,
+    lightSample
+  );
+}
+`;

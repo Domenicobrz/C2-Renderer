@@ -1,3 +1,5 @@
+import { MATERIAL_TYPE } from '$lib/materials/material';
+
 export let rrPathConstruction = /* wgsl */ `
 fn rrPathConstruction(
   // lightDirectionSample: LightDirectionSample,
@@ -59,7 +61,7 @@ fn rrPathConstruction(
       if (lightSampleSuccessful) {
         var mi = lightDirectionSample.mis;
         let pHat = lightSampleRadiance * (1.0 / lightDirectionSample.pdf) * *throughput * 
-                   lightDirectionSample.brdf * max(dot(normals.shading, lightDirectionSample.dir), 0.0);
+                   lightDirectionSample.brdf * cosTerm(normals.shading, lightDirectionSample.dir, materialData[0]);
     
         rrStepResult.valid = 1;
         rrStepResult.shouldTerminate = true;
@@ -180,7 +182,7 @@ fn rrPathConstruction(
       abs(dot(w_km1, triangle.geometricNormal)) / dot(w_vec, w_vec)
     );
     let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
-               brdf * max(dot(normals.shading, w_km1), 0.0);
+               brdf * cosTerm(normals.shading, w_km1, materialData[0]);
 
     rrStepResult.valid = 1;
     rrStepResult.shouldTerminate = true;
@@ -299,14 +301,28 @@ fn rrPathConstruction(
       return rrStepResult;
     }
 
+    // absorption check for dielectrics
+    if (materialDataXk[0] == ${MATERIAL_TYPE.DIELECTRIC}) {
+      var isInsideMedium = dot(normalsXk.shading, w_km1) > 0;
+      if (isInsideMedium) {
+        let t = length(w_vec);
+        let absorption = vec3f(
+          exp(-materialDataXk[1] * t), 
+          exp(-materialDataXk[2] * t), 
+          exp(-materialDataXk[3] * t), 
+        );
+        *throughput *= absorption;
+      }
+    }
+
     var jacobian = vec2f(
       p, 
       abs(dot(w_km1, triangle.geometricNormal)) / dot(w_vec, w_vec)
     );
   
     let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
-               brdf * brdfXk * max(dot(normals.shading, w_km1), 0.0) * 
-               max(dot(normalsXk.shading, pi.reconnectionDirection), 0.0);
+               brdf * brdfXk * cosTerm(normals.shading, w_km1, materialData[0]) * 
+               cosTerm(normalsXk.shading, pi.reconnectionDirection, materialDataXk[0]);
 
     rrStepResult.valid = 1;
     rrStepResult.shouldTerminate = true;
@@ -410,14 +426,28 @@ fn rrPathConstruction(
       return rrStepResult;
     }
 
+    // absorption check for dielectrics
+    if (materialDataXk[0] == ${MATERIAL_TYPE.DIELECTRIC}) {
+      var isInsideMedium = dot(normalsXk.shading, w_km1) > 0;
+      if (isInsideMedium) {
+        let t = length(w_vec);
+        let absorption = vec3f(
+          exp(-materialDataXk[1] * t), 
+          exp(-materialDataXk[2] * t), 
+          exp(-materialDataXk[3] * t), 
+        );
+        *throughput *= absorption;
+      }
+    }
+
     var jacobian = vec2f(
       p, 
       abs(dot(w_km1, triangle.geometricNormal)) / dot(w_vec, w_vec)
     );
   
     let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
-               brdf * brdfXk * max(dot(normals.shading, w_km1), 0.0) * 
-               max(dot(normalsXk.shading, pi.reconnectionDirection), 0.0);
+               brdf * brdfXk * cosTerm(normals.shading, w_km1, materialData[0]) * 
+               cosTerm(normalsXk.shading, pi.reconnectionDirection, materialDataXk[0]);
 
     rrStepResult.valid = 1;
     rrStepResult.shouldTerminate = true;

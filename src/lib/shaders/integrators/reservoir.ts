@@ -3,6 +3,7 @@ export const reservoirShaderPart = /* wgsl */ `
 // this struct will be saved in the reservoir
 struct PathInfo {
   F: vec3f,
+  firstVertexSeed: u32,
   seed: u32,
   bounceCount: u32,
   /* 

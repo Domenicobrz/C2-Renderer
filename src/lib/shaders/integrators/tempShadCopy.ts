@@ -1,6 +1,7 @@
 import { MATERIAL_TYPE } from '$lib/materials/material';
 import { pathConstruction } from './pathConstruction';
 import { rrPathConstruction } from './rrPathConstruction';
+import { tempDielectric } from './tempDielectric';
 import { tempDiffuse2 } from './tempDiffuse2';
 import { tempEmissive2 } from './tempEmissive2';
 import { tempTorranceSparrow } from './tempTorranceSparrow';
@@ -31,6 +32,7 @@ struct LightDirectionSample {
 ${tempDiffuse2}
 ${tempEmissive2}
 ${tempTorranceSparrow}
+${tempDielectric}
 ${pathConstruction}
 ${rrPathConstruction}
 
@@ -53,6 +55,10 @@ fn evaluateLobePdf(
 
   if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
     return evaluatePdfTSLobe(wo, wi, materialData);
+  }
+
+  if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
+    return evaluatePdfDielectricLobe(wo, wi, materialData);
   }
 
   return 0.0;
@@ -79,6 +85,10 @@ fn evaluateBrdf(
     return evaluateTSBrdf(wo, wi, materialData);
   }
 
+  if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
+    return evaluateDielectricBrdf(wo, wi, materialData);
+  }
+
   return vec3f(0);
 }
 
@@ -102,6 +112,10 @@ fn sampleBrdf(
     return sampleTSBrdf(materialData, ray, surfaceAttributes, surfaceNormals);
   }
 
+  if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
+    return sampleDielectricBrdf(materialData, ray, surfaceAttributes, surfaceNormals);
+  }
+
   return BrdfDirectionSample(vec3f(0), 0, 0, vec3f(0));
 }
 
@@ -123,6 +137,10 @@ fn sampleLight(
 
   if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
     return sampleTSLight(materialData, ray, surfaceAttributes, surfaceNormals);
+  }
+
+  if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
+    return sampleDielectricLight(materialData, ray, surfaceAttributes, surfaceNormals);
   }
 
   return LightDirectionSample(vec3f(0), 0, 0, vec3f(0), LightSample());
@@ -189,6 +207,10 @@ fn evaluateMaterialAtSurfacePoint(
     return getTSMaterialData(surfaceAttributes, materialOffset);
   }
 
+  if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
+    return getDielectricMaterialData(surfaceAttributes, materialOffset);
+  }
+
   return array<f32,MATERIAL_DATA_ELEMENTS>();
 }
 
@@ -215,6 +237,7 @@ fn getNormalsAtPoint(
   isBackfacing: ptr<function, bool>,
 ) -> SurfaceNormals {
   *isBackfacing = false;
+  let materialType = materialData[0];
   
   let geometricNormal = triangle.geometricNormal;
   var vertexNormal = surfaceAttributes.normal;
@@ -222,11 +245,12 @@ fn getNormalsAtPoint(
   // black edges on meshes displaying strong smooth-shading via vertex normals
   if (dot(geometricNormal, (*ray).direction) > 0) {
     *isBackfacing = true;
-    vertexNormal = -vertexNormal;
+
+    if (materialType != ${MATERIAL_TYPE.DIELECTRIC}) {
+      vertexNormal = -vertexNormal;
+    }
   }
   var normals = SurfaceNormals(geometricNormal, vertexNormal, vertexNormal);
-
-  let materialType = materialData[0];
 
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
     let bumpMapLocation = vec2i(
@@ -278,6 +302,13 @@ fn getNormalsAtPoint(
   return normals;
 }
 
+fn cosTerm(norm: vec3f, dir: vec3f, materialType: f32) -> f32 {
+  if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
+    return abs(dot(norm, dir));
+  }
+  return max(dot(norm, dir), 0.0);
+}
+
 fn shade(
   ires: BVHIntersectionResult, 
   ray: ptr<function, Ray>,
@@ -319,6 +350,14 @@ fn shade(
     isRough = min(ax, ay) > 0.15;
     lobeIndex = 3;
   }
+  if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
+    let ax = materialData[4];
+    let ay = materialData[5];
+    isRough = min(ax, ay) > 0.15;
+    lobeIndex = 4;
+  }
+
+  let gBufferDepth = length((*ray).origin - ires.hitPoint);
 
   // TODO:
   // v v v v v  this whole thing stinks and I don't understand it anymore, refactor it v v v v v
@@ -333,9 +372,29 @@ fn shade(
       (*ray).origin += normals.vertex * bumpOffset;
     }
   }
-  
+
   var emissive = getEmissive(materialData, isBackFacing);
-  // let absorption = getAbsorption(materialData);
+
+  // absorption check for dielectrics
+  if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
+    var isInsideMedium = dot(normals.shading, (*ray).direction) > 0;
+        
+    // beer-lambert absorption 
+    if (isInsideMedium) {
+      let absorption = vec3f(
+        exp(-materialData[1] * ires.t), 
+        exp(-materialData[2] * ires.t), 
+        exp(-materialData[3] * ires.t), 
+      );
+
+      *throughput *= absorption;
+      // already found reconnection vertex previously
+      if ((*psi).reconnectionVertexIndex != -1 && (*psi).reconnectionVertexIndex < debugInfo.bounce) {
+        // brdf-ray post fix throughput
+        psi.postfixThroughput *= absorption;
+      }
+    }
+  }
 
   // !!!! careful !!!!
   // !!!! careful !!!!
@@ -346,7 +405,7 @@ fn shade(
 
   if (!isRandomReplay) {
     if (debugInfo.bounce == 0) {
-      (*reservoir).Gbuffer = vec4f(normals.shading, length((*ray).origin - ires.hitPoint));
+      (*reservoir).Gbuffer = vec4f(normals.shading, gBufferDepth);
     }
 
     setReconnectionVertex(brdfSample, ires, pi, psi, u32(lobeIndex), isRough, tid);
@@ -360,7 +419,7 @@ fn shade(
       if (lightSampleSuccessful) {
         neePathConstruction( 
           lightSample, brdfSample, ires,  ray, reservoir, throughput, 
-          pi, psi, lastBrdfMis, u32(lobeIndex), isRough, normals.shading, tid
+          pi, psi, lastBrdfMis, u32(lobeIndex), isRough, materialData, normals.shading, tid
         );
       }
     }
@@ -410,7 +469,9 @@ fn shade(
   (*ray).direction = brdfSample.dir;
 
   *lastBrdfMis = brdfSample.mis;
-  let t = brdfSample.brdf * (/* mis weight */ 1.0 / brdfSample.pdf) * max(dot(normals.shading, brdfSample.dir), 0.0);
+  var t = brdfSample.brdf * (/* mis weight */ 1.0 / brdfSample.pdf);
+  t *= cosTerm(normals.shading, brdfSample.dir, materialType);
+
   *throughput *= t;
 
   // already found reconnection vertex previously

@@ -119,6 +119,10 @@ fn isSegmentTooShortForReconnection(segment: vec3f) -> bool {
   // return true;
 }
 
+fn pathEndsInEnvmap(pi: PathInfo) -> bool {
+  return ((pi.flags >> 2) & 1) == 1;
+}
+
 fn pathIsLightSampled(pi: PathInfo) -> bool {
   return (pi.flags & 1) > 0;
 }
@@ -151,10 +155,13 @@ fn pathReconnectsOneVertextBeforeLight(pi: PathInfo) -> bool {
   return pathReconnects(pi) && pi.bounceCount == (pi.reconnectionBounce+1);
 }
 
-fn setPathFlags(lobeIndex: u32, lightSampled: u32, brdfSampled: u32, reconnects: u32) -> u32 {
+fn setPathFlags(
+  lobeIndex: u32, lightSampled: u32, brdfSampled: u32, endsInEnvmap: u32, reconnects: u32
+) -> u32 {
   var pathFlags: u32 = 0;
-  pathFlags |= (brdfSampled << 1);
   pathFlags |= (lightSampled << 0);
+  pathFlags |= (brdfSampled << 1);
+  pathFlags |= (endsInEnvmap << 2);
   pathFlags |= (reconnects << 3);
   pathFlags |= (lobeIndex << 16);
   return pathFlags;

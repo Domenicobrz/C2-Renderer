@@ -32,13 +32,23 @@ fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u, i: i32) -> Rando
   var pathInfoCopy = pi;
   for (var i = 0; i < config.BOUNCES_COUNT; i++) {
     if (rayContribution == 0.0) { break; }
-
+    
     debugInfo.bounce = i;
 
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
       let rrStepResult = shade(ires, &ray, &unusedReservoir, &throughput, &pathInfoCopy, &pathSampleInfo, &lastBrdfMis, true, tid, i);
+
+      if (rrStepResult.shouldTerminate) {
+        return rrStepResult;
+      }
+    } else {
+      // we bounced off into the envmap
+      let envmapRad = getEnvmapRadiance(ray.direction);
+      let rrStepResult = rrEnvmapPathConstruction( 
+        &pathInfoCopy, &lastBrdfMis, &throughput, envmapRad,
+      );
 
       if (rrStepResult.shouldTerminate) {
         return rrStepResult;

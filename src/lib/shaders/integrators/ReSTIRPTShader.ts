@@ -95,9 +95,7 @@ ${resampleLogic}
 
   initializeRandoms2(tid);
 
-  let INITIAL_CANDIDATES_COUNT = 10;
-
-  for (var ic = 0; ic < INITIAL_CANDIDATES_COUNT; ic++) {
+  for (var ic = 0; ic < config.RESTIR_INITIAL_CANDIDATES; ic++) {
     // if Path info will be accepted, it will also take this seed and save it in the reservoir
     let seed = hashPixelAndSeed(tid.xy, u32(haltonSamples[ic].x * f32(1099087573)));
     let firstVertexSeed = seed;
@@ -126,13 +124,14 @@ ${resampleLogic}
           ires, &ray, &reservoir, &throughput, &pi, &pathSampleInfo, 
           &lastBrdfMis, false, tid, i
         );
-      } 
-      // else if (shaderConfig.HAS_ENVMAP) {
-      //   // we bounced off into the envmap
-      //   let envmapRad = getEnvmapRadiance(ray.direction);
-      //   rad += reflectance * envmapRad;
-      //   break;
-      // }
+      } else if (shaderConfig.HAS_ENVMAP) {
+        // we bounced off into the envmap
+        let envmapRad = getEnvmapRadiance(ray.direction);
+        envmapPathConstruction(
+          &reservoir, &throughput, &pi, &pathSampleInfo, &lastBrdfMis, envmapRad,
+        );
+        break;
+      }
   
       // if (reflectance.x == 0.0 && reflectance.y == 0.0 && reflectance.z == 0.0) {
       //   break;
@@ -143,7 +142,7 @@ ${resampleLogic}
   // I think it would be better to multiply every wi
   // instead of doing this to avoid me forgetting this thing
   // when I'll eventually implement temporal reuse
-  reservoir.wSum /= f32(INITIAL_CANDIDATES_COUNT);
+  reservoir.wSum /= f32(config.RESTIR_INITIAL_CANDIDATES);
   reservoir.c = 1.0;
 
   if (reservoir.isNull <= 0.0) {

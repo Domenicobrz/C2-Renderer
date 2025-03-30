@@ -54,8 +54,8 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
 
   // *************** compute & render segments ****************
   const tileSequence = new TileSequence();
-  // computeSegment = new ComputeSegment(tileSequence);
-  computeSegment = new ReSTIRPTSegment();
+  computeSegment = new ComputeSegment(tileSequence);
+  // computeSegment = new ReSTIRPTSegment();
 
   centralStatusMessage.set('creating scene');
   // passed down to both compute and render segment
@@ -65,7 +65,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   centralStatusMessage.set('processing bvh and materials');
   await tick(); // will give us the chance of showing the message above
   await computeSegment.updateScene(scene);
-  computeSegment.setDebugPixelTarget(466, 367);
+  computeSegment.setDebugPixelTarget(291, 301);
   renderSegment = new RenderSegment(context, presentationFormat);
   renderSegment.updateScene(scene);
 

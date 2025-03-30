@@ -39,6 +39,7 @@ export type ConfigOptions = {
   ENVMAP_ROTY: number;
   ENVMAP_USE_COMPENSATED_DISTRIBUTION: boolean;
   shaderConfig: ShaderConfig;
+  RESTIR_INITIAL_CANDIDATES: number;
   RESTIR_SR_CANDIDATES: number;
   RESTIR_TEMP_CANDIDATES: number;
 };
@@ -47,7 +48,7 @@ class ConfigManager {
   public options: ConfigOptions;
   public prevOptions: ConfigOptions;
   public e: EventHandler;
-  public bufferSize = 24;
+  public bufferSize = 28;
 
   constructor() {
     this.options = get(configOptions);
@@ -72,6 +73,7 @@ class ConfigManager {
       this.options.SAMPLER_DECORRELATION,
       this.options.USE_POWER_HEURISTIC,
       this.options.BOUNCES_COUNT,
+      this.options.RESTIR_INITIAL_CANDIDATES,
       this.options.RESTIR_SR_CANDIDATES,
       this.options.RESTIR_TEMP_CANDIDATES
     ]);
@@ -95,6 +97,7 @@ class ConfigManager {
       SAMPLER_DECORRELATION: u32,
       USE_POWER_HEURISTIC: u32,
       BOUNCES_COUNT: i32,
+      RESTIR_INITIAL_CANDIDATES: i32,
       RESTIR_SR_CANDIDATES: i32,
       RESTIR_TEMP_CANDIDATES: i32,
     }

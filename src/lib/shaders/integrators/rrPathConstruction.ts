@@ -1,6 +1,30 @@
 import { MATERIAL_TYPE } from '$lib/materials/material';
 
 export let rrPathConstruction = /* wgsl */ `
+fn rrEnvmapPathConstruction(
+  pi: ptr<function, PathInfo>,
+  lastBrdfMis: ptr<function, f32>, 
+  throughput: ptr<function, vec3f>, 
+  emissive: vec3f,
+) -> RandomReplayResult {
+  var rrStepResult = RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
+
+  if (pathDoesNotReconnect(*pi)) {
+    if (pathIsBrdfSampled(*pi) && u32(debugInfo.bounce) == pi.bounceCount) {
+      let mi = *lastBrdfMis; // will be 1 in this case
+      let pHat = emissive * *throughput; // throughput will be 1 in this case
+
+      rrStepResult.valid = 1;
+      rrStepResult.shouldTerminate = true;
+      rrStepResult.jacobian = vec2f(1.0);
+      rrStepResult.pHat = pHat * mi;
+      return rrStepResult;
+    }
+  }
+
+  return rrStepResult;
+}
+
 fn rrPathConstruction(
   // lightDirectionSample: LightDirectionSample,
   // brdfDirectionSample: BrdfDirectionSample,
@@ -34,8 +58,9 @@ fn rrPathConstruction(
     return rrStepResult;
   }
 
-  // invertibility check
-  if (isCurrentVertexConnectible && pathDoesNotReconnect(*pi)) {
+  // invertibility check, only if not envmap path since unfortunately with envmaps
+  // we could have a reconnection vertex and decided not to use it
+  if (isCurrentVertexConnectible && pathDoesNotReconnect(*pi) && !pathEndsInEnvmap(*pi)) {
     rrStepResult.valid = 0;
     rrStepResult.shouldTerminate = true;
     return rrStepResult;

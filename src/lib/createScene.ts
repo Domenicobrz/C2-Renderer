@@ -8,6 +8,7 @@ import { cornellSphereScene } from './scenes/cornellSphere';
 import { envmapHorseScene } from './scenes/envmapHorse';
 import { envmapSphereScene } from './scenes/envmapSphere';
 import { furnaceTestScene } from './scenes/furnaceTest';
+import { ReSTIREnvmapScene } from './scenes/ReSTIRenvmap';
 import { ReSTIRTestScene } from './scenes/ReSTIRtest';
 import { ReSTIRTest2Scene } from './scenes/ReSTIRtest2';
 
@@ -23,7 +24,8 @@ export async function createScene(): Promise<C2Scene> {
   // return c2Features2Scene();
   // return envmapSphereScene();
   // return cornellSphereScene();
-  return ReSTIRTestScene();
+  // return ReSTIRTestScene();
+  return ReSTIREnvmapScene();
   // return ReSTIRTest2Scene();
   // return c2FeaturesScene();
   // return envmapHorseScene();

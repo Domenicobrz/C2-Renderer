@@ -58,6 +58,13 @@ fn rrPathConstruction(
     return rrStepResult;
   }
 
+  // invertibility check
+  if (!isCurrentVertexConnectible && pathReconnects(*pi) && u32(debugInfo.bounce) == pi.reconnectionBounce) {
+    rrStepResult.valid = 0;
+    rrStepResult.shouldTerminate = true;
+    return rrStepResult;
+  }
+
   // invertibility check, only if not envmap path since unfortunately with envmaps
   // we could have a reconnection vertex and decided not to use it
   if (isCurrentVertexConnectible && pathDoesNotReconnect(*pi) && !pathEndsInEnvmap(*pi)) {

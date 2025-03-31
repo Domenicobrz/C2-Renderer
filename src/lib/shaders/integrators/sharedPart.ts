@@ -114,6 +114,7 @@ fn isSegmentTooShortForReconnection(segment: vec3f) -> bool {
   // return length(segment) < 0.05;
   return length(segment) < 0.15;
   // return length(segment) < 0.5;
+  // return length(segment) < 0.85;
   // return length(segment) < 2.5;
   // return false;
   // return true;

@@ -1,7 +1,7 @@
 export const resampleLogic = /* wgsl */ `
 const MAX_CONFIDENCE = 5.0;
 
-fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u, i: i32) -> RandomReplayResult {
+fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
 
   // explained in segment/integrators/firstVertexSeed.md
@@ -60,6 +60,83 @@ fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u, i: i32) -> Rando
   return RandomReplayResult(0, vec3f(0), true, vec2f(0.0));
 }
 
+fn generalizedBalanceHeuristicPairwiseMIS_Canonical(
+  X: PathInfo, Y: PathInfo, Xconfidence: f32, idx: i32, candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>
+) -> f32 {
+  var M = config.RESTIR_SR_CANDIDATES;
+  if (temporalResample) {
+    M = config.RESTIR_TEMP_CANDIDATES;
+  }
+
+  var cTot = 0.0;
+  for (var i = 0; i < M; i++) {
+    let XjCandidate = candidates[i];
+    if (XjCandidate.domain.x < 0) { continue; }
+    cTot += XjCandidate.c;
+  }
+  let cC = candidates[0].c;
+  var mC = cC / cTot;
+
+  let canonicalFirstVertexSeed = candidates[0].Y.firstVertexSeed;
+  let pHatC = randomReplay(Y, canonicalFirstVertexSeed, vec3u(candidates[0].domain)).pHat;
+
+  var numerator = cC * length(pHatC);
+
+  for (var i = 0; i < M; i++) {
+    if (i == 0) { continue; } // skip canonical
+
+    let XjCandidate = candidates[i];
+
+    if (XjCandidate.domain.x < 0) { continue; }
+
+    var denominator = numerator;
+
+    // shift Y into Xj's pixel
+    let randomReplayResult = randomReplay(Y, XjCandidate.Y.firstVertexSeed, vec3u(XjCandidate.domain));
+    if (randomReplayResult.valid > 0) {
+      // shift Y -> Xj and evaluate jacobian
+      var Xj = Y; // copy path info
+      Xj.F = randomReplayResult.pHat;
+      Xj.jacobian = randomReplayResult.jacobian;
+
+      // since we're doing y->xj,  the xj terms appear on top of the fraction
+      let J = (Xj.jacobian.x / Y.jacobian.x) * abs(Xj.jacobian.y / Y.jacobian.y);
+
+      denominator += (cTot - cC) * length(Xj.F) * J;
+    }
+    
+    mC += (XjCandidate.c / cTot) * (numerator / denominator);
+  }
+
+  return mC;
+}
+
+fn generalizedBalanceHeuristicPairwiseMIS_NonCanonical(
+  X: PathInfo, Y: PathInfo, Xconfidence: f32, idx: i32, candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>
+) -> f32 {
+  var M = config.RESTIR_SR_CANDIDATES;
+  if (temporalResample) {
+    M = config.RESTIR_TEMP_CANDIDATES;
+  }
+
+  var cTot = 0.0;
+  for (var i = 0; i < M; i++) {
+    let XjCandidate = candidates[i];
+    if (XjCandidate.domain.x < 0) { continue; }
+    cTot += XjCandidate.c;
+  }
+  
+  let cC = candidates[0].c;
+  let J = (Y.jacobian.x / X.jacobian.x) * abs(Y.jacobian.y / X.jacobian.y);
+  var numerator = (cTot - cC) * length(X.F) / J;
+
+  let canonicalFirstVertexSeed = candidates[0].Y.firstVertexSeed;
+  let pHatC = randomReplay(Y, canonicalFirstVertexSeed, vec3u(candidates[0].domain)).pHat;
+  var denominator = numerator + cC * length(pHatC);
+
+  return (Xconfidence / cTot) * (numerator / denominator); 
+}
+
 fn generalizedBalanceHeuristic(
   X: PathInfo, Y: PathInfo, Xconfidence: f32, idx: i32, candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>
 ) -> f32 {
@@ -98,7 +175,7 @@ fn generalizedBalanceHeuristic(
     if (XjCandidate.domain.x < 0) { continue; }
 
     // shift Y into Xj's pixel
-    let randomReplayResult = randomReplay(Y, XjCandidate.Y.firstVertexSeed, vec3u(XjCandidate.domain), i);
+    let randomReplayResult = randomReplay(Y, XjCandidate.Y.firstVertexSeed, vec3u(XjCandidate.domain));
     if (randomReplayResult.valid > 0) {
       // shift Y -> Xj and evaluate jacobian
       var Xj = Y;
@@ -159,7 +236,7 @@ fn SpatialResample(
       continue;
     }
 
-    let randomReplayResult = randomReplay(Xi.Y, canonicalFirstVertexSeed, domain, i);
+    let randomReplayResult = randomReplay(Xi.Y, canonicalFirstVertexSeed, domain);
     // remember that the random-replay will end up creating a new path-info
     // that computed internally a different jacobian compared to the jacobian
     // that is saved in the original path Xi.Y. This is the real difference between
@@ -176,7 +253,18 @@ fn SpatialResample(
     var wi = 0.0;
 
     if (randomReplayResult.valid > 0) {
-      var mi = generalizedBalanceHeuristic(X, Y, confidence, i, candidates);
+      var mi = 0.0;
+      if (i == 0) {
+        mi = generalizedBalanceHeuristicPairwiseMIS_Canonical(X, Y, confidence, i, candidates);
+      } else {
+        mi = generalizedBalanceHeuristicPairwiseMIS_NonCanonical(X, Y, confidence, i, candidates);
+      }
+      
+      // var mi = generalizedBalanceHeuristic(X, Y, confidence, i, candidates);
+      
+      // another option, biased, also it should consider how many actual samples we have
+      // var mi = 1.0 / 3.0;
+      
       wi = mi * length(Y.F) * Wxi;
     }
 

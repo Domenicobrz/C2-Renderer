@@ -31,27 +31,35 @@ fn neePathConstruction(
     let w_vec = lightPointSample.hitPoint - ires.hitPoint;
 
     // since we're creating the reconnection vertex here, we also have to check the distance condition
-    let isTooShort = isSegmentTooShortForReconnection(w_vec);
+    var isTooShort = isSegmentTooShortForReconnection(w_vec);
     let isEnvmap = lightPointSample.isEnvmap;
-    let isConnectible = !isTooShort && isRough && !isEnvmap; 
+    if (isEnvmap) {
+      isTooShort = false;
+    }
+
+    let isConnectible = !isTooShort && isRough; 
 
     if (isConnectible) {
       let w_km1 = normalize(w_vec);
       let probability_of_sampling_lobe = 1.0;
       let p = lightDirectionSample.pdf * probability_of_sampling_lobe;
-      let jacobian = vec2f(p, abs(dot(w_km1, lightPointSample.geometricNormal)) / dot(w_vec, w_vec));
+      var jacobian = vec2f(p, abs(dot(w_km1, lightPointSample.geometricNormal)) / dot(w_vec, w_vec));
   
+      if (isEnvmap) {
+        jacobian.y = 1.0;  // explanation on envmapJacobian.md
+      }
+
       let pathInfo = PathInfo(
         pHat * mi,
         pi.seed,
         pi.seed,
         u32(debugInfo.bounce + 1),
-        setPathFlags(lobeIndex, 1, 0, 0, 1), // set flags to "path ends by NEE" and "reconnects"
+        setPathFlags(lobeIndex, 1, 0, u32(select(0, 1, isEnvmap)), 1), // set flags to "path ends by NEE" and "reconnects"
         u32(debugInfo.bounce + 1),        // reconnects at xk, which is the light vertex
         lightPointSample.triangleIndex, 
         lightPointSample.barycentrics, 
         lightPointSample.radiance, 
-        vec3f(0),
+        lightDirectionSample.dir,  // used in rrPathConstruction when hitting envmaps
         jacobian,
         vec2i(i32(lobeIndex), 2)
       );
@@ -92,53 +100,29 @@ fn neePathConstruction(
     let wi = mi * length(pHat) * Wxi;
 
     let isEnvmap = lightPointSample.isEnvmap;
-    let isConnectible = !isEnvmap;
 
-    if (isConnectible) {
-      let w_vec = psi.prevVertexPosition - ires.hitPoint;
-      let w_km1 = normalize(w_vec);
-      let probability_of_sampling_lobe = 1.0;
-      let p = (lightDirectionSample.pdf * probability_of_sampling_lobe) * 
-              ((*psi).lobePdfPrevVertex * (*psi).brdfPdfPrevVertex);
-      let jacobian = vec2f(p, abs(dot(w_km1, ires.triangle.geometricNormal)) / dot(w_vec, w_vec));
+    let w_vec = psi.prevVertexPosition - ires.hitPoint;
+    let w_km1 = normalize(w_vec);
+    let probability_of_sampling_lobe = 1.0;
+    let p = (lightDirectionSample.pdf * probability_of_sampling_lobe) * 
+            ((*psi).lobePdfPrevVertex * (*psi).brdfPdfPrevVertex);
+    let jacobian = vec2f(p, abs(dot(w_km1, ires.triangle.geometricNormal)) / dot(w_vec, w_vec));
   
-      // the reason why we're saving a copy is explained in shaders/integrators/doc2.md
-      var piCopy = *pi;
-      piCopy.F = pHat * mi;
-      piCopy.bounceCount = u32(debugInfo.bounce + 1);
-      // v v v v v v v saved in another function v v v v v v v 
-      // pi.reconnectionBounce = u32(debugInfo.bounce); // reconnects at xk, xk+1 is the light vertex
-      // pi.reconnectionTriangleIndex = ires.triangleIndex; 
-      // pi.reconnectionBarycentrics = ires.barycentrics; 
-      piCopy.flags = setPathFlags(lobeIndex, 1, 0, 0, 1); // set flags to "path ends by NEE" and "reconnects"
-      piCopy.reconnectionRadiance = lightPointSample.radiance; 
-      piCopy.reconnectionDirection = lightDirectionSample.dir;
-      piCopy.jacobian = jacobian;
-      
-      // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
-      updateReservoir(reservoir, piCopy, wi);
-    } else {
-      // pure RR path
-      // non reconnectible path, we'll do pure Random-replay
-      let pathInfo = PathInfo(
-        pHat * mi,
-        pi.seed,
-        pi.seed,
-        u32(debugInfo.bounce + 1),
-        // set flags to "path ends by NEE" and "doesn't reconnect"
-        setPathFlags(lobeIndex, 1, 0, u32(select(0,1,isEnvmap)), 0), 
-        0,        
-        -1, 
-        vec2f(0), 
-        vec3f(0), 
-        vec3f(0),
-        vec2f(1.0),
-        vec2i(-1, -1) 
-      );
+    // the reason why we're saving a copy is explained in shaders/integrators/doc2.md
+    var piCopy = *pi;
+    piCopy.F = pHat * mi;
+    piCopy.bounceCount = u32(debugInfo.bounce + 1);
+    // v v v v v v v saved in another function v v v v v v v 
+    // pi.reconnectionBounce = u32(debugInfo.bounce); // reconnects at xk, xk+1 is the light vertex
+    // pi.reconnectionTriangleIndex = ires.triangleIndex; 
+    // pi.reconnectionBarycentrics = ires.barycentrics; 
+    piCopy.flags = setPathFlags(lobeIndex, 1, 0, u32(select(0, 1, isEnvmap)), 1); // set flags to "path ends by NEE" and "reconnects"
+    piCopy.reconnectionRadiance = lightPointSample.radiance; 
+    piCopy.reconnectionDirection = lightDirectionSample.dir;
+    piCopy.jacobian = jacobian;
     
-      // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
-      updateReservoir(reservoir, pathInfo, wi);
-    }
+    // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
+    updateReservoir(reservoir, piCopy, wi);
   }
 
   // if we have already found a reconnection vertex previously
@@ -281,12 +265,13 @@ fn emissiveSurfacePathConstruction(
     var mi = *lastBrdfMis;
     let pHat = emissive * *throughput;
 
-    let w_vec = psi.prevVertexPosition - ires.hitPoint;
-    let w_km1 = normalize(w_vec);
-
     var piCopy = *pi;
     // the jacobian has already been calculated in the previous vertex, we don't need to add to it here.
     // the previous bounce handled the rest
+    // *****ERROR***** here I'm setting a lobeIndex that is overwriting what should be stored in the path's flags
+    // *****ERROR***** here I'm setting a lobeIndex that is overwriting what should be stored in the path's flags
+    // *****ERROR***** here I'm setting a lobeIndex that is overwriting what should be stored in the path's flags
+    // *****ERROR***** here I'm setting a lobeIndex that is overwriting what should be stored in the path's flags
     piCopy.flags = setPathFlags(lobeIndex, 0, 1, 0, 1);
     piCopy.F = pHat * mi;
     piCopy.bounceCount = u32(debugInfo.bounce);
@@ -328,29 +313,9 @@ fn envmapPathConstruction(
   lastBrdfMis: ptr<function, f32>, 
   emissive: vec3f,
 ) {
-  // if we have already found a reconnection vertex, at least 2 bounces away from this light source
-  if (
-    (*psi).reconnectionVertexIndex != -1 && 
-    (*psi).reconnectionVertexIndex < (debugInfo.bounce - 1) 
-  ) {
-    var mi = *lastBrdfMis;
-    let pHat = emissive * *throughput;
-    let Wxi = 1.0;
-    let wi = mi * length(pHat) * Wxi;
-      
-    var piCopy = *pi;
-    piCopy.F = pHat * mi;
-    piCopy.bounceCount = u32(debugInfo.bounce);
-    // for this type of path ending, we have to multiply the reconnectionRadiance by mi
-    piCopy.reconnectionRadiance = psi.postfixThroughput * emissive * mi;
-
-    // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
-    updateReservoir(reservoir, piCopy, wi);
-  } else {
-    // pure RR path for all the other cases.
-    // since setReconnectionVertex might have set the path as reconnecting, 
-    // but we can't handle certain types of reconnections for envmap paths,
-    // we'll set the path as non reconnectible
+  // if we haven't found a reconnection vertex, (we'll also assume we can't use the escaped path  
+  // as a reconnection vertex) then save a pure RR path   
+  if ((*psi).reconnectionVertexIndex == -1) {
     let mi = *lastBrdfMis; // will be 1 in this case
     let pHat = emissive * *throughput; // throughput will be 1 in this case
     let wi = mi * length(pHat);
@@ -375,6 +340,52 @@ fn envmapPathConstruction(
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
     updateReservoir(reservoir, pathInfo, wi);
   }
+
+  // if the previous vertex is the reconnection vertex
+  if (
+    (*psi).reconnectionVertexIndex != -1 &&
+    (*psi).reconnectionVertexIndex == (debugInfo.bounce-1)
+  ) {
+    var mi = *lastBrdfMis;
+    let pHat = emissive * *throughput;
+
+    var piCopy = *pi;
+    // I can't set all the flags here since I would overwrite the rec. vertex lobeIndex
+    // I don't think this flag is necessary though since we're not checking for it
+    // in rrPathConstruction for the "one before light" reconnection case   
+    piCopy.flags = setEndsInEnvmapFlag(piCopy.flags, true);
+    piCopy.F = pHat * mi;
+    piCopy.bounceCount = u32(debugInfo.bounce);
+    piCopy.reconnectionRadiance = emissive;
+    // the jacobian has already been calculated in the previous vertex, we don't need to add to it here.
+    // the previous bounce handled the rest
+
+    let Wxi = 1.0;
+    let wi = mi * length(pHat) * Wxi;
+
+    // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
+    updateReservoir(reservoir, piCopy, wi);
+  }
+
+  // if we have already found a reconnection vertex, at least 2 bounces away from this light source
+  if (
+    (*psi).reconnectionVertexIndex != -1 && 
+    (*psi).reconnectionVertexIndex < (debugInfo.bounce - 1) 
+  ) {
+    var mi = *lastBrdfMis;
+    let pHat = emissive * *throughput;
+    let Wxi = 1.0;
+    let wi = mi * length(pHat) * Wxi;
+      
+    var piCopy = *pi;
+    piCopy.F = pHat * mi;
+    piCopy.bounceCount = u32(debugInfo.bounce);
+    // for this type of path ending, we have to multiply the reconnectionRadiance by mi
+    piCopy.reconnectionRadiance = psi.postfixThroughput * emissive * mi;
+
+    // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
+    updateReservoir(reservoir, piCopy, wi);
+  } 
 }
 
 fn setReconnectionVertex(

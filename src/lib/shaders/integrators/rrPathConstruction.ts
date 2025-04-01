@@ -10,7 +10,7 @@ fn rrEnvmapPathConstruction(
   var rrStepResult = RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
 
   if (pathDoesNotReconnect(*pi)) {
-    if (pathIsBrdfSampled(*pi) && u32(debugInfo.bounce) == pi.bounceCount) {
+    if (pathIsBrdfSampled(*pi) && pathEndsInEnvmap(*pi) && u32(debugInfo.bounce) == pi.bounceCount) {
       let mi = *lastBrdfMis; // will be 1 in this case
       let pHat = emissive * *throughput; // throughput will be 1 in this case
 
@@ -65,9 +65,8 @@ fn rrPathConstruction(
     return rrStepResult;
   }
 
-  // invertibility check, only if not envmap path since unfortunately with envmaps
-  // we could have a reconnection vertex and decided not to use it
-  if (isCurrentVertexConnectible && pathDoesNotReconnect(*pi) && !pathEndsInEnvmap(*pi)) {
+  // invertibility check
+  if (isCurrentVertexConnectible && pathDoesNotReconnect(*pi)) {
     rrStepResult.valid = 0;
     rrStepResult.shouldTerminate = true;
     return rrStepResult;
@@ -124,16 +123,32 @@ fn rrPathConstruction(
     pathReconnectsAtLightVertex(*pi) && 
     pi.reconnectionBounce == u32(debugInfo.bounce+1)
   ) {
-    let triangle = triangles[pi.reconnectionTriangleIndex];
-    let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
+    let wasEnvmap = pathEndsInEnvmap(*pi);
 
-    // at the start of the function, we were trying to test if the current vertex was a reconnection
-    // vertex, with the chance of it breaking invertibility. Now, we're considering the NEXT vertex
-    // as the potential reconnection vertex, so we need to re-test for connectibility here. We'll
-    // assume that the next vertex is rough enough and that it has the correct reconnection lobe,
-    // because we know that Xk = Yk
-    let w_vec = nextVertexPosition - ires.hitPoint;
-    let isTooShort = isSegmentTooShortForReconnection(w_vec);
+    var w_vec = vec3f(0.0);
+    var w_km1 = vec3f(0.0);
+    var lsGeometricNormal = vec3f(0.0);
+    var isTooShort = false;
+
+    if (!wasEnvmap) {
+      let triangle = triangles[pi.reconnectionTriangleIndex];
+      let nextVertexPosition = sampleTrianglePoint(triangle, pi.reconnectionBarycentrics).point;
+  
+      // at the start of the function, we were trying to test if the current vertex was a reconnection
+      // vertex, with the chance of it breaking invertibility. Now, we're considering the NEXT vertex
+      // as the potential reconnection vertex, so we need to re-test for connectibility here. We'll
+      // assume that the next vertex is rough enough and that it has the correct reconnection lobe,
+      // because we know that Xk = Yk
+      w_vec = nextVertexPosition - ires.hitPoint;
+      w_km1 = normalize(w_vec);
+      lsGeometricNormal = triangle.geometricNormal;
+      isTooShort = isSegmentTooShortForReconnection(w_vec);
+    } else {
+      w_km1 = (*pi).reconnectionDirection;
+      lsGeometricNormal = -w_km1;
+      isTooShort = false;
+    }
+
     // next vertex lobe will necessarily be identical since we're reconnecting to the same
     // xk, however for the previous vertex, xk-1, which is this vertex, we have to make this check
     let hasDifferentLobes = i32(lobeIndex) != pi.reconnectionLobes.x;
@@ -149,7 +164,7 @@ fn rrPathConstruction(
       return rrStepResult;
     }
 
-    let dir = normalize(nextVertexPosition - ires.hitPoint);
+    let dir = w_km1;
     let visibilityRay = Ray(ires.hitPoint + dir * 0.0001, dir);
 
     // TODO: we're doing a bvh traversal here that is probably unnecessary
@@ -157,19 +172,27 @@ fn rrPathConstruction(
     // TODO: we're doing a bvh traversal here that is probably unnecessary,
     //       can we use only the call to getLightPdf to make our checks?
     let visibilityRes = bvhIntersect(visibilityRay);
-    // in this case, we have to check wether the light source is backfacing, since it's the next vertex
-    let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
-    if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
-      // shift failed, should terminate
-      rrStepResult.valid = 0;
-      rrStepResult.shouldTerminate = true;
-      return rrStepResult;
+    
+    if (!wasEnvmap) {
+      // in this case, we have to check wether the light source is backfacing, since it's the next vertex
+      let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
+      if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
+        // shift failed, should terminate
+        rrStepResult.valid = 0;
+        rrStepResult.shouldTerminate = true;
+        return rrStepResult;
+      }
+    } else {
+      if (visibilityRes.hit) {
+        // shift failed, we should have hit an envmap instead
+        rrStepResult.valid = 0;
+        rrStepResult.shouldTerminate = true;
+        return rrStepResult;
+      }
     }
-
+    
     // reconnection is successful
-    let w_km1 = normalize(w_vec);
     let probability_of_sampling_lobe = 1.0;
-
 
     var wo = -(*ray).direction;
     var wi = w_km1;
@@ -211,8 +234,13 @@ fn rrPathConstruction(
 
     var jacobian = vec2f(
       p, 
-      abs(dot(w_km1, triangle.geometricNormal)) / dot(w_vec, w_vec)
+      abs(dot(w_km1, lsGeometricNormal)) / dot(w_vec, w_vec)
     );
+
+    if (wasEnvmap) {
+      jacobian.y = 1.0;  // explanation on envmapJacobian.md
+    }
+
     let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
                brdf * cosTerm(normals.shading, w_km1, materialData[0]);
 

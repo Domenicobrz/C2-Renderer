@@ -132,9 +132,10 @@ fn pathIsBrdfSampled(pi: PathInfo) -> bool {
   return (pi.flags & 2) > 0;
 }
 
-fn pathHasLobeIndex(pi: PathInfo, lobeIndex: u32) -> bool {
-  return (pi.flags >> 16) == lobeIndex;
-}
+// not currently being used
+// fn pathHasLobeIndex(pi: PathInfo, lobeIndex: u32) -> bool {
+//   return (pi.flags >> 16) == lobeIndex;
+// }
 
 fn pathReconnects(pi: PathInfo) -> bool {
   return ((pi.flags >> 3) & 1) == 1;
@@ -156,13 +157,27 @@ fn pathReconnectsOneVertextBeforeLight(pi: PathInfo) -> bool {
   return pathReconnects(pi) && pi.bounceCount == (pi.reconnectionBounce+1);
 }
 
+const endsInEnvmapBitPosition: u32 = 2u;
+fn setEndsInEnvmapFlag(existingFlags: u32, shouldEndInEnvmap: bool) -> u32 {
+  const endsInEnvmapMask: u32 = (1u << endsInEnvmapBitPosition); // 0x00000004
+
+  var modifiedFlags: u32 = existingFlags;
+  if (shouldEndInEnvmap) {
+    modifiedFlags = modifiedFlags | endsInEnvmapMask;
+  } else {
+    modifiedFlags = modifiedFlags & (~endsInEnvmapMask);
+  }
+
+  return modifiedFlags;
+}
+
 fn setPathFlags(
   lobeIndex: u32, lightSampled: u32, brdfSampled: u32, endsInEnvmap: u32, reconnects: u32
 ) -> u32 {
   var pathFlags: u32 = 0;
   pathFlags |= (lightSampled << 0);
   pathFlags |= (brdfSampled << 1);
-  pathFlags |= (endsInEnvmap << 2);
+  pathFlags |= (endsInEnvmap << endsInEnvmapBitPosition);
   pathFlags |= (reconnects << 3);
   pathFlags |= (lobeIndex << 16);
   return pathFlags;

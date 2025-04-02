@@ -78,7 +78,10 @@ fn generalizedBalanceHeuristicPairwiseMIS_Canonical(
   var mC = cC / cTot;
 
   let canonicalFirstVertexSeed = candidates[0].Y.firstVertexSeed;
-  let pHatC = randomReplay(Y, canonicalFirstVertexSeed, vec3u(candidates[0].domain)).pHat;
+  
+  // I realized that the two lines below are equivalent, even when using 3+ spatial-resampling taps
+  // let pHatC = randomReplay(Y, canonicalFirstVertexSeed, vec3u(candidates[0].domain)).pHat; // <- from ReSTIR Guide
+  let pHatC = X.F;
 
   var numerator = cC * length(pHatC);
 
@@ -131,7 +134,11 @@ fn generalizedBalanceHeuristicPairwiseMIS_NonCanonical(
   var numerator = (cTot - cC) * length(X.F) / J;
 
   let canonicalFirstVertexSeed = candidates[0].Y.firstVertexSeed;
-  let pHatC = randomReplay(Y, canonicalFirstVertexSeed, vec3u(candidates[0].domain)).pHat;
+  
+  // I realized that the two lines below are equivalent, even when using 3+ spatial-resampling taps
+  // let pHatC = randomReplay(Y, canonicalFirstVertexSeed, vec3u(candidates[0].domain)).pHat; <- from ReSTIR Guide
+  let pHatC = Y.F;
+  
   var denominator = numerator + cC * length(pHatC);
 
   return (Xconfidence / cTot) * (numerator / denominator); 
@@ -221,6 +228,13 @@ fn SpatialResample(
 
   let canonicalFirstVertexSeed = candidates[0].Y.firstVertexSeed;
 
+  var activeCandidates = 0.0;
+  for (var i: i32 = 0; i < M; i++) {
+    if (candidates[i].isNull <= 0) {
+      activeCandidates += 1.0;
+    }
+  }
+
   for (var i: i32 = 0; i < M; i++) {
     /*
       since the very first candidate is this pixel's reservoir,
@@ -262,8 +276,8 @@ fn SpatialResample(
       
       // var mi = generalizedBalanceHeuristic(X, Y, confidence, i, candidates);
       
-      // another option, biased, also it should consider how many actual samples we have
-      // var mi = 1.0 / 3.0;
+      // another option, biased
+      // var mi = 1.0 / activeCandidates;
       
       wi = mi * length(Y.F) * Wxi;
     }

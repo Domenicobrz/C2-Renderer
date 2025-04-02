@@ -26,7 +26,7 @@ fn rrEnvmapPathConstruction(
 }
 
 fn rrPathConstruction(
-  // lightDirectionSample: LightDirectionSample,
+  lightDirectionSample: LightDirectionSample,
   // brdfDirectionSample: BrdfDirectionSample,
   surfaceAttributes: SurfaceAttributes,
   normals: SurfaceNormals,
@@ -85,7 +85,7 @@ fn rrPathConstruction(
       return rrStepResult;
     }
     if (pathIsLightSampled(*pi) && u32(debugInfo.bounce + 1) == pi.bounceCount) {
-      let lightDirectionSample = sampleLight(materialData, ray, surfaceAttributes, normals);
+      // let lightDirectionSample = sampleLight(materialData, ray, surfaceAttributes, normals);
       let lightSampleRadiance = lightDirectionSample.ls.radiance;
       let lightSampleSuccessful = dot(lightSampleRadiance, lightSampleRadiance) > 0.0;
       

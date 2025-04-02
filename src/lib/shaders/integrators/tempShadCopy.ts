@@ -402,6 +402,25 @@ fn shade(
   // otherwise we can't properly do the RandomReplay
 
   let brdfSample = sampleBrdf(materialData, ray, surfaceAttributes, normals);
+  var lightSample = LightDirectionSample(vec3f(0), 0, 0, vec3f(0), LightSample());
+  let pathIsPureRRThatEndsWithLightSampleNow = pathDoesNotReconnect(*pi) && pathIsLightSampled(*pi) && u32(debugInfo.bounce + 1) == pi.bounceCount;
+  if (
+    !isRandomReplay || 
+    (isRandomReplay && pathIsPureRRThatEndsWithLightSampleNow)
+  ) {
+    // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
+    if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
+      lightSample = sampleLight(materialData, ray, surfaceAttributes, normals);
+    }
+  } else if (isRandomReplay && !pathIsPureRRThatEndsWithLightSampleNow) {
+    // skip sampleLight(...) randoms
+    // unless this path is a pure random replay path that is supposed to end with a light sample
+    // exactly at this bounce. in that case we'll create the light sample above and we don't have to
+    // skip randoms
+    if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
+      let rands = vec4f(getRand2D(), getRand2D());
+    }
+  }
 
   if (!isRandomReplay) {
     if (debugInfo.bounce == 0) {
@@ -410,9 +429,7 @@ fn shade(
 
     setReconnectionVertex(brdfSample, ires, pi, psi, u32(lobeIndex), isRough, tid);
 
-    // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
     if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
-      let lightSample = sampleLight(materialData, ray, surfaceAttributes, normals);
       let lightSampleRadiance = lightSample.ls.radiance;
       let lightSampleSuccessful = dot(lightSampleRadiance, lightSampleRadiance) > 0.0;
       
@@ -434,17 +451,8 @@ fn shade(
   }
 
   if (isRandomReplay) {
-    // skip sampleLight(...) randoms...
-    if (
-      debugInfo.bounce < config.BOUNCES_COUNT - 1 &&
-      // ...unless this path is a pure random replay path that is supposed to end with a light sample
-      // exactly at this bounce. inside rrPathConstruction we'll create the light sample
-      !(pathDoesNotReconnect(*pi) && pathIsLightSampled(*pi) && u32(debugInfo.bounce + 1) == pi.bounceCount)
-    ) {
-      let rands = vec4f(getRand2D(), getRand2D());
-    }
-
     let rrResult = rrPathConstruction(
+      lightSample,
       surfaceAttributes,
       normals,
       materialData,

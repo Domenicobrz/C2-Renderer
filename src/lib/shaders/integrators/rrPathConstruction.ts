@@ -354,7 +354,7 @@ fn rrPathConstruction(
         mi = getMisWeight(lightPdfXk, brdfPdfXk);
       }
     } else if (case3) {
-      var mi = 1.0; // no mis weights since this part of the path is brdf-only
+      mi = 1.0; // no mis weights since this part of the path is brdf-only
       p *= brdfPdfXk * probability_of_sampling_lobe;
     }
 

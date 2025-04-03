@@ -204,7 +204,7 @@ fn generalizedBalanceHeuristic(
   return numerator / denominator;
 }
 
-fn SpatialResample(
+fn Resample(
   candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>, 
   domain: vec3u
 ) -> Reservoir {
@@ -277,7 +277,7 @@ fn SpatialResample(
       // var mi = generalizedBalanceHeuristic(X, Y, confidence, i, candidates);
       
       // another option, biased
-      // var mi = 1.0 / activeCandidates;
+      var mi = 1.0 / activeCandidates;
       
       wi = mi * length(Y.F) * Wxi;
     }

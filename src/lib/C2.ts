@@ -54,8 +54,8 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
 
   // *************** compute & render segments ****************
   const tileSequence = new TileSequence();
-  computeSegment = new ComputeSegment(tileSequence);
-  // computeSegment = new ReSTIRPTSegment();
+  // computeSegment = new ComputeSegment(tileSequence);
+  computeSegment = new ReSTIRPTSegment();
 
   centralStatusMessage.set('creating scene');
   // passed down to both compute and render segment

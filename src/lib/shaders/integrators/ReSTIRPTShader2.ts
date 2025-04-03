@@ -245,7 +245,7 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
   }
 
   if (isTemporalPass || isSpatialPass) {
-    outputReservoir = SpatialResample(candidates, domain);
+    outputReservoir = Resample(candidates, domain);
   }
 
   if (!isSpatialPass) {

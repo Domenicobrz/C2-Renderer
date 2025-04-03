@@ -3,8 +3,9 @@ import { reservoirShaderPart } from './integrators/reservoir';
 export const reservoirToRadShader = /* wgsl */ `
 @group(0) @binding(0) var<storage> reservoirBuffer1: array<Reservoir>;
 @group(0) @binding(1) var<storage, read_write> reservoirBuffer2: array<Reservoir>;
-@group(0) @binding(2) var<storage, read_write> radianceInput: array<vec3f>;
-@group(0) @binding(3) var<uniform> canvasSize: vec2u;
+@group(0) @binding(2) var<storage, read_write> samplesCount: array<u32>;
+@group(0) @binding(3) var<storage, read_write> radianceInput: array<vec3f>;
+@group(0) @binding(4) var<uniform> canvasSize: vec2u;
 
 ${reservoirShaderPart}
 
@@ -23,5 +24,6 @@ ${reservoirShaderPart}
   reservoirBuffer2[idx] = reservoir;
 
   radianceInput[idx] += reservoir.rad;
+  samplesCount[idx] += 1;
 }
 `;

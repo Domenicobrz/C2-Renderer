@@ -74,11 +74,10 @@ struct DebugInfo {
   tid: vec3u,
   isSelectedPixel: bool,
   bounce: i32,
-  sample: u32,
   debugLogIndex: u32,
 } 
 // https://www.w3.org/TR/WGSL/#address-spaces-private
-var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0, 0);
+var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0);
 fn debugLog(value: f32) {
   if (debugInfo.isSelectedPixel) {
     debugBuffer[debugInfo.debugLogIndex] = value;

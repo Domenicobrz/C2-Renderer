@@ -22,7 +22,13 @@ export class ReservoirToRadianceSegment {
 
     const pipelineLayout = device.createPipelineLayout({
       bindGroupLayouts: [
-        getComputeBindGroupLayout(device, ['read-only-storage', 'storage', 'storage', 'uniform'])
+        getComputeBindGroupLayout(device, [
+          'read-only-storage',
+          'storage',
+          'storage',
+          'storage',
+          'uniform'
+        ])
       ]
     });
 
@@ -40,6 +46,7 @@ export class ReservoirToRadianceSegment {
     reservoirBuffer1: GPUBuffer,
     reservoirBuffer2: GPUBuffer,
     radianceBuffer: GPUBuffer,
+    samplesCountBuffer: GPUBuffer,
     canvasSizeBuffer: GPUBuffer
   ) {
     // we need to re-create the bindgroup since workBuffer
@@ -49,8 +56,9 @@ export class ReservoirToRadianceSegment {
       entries: [
         { binding: 0, resource: { buffer: reservoirBuffer1, size: reservoirBuffer1.size } },
         { binding: 1, resource: { buffer: reservoirBuffer2, size: reservoirBuffer2.size } },
-        { binding: 2, resource: { buffer: radianceBuffer, size: radianceBuffer.size } },
-        { binding: 3, resource: { buffer: canvasSizeBuffer } }
+        { binding: 2, resource: { buffer: samplesCountBuffer, size: samplesCountBuffer.size } },
+        { binding: 3, resource: { buffer: radianceBuffer, size: radianceBuffer.size } },
+        { binding: 4, resource: { buffer: canvasSizeBuffer } }
       ]
     });
   }

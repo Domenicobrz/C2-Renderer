@@ -117,6 +117,7 @@ export const configOptions = createConfigStore({
   RESTIR_SR_CANDIDATES: 6, // the paper recommends 6
   RESTIR_TEMP_CANDIDATES: 2,
   ENVMAP_USE_COMPENSATED_DISTRIBUTION: false,
+  USE_TEMPORAL_RESAMPLE: 0,
   shaderConfig: {
     HAS_ENVMAP: false
   }

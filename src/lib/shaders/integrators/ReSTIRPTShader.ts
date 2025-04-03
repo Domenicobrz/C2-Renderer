@@ -7,9 +7,8 @@ export function getReSTIRPTShader(lutManager: LUTManager) {
 
   ${getReSTIRPTSharedPart(lutManager)}
 
-// @group(0) @binding(0) var<storage, read_write> radianceOutput: array<vec3f>;
-@group(0) @binding(0) var<storage, read_write> restirPassOutput: array<Reservoir>;
-@group(0) @binding(1) var<storage, read_write> samplesCount: array<u32>;
+@group(0) @binding(0) var<storage, read_write> restirPassInput: array<Reservoir>;
+@group(0) @binding(1) var<storage, read_write> restirPassOutput: array<Reservoir>;
 @group(0) @binding(2) var<uniform> canvasSize: vec2u;
 
 // on a separate bind group since camera changes more often than data/canvasSize
@@ -75,17 +74,18 @@ ${resampleLogic}
   if (debugPixelTarget.x == tid.x && debugPixelTarget.y == tid.y) {
     debugInfo.isSelectedPixel = true;
   }
-  debugInfo.sample = samplesCount[idx];
 
-  let domain = vec3u(tid.xy, debugInfo.sample);
+  let domain = vec3u(tid.xy, 0);
 
-  var prevReservoir = restirPassOutput[idx];
-  if (debugInfo.sample == 0) {
-    prevReservoir = Reservoir(
-      PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-      vec3i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
-    );
-  }
+  var prevReservoir = restirPassInput[idx];
+  // no idea if commenting this will cause issues with temporal resampling. Maybe it's better
+  // to have a uniform that tells us which sample we're on
+  // if (debugInfo.sample == 0) {
+  //   prevReservoir = Reservoir(
+  //     PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
+  //     vec3i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+  //   );
+  // }
 
   var reservoir = Reservoir(
                         // seed will be set inside the loop
@@ -170,8 +170,7 @@ ${resampleLogic}
   //   radianceOutput[idx] += rad * rayContribution;
   // }
 
-  restirPassOutput[idx] = reservoir;
-  samplesCount[idx] += 1;
+  restirPassInput[idx] = reservoir;
 }
 `;
 }

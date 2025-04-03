@@ -18,9 +18,8 @@ import { BlueNoiseSampler } from '$lib/samplers/BlueNoise';
 import { once } from '$lib/utils/once';
 import { loadTexture } from '$lib/webgpu-utils/getTexture';
 import { CustomR2Sampler } from '$lib/samplers/CustomR2';
-import { getReSTIRPTShader } from '$lib/shaders/integrators/ReSTIRPTShader';
-import { getReSTIRPTSRShader } from '$lib/shaders/integrators/ReSTIRPTSRShader';
 import { ReservoirToRadianceSegment } from '../reservoirToRadSegment';
+import { getReSTIRPTShader2 } from '$lib/shaders/integrators/ReSTIRPTShader2';
 
 export class ReSTIRPTSegment {
   public passPerformance: ComputePassPerformance;
@@ -28,7 +27,6 @@ export class ReSTIRPTSegment {
   // private fields
   private device: GPUDevice;
   private pipeline: GPUComputePipeline | null = null;
-  private srPipeline: GPUComputePipeline | null = null;
   private bindGroupLayouts: GPUBindGroupLayout[];
   private layout: GPUPipelineLayout;
   private configManager = configManager;
@@ -37,18 +35,18 @@ export class ReSTIRPTSegment {
 
   private textureArraySegment: TextureArraysSegment = new TextureArraysSegment();
 
-  private bindGroup0: GPUBindGroup | null = null;
-  private bindGroup1: GPUBindGroup | null = null;
+  private bindGroup0: GPUBindGroup[] = [];
+  private bindGroup1: GPUBindGroup[] = [];
   private bindGroup2: GPUBindGroup | null = null;
   private bindGroup3: GPUBindGroup | null = null;
-  private srBindGroup0: GPUBindGroup[] = [];
-  private srBindGroup1: GPUBindGroup[] = [];
 
   private SPATIAL_REUSE_PASSES = 3; // 3, as recommended in the paper / DQLin's repo
 
   private canvasSize: Vector2 | null = null;
   private canvasSizeUniformBuffer: GPUBuffer;
-  private srPassUniformBuffer: GPUBuffer[] = [];
+  private finalPassUniformBuffer: GPUBuffer[] = [];
+  private passIdxUniformBuffer: GPUBuffer[] = [];
+  private sampleIdxUniformBuffer: GPUBuffer[] = [];
   private sequenceUniformBuffer: GPUBuffer;
   private sequenceUniformBufferOld: GPUBuffer;
   private oldRandomsArray: Float32Array = new Float32Array();
@@ -67,6 +65,7 @@ export class ReSTIRPTSegment {
   private restirPassBuffer1!: GPUBuffer;
   private restirPassBuffer2!: GPUBuffer;
   private workBuffer!: GPUBuffer;
+  private samplesCountBuffer!: GPUBuffer;
 
   private trianglesBuffer: GPUBuffer | undefined;
   private materialsBuffer: GPUBuffer | undefined;
@@ -106,6 +105,8 @@ export class ReSTIRPTSegment {
     this.bindGroupLayouts = [
       getComputeBindGroupLayout(device, ['storage', 'storage', 'uniform']),
       getComputeBindGroupLayout(device, [
+        'uniform',
+        'uniform',
         'uniform',
         'uniform',
         'uniform',
@@ -163,8 +164,22 @@ export class ReSTIRPTSegment {
           usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         })
       );
+    }
 
-      this.srPassUniformBuffer.push(
+    for (let i = 0; i < this.SPATIAL_REUSE_PASSES + 1; i++) {
+      this.finalPassUniformBuffer.push(
+        device.createBuffer({
+          size: 1 * 4,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        })
+      );
+      this.passIdxUniformBuffer.push(
+        device.createBuffer({
+          size: 1 * 4,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        })
+      );
+      this.sampleIdxUniformBuffer.push(
         device.createBuffer({
           size: 1 * 4,
           usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
@@ -363,22 +378,8 @@ export class ReSTIRPTSegment {
     this.camera.e.addEventListener('change', this.onUpdateCamera.bind(this));
     this.onUpdateCamera();
 
-    this.bindGroup1 = this.device.createBindGroup({
-      label: 'compute bindgroup - camera struct',
-      layout: this.bindGroupLayouts[1],
-      entries: [
-        { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
-        { binding: 1, resource: { buffer: this.sequenceUniformBuffer } },
-        { binding: 2, resource: { buffer: this.sequenceUniformBufferOld } },
-        { binding: 3, resource: { buffer: this.randomsUniformBuffer } },
-        { binding: 4, resource: { buffer: this.configUniformBuffer } },
-        // v v v v v UNUSED IN THE COMPUTE PASS, ONLY IN SR PASS v v v v v v
-        // we're keeping it to avoid the creation of separate pipeline layouts for the two passes
-        { binding: 5, resource: { buffer: this.srPassUniformBuffer[0] } }
-      ]
-    });
-
-    this.updateSrBindGroup1();
+    // updated every frame to update sample index count
+    // this.updateBindGroup1();
 
     const bvh = new BVH(scene);
     this.bvh = bvh;
@@ -505,17 +506,54 @@ export class ReSTIRPTSegment {
     });
   }
 
-  updateSrBindGroup1() {
+  updateBindGroup1() {
+    this.bindGroup1 = [];
+
+    this.device.queue.writeBuffer(this.finalPassUniformBuffer[0], 0, new Uint32Array([0]));
+    this.device.queue.writeBuffer(this.passIdxUniformBuffer[0], 0, new Uint32Array([0]));
+    this.device.queue.writeBuffer(
+      this.sampleIdxUniformBuffer[0],
+      0,
+      new Uint32Array([samplesInfo.count])
+    );
+    this.bindGroup1.push(
+      this.device.createBindGroup({
+        label: 'compute bindgroup - camera struct',
+        layout: this.bindGroupLayouts[1],
+        entries: [
+          { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
+          { binding: 1, resource: { buffer: this.sequenceUniformBuffer } },
+          { binding: 2, resource: { buffer: this.sequenceUniformBufferOld } },
+          { binding: 3, resource: { buffer: this.randomsUniformBuffer } },
+          { binding: 4, resource: { buffer: this.configUniformBuffer } },
+          { binding: 5, resource: { buffer: this.finalPassUniformBuffer[0] } },
+          { binding: 6, resource: { buffer: this.passIdxUniformBuffer[0] } },
+          { binding: 7, resource: { buffer: this.sampleIdxUniformBuffer[0] } }
+        ]
+      })
+    );
+
     for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
       const isFinalPass = i == this.SPATIAL_REUSE_PASSES - 1;
+      const passIdx = i + 1;
 
       this.device.queue.writeBuffer(
-        this.srPassUniformBuffer[i],
+        this.sampleIdxUniformBuffer[i + 1],
+        0,
+        new Uint32Array([samplesInfo.count])
+      );
+      this.device.queue.writeBuffer(
+        this.finalPassUniformBuffer[i + 1],
         0,
         new Uint32Array([isFinalPass ? 1 : 0])
       );
+      this.device.queue.writeBuffer(
+        this.passIdxUniformBuffer[i + 1],
+        0,
+        new Uint32Array([passIdx])
+      );
 
-      this.srBindGroup1.push(
+      this.bindGroup1.push(
         this.device.createBindGroup({
           label: 'compute bindgroup - camera struct',
           layout: this.bindGroupLayouts[1],
@@ -525,7 +563,9 @@ export class ReSTIRPTSegment {
             { binding: 2, resource: { buffer: this.sequenceUniformBufferOld } },
             { binding: 3, resource: { buffer: this.srRandomsUniformBuffer[i] } },
             { binding: 4, resource: { buffer: this.configUniformBuffer } },
-            { binding: 5, resource: { buffer: this.srPassUniformBuffer[i] } }
+            { binding: 5, resource: { buffer: this.finalPassUniformBuffer[i + 1] } },
+            { binding: 6, resource: { buffer: this.passIdxUniformBuffer[i + 1] } },
+            { binding: 7, resource: { buffer: this.sampleIdxUniformBuffer[i + 1] } }
           ]
         })
       );
@@ -543,6 +583,7 @@ export class ReSTIRPTSegment {
 
   resize(canvasSize: Vector2, workBuffer: GPUBuffer, samplesCountBuffer: GPUBuffer) {
     this.workBuffer = workBuffer;
+    this.samplesCountBuffer = samplesCountBuffer;
     this.resetSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
 
     this.resetSamplesAndTile();
@@ -572,24 +613,31 @@ export class ReSTIRPTSegment {
     this.device.queue.writeBuffer(this.restirPassBuffer1, 0, restirPassInput);
     this.device.queue.writeBuffer(this.restirPassBuffer2, 0, restirPassInput);
 
-    this.bindGroup0 = this.device.createBindGroup({
-      label: 'compute bindgroup',
-      layout: this.bindGroupLayouts[0],
-      entries: [
-        // ************* important note ****************
-        // it's not necessary to use anything else other than this.restirPassBuffer1 here because
-        // even if the final result is saved in restirPassBuffer2, reservoirToRadSegment will copy
-        // the result into restirPassBuffer1 before we start the next iteration
-        { binding: 0, resource: { buffer: this.restirPassBuffer1 } },
-        { binding: 1, resource: { buffer: samplesCountBuffer } },
-        { binding: 2, resource: { buffer: this.canvasSizeUniformBuffer } }
-      ]
-    });
+    this.updateBindGroup0();
+  }
+
+  updateBindGroup0() {
+    this.bindGroup0 = [];
+    this.bindGroup0.push(
+      this.device.createBindGroup({
+        label: 'compute bindgroup',
+        layout: this.bindGroupLayouts[0],
+        entries: [
+          // ************* important note ****************
+          // it's not necessary to use anything else other than this.restirPassBuffer1 here because
+          // even if the final result is saved in restirPassBuffer2, reservoirToRadSegment will copy
+          // the result into restirPassBuffer1 before we start the next iteration
+          { binding: 0, resource: { buffer: this.restirPassBuffer1 } },
+          { binding: 1, resource: { buffer: this.restirPassBuffer2 } },
+          { binding: 2, resource: { buffer: this.canvasSizeUniformBuffer } }
+        ]
+      })
+    );
 
     for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
       // we need to re-create the bindgroup since workBuffer
       // is a new buffer
-      this.srBindGroup0.push(
+      this.bindGroup0.push(
         this.device.createBindGroup({
           label: 'spatial reuse bindgroup 0',
           layout: this.bindGroupLayouts[0],
@@ -652,7 +700,7 @@ export class ReSTIRPTSegment {
   createPipeline() {
     const computeModule = this.device.createShaderModule({
       label: 'ReSTIR PT module',
-      code: getReSTIRPTShader(this.lutManager)
+      code: getReSTIRPTShader2(this.lutManager)
     });
 
     this.pipeline = this.device.createComputePipeline({
@@ -660,20 +708,6 @@ export class ReSTIRPTSegment {
       layout: this.layout,
       compute: {
         module: computeModule,
-        entryPoint: 'compute'
-      }
-    });
-
-    const srComputeModule = this.device.createShaderModule({
-      label: 'ReSTIR PT-SR module',
-      code: getReSTIRPTSRShader(this.lutManager)
-    });
-
-    this.srPipeline = this.device.createComputePipeline({
-      label: 'ReSTIR PT-SR pipeline',
-      layout: this.layout,
-      compute: {
-        module: srComputeModule,
         entryPoint: 'compute'
       }
     });
@@ -687,7 +721,6 @@ export class ReSTIRPTSegment {
 
     if (
       !this.pipeline ||
-      !this.srPipeline ||
       !this.bindGroup0 ||
       !this.bindGroup1 ||
       !this.bindGroup2 ||
@@ -711,6 +744,9 @@ export class ReSTIRPTSegment {
 
     this.updateRandomsBuffer();
 
+    // updated every frame to update sample index count
+    this.updateBindGroup1();
+
     // work group size in the shader is set to 8,8
     const workGroupsCount = new Vector2(
       Math.ceil(this.canvasSize.x / 8),
@@ -719,16 +755,16 @@ export class ReSTIRPTSegment {
 
     // Encode commands to do the computation
     const encoder = this.device.createCommandEncoder({
-      label: 'compute encoder'
+      label: 'ReSTIR encoder'
     });
     const passDescriptor = {
-      label: 'compute pass'
+      label: 'initial pass'
     };
     this.passPerformance.updateComputePassDescriptor(passDescriptor);
     const pass = encoder.beginComputePass(passDescriptor);
     pass.setPipeline(this.pipeline);
-    pass.setBindGroup(0, this.bindGroup0);
-    pass.setBindGroup(1, this.bindGroup1);
+    pass.setBindGroup(0, this.bindGroup0[0]);
+    pass.setBindGroup(1, this.bindGroup1[0]);
     pass.setBindGroup(2, this.bindGroup2);
     pass.setBindGroup(3, this.bindGroup3);
     pass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
@@ -739,9 +775,9 @@ export class ReSTIRPTSegment {
         label: `spatial-reuse pass i: ${i}`
       };
       const srPass = encoder.beginComputePass(srPassDescriptor);
-      srPass.setPipeline(this.srPipeline);
-      srPass.setBindGroup(0, this.srBindGroup0[i]);
-      srPass.setBindGroup(1, this.srBindGroup1[i]);
+      srPass.setPipeline(this.pipeline);
+      srPass.setBindGroup(0, this.bindGroup0[i + 1]);
+      srPass.setBindGroup(1, this.bindGroup1[i + 1]);
       srPass.setBindGroup(2, this.bindGroup2);
       srPass.setBindGroup(3, this.bindGroup3);
       srPass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
@@ -754,6 +790,7 @@ export class ReSTIRPTSegment {
       this.SPATIAL_REUSE_PASSES % 2 == 0 ? this.restirPassBuffer1 : this.restirPassBuffer2,
       this.SPATIAL_REUSE_PASSES % 2 == 0 ? this.restirPassBuffer2 : this.restirPassBuffer1,
       this.workBuffer,
+      this.samplesCountBuffer,
       this.canvasSizeUniformBuffer
     );
     this.reservoirToRadSegment.addPass(encoder, this.canvasSize);

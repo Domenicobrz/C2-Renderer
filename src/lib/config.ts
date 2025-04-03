@@ -42,13 +42,14 @@ export type ConfigOptions = {
   RESTIR_INITIAL_CANDIDATES: number;
   RESTIR_SR_CANDIDATES: number;
   RESTIR_TEMP_CANDIDATES: number;
+  USE_TEMPORAL_RESAMPLE: 0 | 1;
 };
 
 class ConfigManager {
   public options: ConfigOptions;
   public prevOptions: ConfigOptions;
   public e: EventHandler;
-  public bufferSize = 28;
+  public bufferSize = 32;
 
   constructor() {
     this.options = get(configOptions);
@@ -75,7 +76,8 @@ class ConfigManager {
       this.options.BOUNCES_COUNT,
       this.options.RESTIR_INITIAL_CANDIDATES,
       this.options.RESTIR_SR_CANDIDATES,
-      this.options.RESTIR_TEMP_CANDIDATES
+      this.options.RESTIR_TEMP_CANDIDATES,
+      this.options.USE_TEMPORAL_RESAMPLE
     ]);
   }
 
@@ -100,6 +102,7 @@ class ConfigManager {
       RESTIR_INITIAL_CANDIDATES: i32,
       RESTIR_SR_CANDIDATES: i32,
       RESTIR_TEMP_CANDIDATES: i32,
+      USE_TEMPORAL_RESAMPLE: u32,
     }
 
     struct ShaderConfig {

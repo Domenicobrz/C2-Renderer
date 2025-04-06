@@ -46,35 +46,35 @@ fn rrPathConstruction(
   // tid: vec3u,
 ) -> RandomReplayResult {
   var rrStepResult = RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
+  const failedShiftResult = RandomReplayResult(0, vec3f(0.0), true, vec2f(0.0));
 
   let w_vec = psi.prevVertexPosition - ires.hitPoint;
   let isTooShort = isSegmentTooShortForReconnection(w_vec);
   var isCurrentVertexConnectible = psi.wasPrevVertexRough && isRough && !isTooShort;
+
+  let pathReconnects = pathReconnects(*pi);
+  let pathDoesNotReconnect = !pathReconnects;
+  let pathIsBrdfSampled = pathIsBrdfSampled(*pi);
+  let pathIsLightSampled = pathIsLightSampled(*pi);
   
   // invertibility check
-  if (isCurrentVertexConnectible && pathReconnects(*pi) && u32(debugInfo.bounce) < pi.reconnectionBounce) {
-    rrStepResult.valid = 0;
-    rrStepResult.shouldTerminate = true;
-    return rrStepResult;
+  if (isCurrentVertexConnectible && pathReconnects && u32(debugInfo.bounce) < pi.reconnectionBounce) {
+    return failedShiftResult;
   }
 
   // invertibility check
-  if (!isCurrentVertexConnectible && pathReconnects(*pi) && u32(debugInfo.bounce) == pi.reconnectionBounce) {
-    rrStepResult.valid = 0;
-    rrStepResult.shouldTerminate = true;
-    return rrStepResult;
+  if (!isCurrentVertexConnectible && pathReconnects && u32(debugInfo.bounce) == pi.reconnectionBounce) {
+    return failedShiftResult;
   }
 
   // invertibility check
-  if (isCurrentVertexConnectible && pathDoesNotReconnect(*pi)) {
-    rrStepResult.valid = 0;
-    rrStepResult.shouldTerminate = true;
-    return rrStepResult;
+  if (isCurrentVertexConnectible && pathDoesNotReconnect) {
+    return failedShiftResult;
   }
 
   // pure random replay path
-  if (pathDoesNotReconnect(*pi)) {
-    if (pathIsBrdfSampled(*pi) && u32(debugInfo.bounce) == pi.bounceCount) {
+  if (pathDoesNotReconnect) {
+    if (pathIsBrdfSampled && u32(debugInfo.bounce) == pi.bounceCount) {
       let mi = *lastBrdfMis; // will be 1 in this case
       let pHat = emissive * *throughput; // throughput will be 1 in this case
 
@@ -84,7 +84,7 @@ fn rrPathConstruction(
       rrStepResult.pHat = pHat * mi;
       return rrStepResult;
     }
-    if (pathIsLightSampled(*pi) && u32(debugInfo.bounce + 1) == pi.bounceCount) {
+    if (pathIsLightSampled && u32(debugInfo.bounce + 1) == pi.bounceCount) {
       // let lightDirectionSample = sampleLight(materialData, ray, surfaceAttributes, normals);
       let lightSampleRadiance = lightDirectionSample.ls.radiance;
       let lightSampleSuccessful = dot(lightSampleRadiance, lightSampleRadiance) > 0.0;
@@ -155,22 +155,20 @@ fn rrPathConstruction(
     let isConnectible = isRough && !isTooShort && !hasDifferentLobes;
 
     if (!isConnectible) {
-      // shift failed, should terminate
-      // shift failed, should terminate
-      // shift failed, should terminate
-      // shift failed, should terminate
-      rrStepResult.valid = 0;
-      rrStepResult.shouldTerminate = true;
-      return rrStepResult;
+      return failedShiftResult;
     }
 
     let dir = w_km1;
     let visibilityRay = Ray(ires.hitPoint + dir * 0.0001, dir);
 
-    // TODO: we're doing a bvh traversal here that is probably unnecessary
-    // TODO: we're doing a bvh traversal here that is probably unnecessary
-    // TODO: we're doing a bvh traversal here that is probably unnecessary,
-    //       can we use only the call to getLightPdf to make our checks?
+    // We're doing a bvh traversal here that is probably unnecessary.
+    // However, fixing it would require us to return the ires struct from
+    // getLightPdf and the runtime cost of copying those ires values every time,
+    // for every integrator using getLightPdf, 
+    // is not worth the added benefit of simplifying this call here.
+    // The alternative would be to have a different version of the bvh.ts shader 
+    // for ReSTIR PT where instead of using getLightPdf we would use getLightPdfAndIRes
+    // even that however seems too much effort for relatively little gain
     let visibilityRes = bvhIntersect(visibilityRay);
     
     if (!wasEnvmap) {
@@ -178,16 +176,12 @@ fn rrPathConstruction(
       let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
       if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex || backFacing) {
         // shift failed, should terminate
-        rrStepResult.valid = 0;
-        rrStepResult.shouldTerminate = true;
-        return rrStepResult;
+        return failedShiftResult;
       }
     } else {
       if (visibilityRes.hit) {
         // shift failed, we should have hit an envmap instead
-        rrStepResult.valid = 0;
-        rrStepResult.shouldTerminate = true;
-        return rrStepResult;
+        return failedShiftResult;
       }
     }
     
@@ -208,7 +202,7 @@ fn rrPathConstruction(
 
     var p = 1.0;
     var mi = 0.0; 
-    if (pathIsBrdfSampled(*pi)) {
+    if (pathIsBrdfSampled) {
       p *= brdfPdf * probability_of_sampling_lobe;
       mi = getMisWeight(brdfPdf, lightPdf);
       // emitters have no mi. This however should be fixed. Also notice how here we're looking for
@@ -217,19 +211,14 @@ fn rrPathConstruction(
         mi = 1.0;
       }
     }
-    if (pathIsLightSampled(*pi)) {
+    if (pathIsLightSampled) {
       p *= lightPdf * probability_of_sampling_lobe;
       mi = getMisWeight(lightPdf, brdfPdf);
     }
 
     if (p <= 0.0) {
       // shift failed, should terminate
-      // shift failed, should terminate
-      // shift failed, should terminate
-      // shift failed, should terminate
-      rrStepResult.valid = 0;
-      rrStepResult.shouldTerminate = true;
-      return rrStepResult;
+      return failedShiftResult;
     }
 
     var jacobian = vec2f(
@@ -274,29 +263,22 @@ fn rrPathConstruction(
     
     if (!isConnectible) {
       // shift failed, should terminate
-      // shift failed, should terminate
-      // shift failed, should terminate
-      // shift failed, should terminate
-      rrStepResult.valid = 0;
-      rrStepResult.shouldTerminate = true;
-      return rrStepResult;
+      return failedShiftResult;
     }
 
     let dir = normalize(nextVertexPosition - ires.hitPoint);
     var visibilityRay = Ray(ires.hitPoint + dir * 0.0001, dir);
    
-    // TODO: we're doing a bvh traversal here that is probably unnecessary
-    // TODO: we're doing a bvh traversal here that is probably unnecessary
-    // TODO: we're doing a bvh traversal here that is probably unnecessary,
-    //       can we use only the call to getLightPdf to make our checks?
+    // we can't use the lightPdf call here to also do the intersection since
+    // the lightPdf checks the intersection between xk and xk+1, but the reconnection
+    // direction is between xk-1 and xk
     let visibilityRes = bvhIntersect(visibilityRay);
+
     // in this case, we DON'T have to check wether the next vertex is backfacing, since it's NOT the light source
     // let backFacing = dot(-dir, visibilityRes.triangle.geometricNormal) < 0;
     if (!visibilityRes.hit || pi.reconnectionTriangleIndex != visibilityRes.triangleIndex) {
       // shift failed, should terminate
-      rrStepResult.valid = 0;
-      rrStepResult.shouldTerminate = true;
-      return rrStepResult;
+      return failedShiftResult;
     }
 
     // reconnection is successful
@@ -314,7 +296,6 @@ fn rrPathConstruction(
       materialData, wo, wi, surfaceAttributes, normals
     );
     var p = probability_of_sampling_lobe * brdfPdf;
-
 
     // pick surface information of vertex Xk
     let surfaceXk = SurfaceDescriptor(visibilityRes.triangleIndex, visibilityRes.barycentrics); 
@@ -340,7 +321,7 @@ fn rrPathConstruction(
     if (case2) {
       let lightPdfXk = getLightPDF(Ray(visibilityRes.hitPoint + pi.reconnectionDirection * 0.0001, pi.reconnectionDirection));
   
-      if (pathIsBrdfSampled(*pi)) {
+      if (pathIsBrdfSampled) {
         p *= brdfPdfXk * probability_of_sampling_lobe;
         mi = getMisWeight(brdfPdfXk, lightPdfXk);
   
@@ -349,7 +330,7 @@ fn rrPathConstruction(
           mi = 1.0;
         }
       }
-      if (pathIsLightSampled(*pi)) {
+      if (pathIsLightSampled) {
         p *= lightPdfXk * probability_of_sampling_lobe;
         mi = getMisWeight(lightPdfXk, brdfPdfXk);
       }
@@ -360,12 +341,7 @@ fn rrPathConstruction(
 
     if (p <= 0.0) {
       // shift failed, should terminate
-      // shift failed, should terminate
-      // shift failed, should terminate
-      // shift failed, should terminate
-      rrStepResult.valid = 0;
-      rrStepResult.shouldTerminate = true;
-      return rrStepResult;
+      return failedShiftResult;
     }
 
     // absorption check for dielectrics

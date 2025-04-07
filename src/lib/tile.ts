@@ -17,10 +17,30 @@ export class TileSequence {
   private tileIncrementCount = 0;
   private forceMaxTileSize: boolean = false;
 
+  private performanceHistory: number[] = [];
+
   constructor() {
     configManager.e.addEventListener('config-update', (options: ConfigOptions) => {
       this.forceMaxTileSize = options.forceMaxTileSize;
     });
+  }
+
+  saveComputationPerformance(value: number) {
+    this.performanceHistory.push(value);
+    if (this.performanceHistory.length > 15) {
+      this.performanceHistory.splice(0, 1);
+    }
+  }
+
+  getAveragePerformance() {
+    if (this.performanceHistory.length > 0) {
+      return (
+        this.performanceHistory.reduce((prev, curr) => prev + curr, 0) /
+        this.performanceHistory.length
+      );
+    }
+
+    return 0;
   }
 
   setCanvasSize(canvasSize: Vector2) {
@@ -111,10 +131,15 @@ export class TileSequence {
     samplesInfo.setTileSize(`${this.tile.w} x ${this.tile.h}`);
   }
 
-  resetTile() {
+  resetTile(initialSize?: Vector2) {
     this.tileIncrementCount = 0;
     let sizex = 16;
     let sizey = 16;
+
+    if (initialSize) {
+      sizex = initialSize.x;
+      sizey = initialSize.y;
+    }
 
     if (this.forceMaxTileSize) {
       sizex = this.canvasSize.x;
@@ -141,6 +166,31 @@ export class TileSequence {
     }
 
     return this.tile;
+  }
+
+  // certain algorithms like ReSTIR PT require tiles to be
+  // increased or decreased only when we reach a new line
+  isNewLine() {
+    if (this.tile.x == 0) return true;
+    return false;
+  }
+
+  isTileStarting() {
+    if (this.tile.x == 0 && this.tile.y == 0) return true;
+  }
+
+  // TODO: this is sort of a duplicate of the function above
+  isTileFinished() {
+    let w = this.tile.w;
+    let h = this.tile.h;
+    let x = this.tile.x;
+    let y = this.tile.y;
+
+    if (x + w >= this.canvasSize.x && y + h >= this.canvasSize.y) {
+      return true;
+    }
+
+    return false;
   }
 
   getCurrentTile() {

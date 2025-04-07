@@ -25,8 +25,8 @@ export async function createScene(): Promise<C2Scene> {
   // return envmapSphereScene();
   // return cornellSphereScene();
   // return ReSTIRTestScene();
-  return ReSTIREnvmapScene();
+  // return ReSTIREnvmapScene();
   // return ReSTIRTest2Scene();
   // return c2FeaturesScene();
-  // return envmapHorseScene();
+  return envmapHorseScene();
 }

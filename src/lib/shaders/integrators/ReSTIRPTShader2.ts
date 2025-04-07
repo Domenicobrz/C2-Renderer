@@ -19,9 +19,13 @@ export function getReSTIRPTShader2(lutManager: LUTManager) {
 @group(1) @binding(2) var<uniform> haltonSamples2: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
 @group(1) @binding(3) var<uniform> uniformRandom: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
 @group(1) @binding(4) var<uniform> config: Config;
-@group(1) @binding(5) var<uniform> finalPass: u32;
-@group(1) @binding(6) var<uniform> passIdx: u32; 
-@group(1) @binding(7) var<uniform> sampleIdx: u32; 
+struct PassInfo {
+  finalPass: u32,
+  passIdx: u32,
+  sampleIdx: u32,
+}
+@group(1) @binding(5) var<uniform> passInfo: PassInfo;
+@group(1) @binding(6) var<uniform> tile: Tile;
 
 @group(2) @binding(0) var<storage, read_write> debugBuffer: array<f32>;
 @group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;
@@ -187,7 +191,8 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
   @builtin(global_invocation_id) gid: vec3<u32>,
   @builtin(local_invocation_id) lid: vec3<u32>,
 ) {
-  let tid = vec3u(gid.x, gid.y, 0);
+  // let tid = vec3u(gid.x, gid.y, 0);
+  let tid = vec3u(tile.x + gid.x, tile.y + gid.y, 0);
   if (tid.x >= canvasSize.x || tid.y >= canvasSize.y) { return; }
 
   let idx = tid.y * canvasSize.x + tid.x;
@@ -198,7 +203,7 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
     debugInfo.isSelectedPixel = true;
   }
 
-  temporalResample = (passIdx == 0 && config.USE_TEMPORAL_RESAMPLE > 0);
+  temporalResample = (passInfo.passIdx == 0 && config.USE_TEMPORAL_RESAMPLE > 0);
 
   let domain = vec3u(tid.xy, 0);
 
@@ -208,28 +213,21 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
   );
 
   var prevReservoir = restirPassInput[idx];
-  if (sampleIdx == 0) {
+  if (passInfo.sampleIdx == 0) {
     prevReservoir = emptyReservoir;
   }
   var outputReservoir = emptyReservoir;
   var icReservoir = emptyReservoir;
 
-  if (passIdx == 0) {
+  if (passInfo.passIdx == 0) {
     icReservoir = initialCandidatesReservoir(tid, domain, idx);
     outputReservoir = icReservoir;
   }
 
   var candidates = array<Reservoir, MAX_SR_CANDIDATES_COUNT>();
 
-  let isTemporalPass = (passIdx == 0) && (config.USE_TEMPORAL_RESAMPLE > 0); 
-  let isSpatialPass = (passIdx > 0);
-
-  if (passIdx == 0) {
-    debugLog(select(0.0, 1.0, isTemporalPass));
-    debugLog(select(0.0, 1.0, temporalResample));
-    debugLog(f32(sampleIdx));
-    debugLog(2222.0);
-  }
+  let isTemporalPass = (passInfo.passIdx == 0) && (config.USE_TEMPORAL_RESAMPLE > 0); 
+  let isSpatialPass = (passInfo.passIdx > 0);
 
   if (isTemporalPass) {
     candidates[0] = icReservoir;
@@ -263,7 +261,7 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
 
     restirPassOutput[idx] = outputReservoir;
   
-    if (finalPass == 1) {
+    if (passInfo.finalPass == 1) {
       if (debugInfo.isSelectedPixel) {
         restirPassOutput[idx].rad += vec3f(1, 0, 0);
       } else {

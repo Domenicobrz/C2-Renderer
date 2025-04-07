@@ -12,6 +12,7 @@ import { Plane } from '$lib/primitives/plane';
 import { Triangle } from '$lib/primitives/triangle';
 import { PC1D } from '$lib/samplers/PiecewiseConstant1D';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
+import { TileSequence } from '$lib/tile';
 import { mathUtilsPart } from '../parts/mathUtils';
 import { misPart } from '../parts/mis';
 import { pbrtMathUtilsPart } from '../parts/pbrtMathUtils';
@@ -36,6 +37,7 @@ ${texturePart}
 ${shadingNormalsPart}
 ${getReSTIRRandomPart}
 ${lutManager.getShaderPart()}
+${TileSequence.shaderPart()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
 ${'' /* Emissive.shaderShadeEmissive() */}

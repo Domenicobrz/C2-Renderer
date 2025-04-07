@@ -172,25 +172,27 @@ async function computeRenderLoop() {
   }
 
   computeSegment.compute();
-  computeSegment.passPerformance
-    .getDeltaInMilliseconds()
-    .then((delta) => {
-      if (delta < 25) {
-        if ('increaseTileSize' in computeSegment) {
-          computeSegment.increaseTileSize();
+  if (computeSegment instanceof ComputeSegment) {
+    computeSegment.passPerformance
+      .getDeltaInMilliseconds()
+      .then((delta) => {
+        if (delta < 25) {
+          if ('increaseTileSize' in computeSegment) {
+            computeSegment.increaseTileSize();
+          }
+        } else if (delta > 100) {
+          // unfortunately some pixels in the long run might be computed much less than others
+          // by following this approach of increasing / decreasing tile size.
+          // I did find however that having a "range" of performance values helped with the issue
+          // instead of having e.g. increase if < 30 or decrease if > 30, having a range
+          // helped with dealing with the issue of some pixels not being computed as often as others
+          if ('decreaseTileSize' in computeSegment) {
+            computeSegment.decreaseTileSize();
+          }
         }
-      } else if (delta > 100) {
-        // unfortunately some pixels in the long run might be computed much less than others
-        // by following this approach of increasing / decreasing tile size.
-        // I did find however that having a "range" of performance values helped with the issue
-        // instead of having e.g. increase if < 30 or decrease if > 30, having a range
-        // helped with dealing with the issue of some pixels not being computed as often as others
-        if ('decreaseTileSize' in computeSegment) {
-          computeSegment.decreaseTileSize();
-        }
-      }
-      samplesInfo.setPerformance(delta);
-    })
-    .catch(() => {});
+        samplesInfo.setPerformance(delta);
+      })
+      .catch(() => {});
+  }
   renderSegment.render();
 }

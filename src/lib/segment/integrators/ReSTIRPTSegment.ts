@@ -724,15 +724,22 @@ export class ReSTIRPTSegment {
       .then((delta) => {
         tileSeq.saveComputationPerformance(delta);
 
-        let avgPerf = tileSeq.getAveragePerformance();
-        if (avgPerf === 0) return;
+        // let avgPerf = tileSeq.getAveragePerformance();
+        // if (avgPerf === 0) return;
 
-        if (!tileSeq.isNewLine()) return;
+        // if (!tileSeq.isNewLine()) return;
 
-        if (avgPerf < 50 && tileSeq.canTileSizeBeIncreased()) {
+        // if (avgPerf < 50 && tileSeq.canTileSizeBeIncreased()) {
+        //   tileSeq.increaseTileSize();
+        // }
+        // if (avgPerf > 100 && tileSeq.canTileSizeBeDecreased()) {
+        //   tileSeq.decreaseTileSize();
+        // }
+
+        if (delta < 50 && tileSeq.canTileSizeBeIncreased()) {
           tileSeq.increaseTileSize();
         }
-        if (avgPerf > 100 && tileSeq.canTileSizeBeDecreased()) {
+        if (delta > 100 && tileSeq.canTileSizeBeDecreased()) {
           tileSeq.decreaseTileSize();
         }
       })
@@ -790,6 +797,8 @@ export class ReSTIRPTSegment {
       let tile = this.computeTile.getNextTile(() => {});
       this.updateTile(tile);
 
+      console.log('compute', tile);
+
       // work group size in the shader is set to 8,8
       const workGroupsCount = this.computeTile.getWorkGroupCount();
 
@@ -826,6 +835,7 @@ export class ReSTIRPTSegment {
       this.tilePerformanceUpdates(this.computeTile, this.passPerformance);
 
       if (this.computeTile.isTileFinished()) {
+        console.log('compute-finished', tile);
         this.renderState.state = 'sr-start';
       }
     }

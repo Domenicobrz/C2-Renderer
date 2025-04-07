@@ -245,7 +245,7 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
   if (isTemporalPass || isSpatialPass) {
     outputReservoir = Resample(candidates, domain);
   }
-
+  
   if (!isSpatialPass) {
     restirPassInput[idx] = outputReservoir;
   } else {
@@ -269,6 +269,29 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
       }
     }
   }
+
+
+
+ 
+  // test for compute only
+  // if (!isSpatialPass) {
+  //   restirPassInput[idx] = outputReservoir;
+  // } else {
+  //   restirPassOutput[idx] = restirPassInput[idx];
+    
+  //   if (passInfo.finalPass == 1) {
+  //     var rad = vec3f(0.0);
+  //     if (restirPassInput[idx].isNull < 0.0) {
+  //       rad = restirPassInput[idx].Y.F * restirPassInput[idx].Wy;
+  //     }
+    
+  //     if (debugInfo.isSelectedPixel) {
+  //       restirPassOutput[idx].rad += vec3f(1, 0, 0);
+  //     } else {
+  //       restirPassOutput[idx].rad += rad;
+  //     }
+  //   }
+  // }
 }
 `;
 }

@@ -75,7 +75,7 @@ export async function ReSTIRTest3Scene(): Promise<C2Scene> {
   light.translate(3, 3.9, 0);
   triangles = [...triangles, ...geometryToTriangles(light, 3)];
 
-  let lightSC = 3.3;
+  let lightSC = 4.3;
   let lightC = new PlaneGeometry(lightSC, lightSC);
   lightC.rotateX(Math.PI * 0.5);
   lightC.translate(3, 3.5, 0);
@@ -92,7 +92,7 @@ export async function ReSTIRTest3Scene(): Promise<C2Scene> {
   group.scale.set(-2.7, 2.7, 2.7);
   group.position.set(0.3, -1.25 - 2, 1.5);
   group.rotation.z = 0.4;
-  triangles = [...triangles, ...meshToTriangles(group, 5)];
+  triangles = [...triangles, ...meshToTriangles(group, 0)];
 
   // create & set camera
   const camera = new Orbit();

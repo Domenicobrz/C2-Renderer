@@ -135,7 +135,7 @@ function onCanvasResize(
 }
 
 let prevRW = '';
-function renderLoop() {
+async function renderLoop() {
   scene.camera.renderLoopUpdate();
 
   let rw = get(renderView);
@@ -145,7 +145,7 @@ function renderLoop() {
   }
 
   if (rw == 'compute') {
-    computeRenderLoop();
+    await computeRenderLoop();
   } else if (rw == 'preview') {
     previewRenderLoop();
   } else if (rw == 'realtime') {
@@ -171,7 +171,7 @@ async function computeRenderLoop() {
     return;
   }
 
-  computeSegment.compute();
+  await computeSegment.compute();
   if (computeSegment instanceof ComputeSegment) {
     computeSegment.passPerformance
       .getDeltaInMilliseconds()

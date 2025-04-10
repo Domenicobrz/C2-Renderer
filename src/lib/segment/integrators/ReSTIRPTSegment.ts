@@ -664,8 +664,8 @@ export class ReSTIRPTSegment {
   }
 
   resetTileAndRenderState() {
-    this.computeTile.resetTile(new Vector2(256, 128));
-    this.spatialResampleTile.resetTile(new Vector2(256, 128));
+    this.computeTile.resetTile(new Vector2(64, 64));
+    this.spatialResampleTile.resetTile(new Vector2(64, 64));
     this.renderState = { state: 'compute-start', srIndex: 0, icIndex: 0 };
   }
 
@@ -733,21 +733,28 @@ export class ReSTIRPTSegment {
   }
 
   checkTilePerformance(tileSeq: TileSequence) {
-    // tileSeq.performanceHistoryCount = 3;
-    // let avgPerf = tileSeq.getAveragePerformance();
-    // if (avgPerf === 0) return;
-    // if (!tileSeq.isNewLine()) return;
-    // if (avgPerf < 100 && tileSeq.canTileSizeBeIncreased()) {
-    //   // tileSeq.increaseTileSize(true);
-    //   if (tileSeq.canTileSizeBeIncreased()) {
-    //     tileSeq.increaseTileSize(true);
-    //   }
-    // }
-    // if (avgPerf > 150 && tileSeq.canTileSizeBeDecreased()) {
-    //   if (tileSeq.canTileSizeBeDecreased()) {
-    //     tileSeq.decreaseTileSize();
-    //   }
-    // }
+    tileSeq.performanceHistoryCount = 3;
+
+    let avgPerf = tileSeq.getAveragePerformance();
+
+    // let arrS = tileSeq.performanceHistory.map((v) => v.toFixed(2)).join(', ');
+    // console.log(arrS);
+
+    if (avgPerf === 0) return;
+    if (!tileSeq.isNewLine()) return;
+
+    if (avgPerf < 80 && tileSeq.canTileSizeBeIncreased()) {
+      if (tileSeq.canTileSizeBeIncreased()) {
+        // console.log('increase', avgPerf);
+        tileSeq.increaseTileSize(true);
+      }
+    }
+    if (avgPerf > 150 && tileSeq.canTileSizeBeDecreased()) {
+      if (tileSeq.canTileSizeBeDecreased()) {
+        // console.log('decrease', avgPerf);
+        tileSeq.decreaseTileSize();
+      }
+    }
   }
 
   saveTilePerformance(
@@ -856,7 +863,7 @@ export class ReSTIRPTSegment {
       // Finish encoding and submit the commands
       const computeCommandBuffer = encoder.finish();
       this.device.queue.submit([computeCommandBuffer]);
-      // await this.device.queue.onSubmittedWorkDone();
+      await this.device.queue.onSubmittedWorkDone();
 
       let endTime = performance.now();
 
@@ -936,7 +943,7 @@ export class ReSTIRPTSegment {
       // Finish encoding and submit the commands
       const computeCommandBuffer = encoder.finish();
       this.device.queue.submit([computeCommandBuffer]);
-      // await this.device.queue.onSubmittedWorkDone();
+      await this.device.queue.onSubmittedWorkDone();
 
       let endTime = performance.now();
 

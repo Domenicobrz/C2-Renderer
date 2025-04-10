@@ -1,7 +1,7 @@
 import { GBHBiased, GBHPairWise, GBHStandard } from './gbhVariants';
 
 export const resampleLogic = /* wgsl */ `
-const MAX_CONFIDENCE = 5.0;
+const MAX_CONFIDENCE = 10.0;
 
 fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
@@ -45,7 +45,7 @@ fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u) -> RandomReplayR
       if (rrStepResult.shouldTerminate) {
         return rrStepResult;
       }
-    } else {
+    } else if (shaderConfig.HAS_ENVMAP) {
       // we bounced off into the envmap
       let envmapRad = getEnvmapRadiance(ray.direction);
       let rrStepResult = rrEnvmapPathConstruction( 

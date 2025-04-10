@@ -21,7 +21,8 @@ export function getReSTIRPTShader2(lutManager: LUTManager) {
 @group(1) @binding(4) var<uniform> config: Config;
 struct PassInfo {
   finalPass: u32,
-  passIdx: u32,
+  icPassIdx: u32, // pass index for initial candidates
+  passIdx: u32,   // 0 == ic pass, 1+ sr passes
   sampleIdx: u32,
 }
 @group(1) @binding(5) var<uniform> passInfo: PassInfo;
@@ -75,58 +76,76 @@ fn initialCandidatesReservoir(tid: vec3u, domain: vec3u, idx: u32) -> Reservoir 
 
   initializeRandoms2(tid);
 
-  for (var ic = 0; ic < config.RESTIR_INITIAL_CANDIDATES; ic++) {
-    // if Path info will be accepted, it will also take this seed and save it in the reservoir
-    let seed = hashPixelAndSeed(tid.xy, u32(haltonSamples[ic].x * f32(1099087573)));
-    let firstVertexSeed = seed;
+  let ic = passInfo.icPassIdx;
 
-    initializeRandoms(seed);
+  // if Path info will be accepted, it will also take this seed and save it in the reservoir
+  let seed = hashPixelAndSeed(tid.xy, u32(haltonSamples[ic].x * f32(1099087573)));
+  let firstVertexSeed = seed;
+
+  initializeRandoms(seed);
+  
+  var rayContribution: f32;
+  var ray = getCameraRay(tid, idx, &rayContribution);
+
+  var pathSampleInfo = PathSampleInfo(
+    false, vec3f(0.0), vec3f(0.0), 0, 0, -1, vec3f(1.0), -1
+  );
+  var pi = PathInfo(vec3f(0.0), firstVertexSeed, seed, 0, 0, 0, 0, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1));
+  var throughput = vec3f(1.0);
+  var rad = vec3f(0.0);
+  var lastBrdfMis = 1.0;
+  for (var i = 0; i < config.BOUNCES_COUNT; i++) {
+    if (rayContribution == 0.0) { break; }
+
+    debugInfo.bounce = i;
+
+    let ires = bvhIntersect(ray);
     
-    var rayContribution: f32;
-    var ray = getCameraRay(tid, idx, &rayContribution);
-  
-    var pathSampleInfo = PathSampleInfo(
-      false, vec3f(0.0), vec3f(0.0), 0, 0, -1, vec3f(1.0), -1
-    );
-    var pi = PathInfo(vec3f(0.0), firstVertexSeed, seed, 0, 0, 0, 0, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1));
-    var throughput = vec3f(1.0);
-    var rad = vec3f(0.0);
-    var lastBrdfMis = 1.0;
-    for (var i = 0; i < config.BOUNCES_COUNT; i++) {
-      if (rayContribution == 0.0) { break; }
-  
-      debugInfo.bounce = i;
-  
-      let ires = bvhIntersect(ray);
-      
-      if (ires.hit) {
-        shade(
-          ires, &ray, &reservoir, &throughput, &pi, &pathSampleInfo, 
-          &lastBrdfMis, false, tid, i
-        );
-      } else if (shaderConfig.HAS_ENVMAP) {
-        // we bounced off into the envmap
-        let envmapRad = getEnvmapRadiance(ray.direction);
-        envmapPathConstruction(
-          &reservoir, &throughput, &pi, &pathSampleInfo, &lastBrdfMis, envmapRad,
-        );
-        break;
-      }
-  
-      // if (reflectance.x == 0.0 && reflectance.y == 0.0 && reflectance.z == 0.0) {
-      //   break;
-      // }
+    if (ires.hit) {
+      shade(
+        ires, &ray, &reservoir, &throughput, &pi, &pathSampleInfo, 
+        &lastBrdfMis, false, tid, i
+      );
+    } else if (shaderConfig.HAS_ENVMAP) {
+      // we bounced off into the envmap
+      let envmapRad = getEnvmapRadiance(ray.direction);
+      envmapPathConstruction(
+        &reservoir, &throughput, &pi, &pathSampleInfo, &lastBrdfMis, envmapRad,
+      );
+      break;
+    }
+
+    if (throughput.x == 0.0 && throughput.y == 0.0 && throughput.z == 0.0) {
+      break;
     }
   }
 
-  // I think it would be better to multiply every wi
-  // instead of doing this to avoid me forgetting this thing
-  // when I'll eventually implement temporal reuse
-  reservoir.wSum /= f32(config.RESTIR_INITIAL_CANDIDATES);
-  reservoir.c = 1.0;
+  // if (reservoir.isNull <= 0.0) {
+  //   reservoir.Wy = (1 / length(reservoir.Y.F)) * reservoir.wSum;
+  // }
 
-  if (reservoir.isNull <= 0.0) {
-    reservoir.Wy = (1 / length(reservoir.Y.F)) * reservoir.wSum;
+  return reservoir;
+}
+
+fn combineReservoirs(newCandidate: Reservoir, idx: u32) -> Reservoir {
+  let isFirstICPass = passInfo.icPassIdx == 0;
+  let isLastICPass = passInfo.icPassIdx == u32(config.RESTIR_INITIAL_CANDIDATES - 1);
+
+  var ncr = newCandidate;
+  ncr.wSum /= f32(config.RESTIR_INITIAL_CANDIDATES);
+
+  var reservoir = restirPassOutput[idx];
+  if (isFirstICPass) {
+    reservoir = ncr;
+  } else {
+    updateReservoir(&reservoir, ncr.Y, ncr.wSum);
+  }
+
+  if (isLastICPass) {
+    reservoir.c = 1.0;
+    if (reservoir.isNull <= 0.0) {
+      reservoir.Wy = (1 / length(reservoir.Y.F)) * reservoir.wSum;
+    }
   }
 
   return reservoir;
@@ -221,16 +240,19 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
 
   if (passInfo.passIdx == 0) {
     icReservoir = initialCandidatesReservoir(tid, domain, idx);
-    outputReservoir = icReservoir;
+    outputReservoir = combineReservoirs(icReservoir, idx);
   }
 
   var candidates = array<Reservoir, MAX_SR_CANDIDATES_COUNT>();
 
-  let isTemporalPass = (passInfo.passIdx == 0) && (config.USE_TEMPORAL_RESAMPLE > 0); 
+  let isLastICPass = passInfo.icPassIdx == u32(config.RESTIR_INITIAL_CANDIDATES - 1);
+  let isTemporalPass = (passInfo.passIdx == 0) && 
+                       (config.USE_TEMPORAL_RESAMPLE > 0) && 
+                       (passInfo.icPassIdx == u32(config.RESTIR_INITIAL_CANDIDATES - 1)); 
   let isSpatialPass = (passInfo.passIdx > 0);
 
   if (isTemporalPass) {
-    candidates[0] = icReservoir;
+    candidates[0] = outputReservoir;
     candidates[1] = prevReservoir;
     // there has to be a better way to do this v v v
     candidates[2] = emptyReservoir;
@@ -247,7 +269,17 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
   }
   
   if (!isSpatialPass) {
-    restirPassInput[idx] = outputReservoir;
+    // the reason why we're using both restirPassInput
+    // and restirPassOutput is due to having to save
+    // two different types of state:
+    // the temporally accumulated reservoir,
+    // and the initial-candidates reservoir that is 
+    // created over multiple render calls
+    if (isLastICPass) {
+      restirPassInput[idx] = outputReservoir;
+    } else {
+      restirPassOutput[idx] = outputReservoir;
+    }
   } else {
     var rad = vec3f(0.0);
 
@@ -273,7 +305,7 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
 
 
  
-  // test for compute only
+  // // test for compute only
   // if (!isSpatialPass) {
   //   restirPassInput[idx] = outputReservoir;
   // } else {

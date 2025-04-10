@@ -17,7 +17,8 @@ export class TileSequence {
   private tileIncrementCount = 0;
   private forceMaxTileSize: boolean = false;
 
-  private performanceHistory: number[] = [];
+  public performanceHistoryCount = 15;
+  public performanceHistory: number[] = [];
 
   constructor() {
     configManager.e.addEventListener('config-update', (options: ConfigOptions) => {
@@ -27,7 +28,7 @@ export class TileSequence {
 
   saveComputationPerformance(value: number) {
     this.performanceHistory.push(value);
-    if (this.performanceHistory.length > 15) {
+    if (this.performanceHistory.length > this.performanceHistoryCount) {
       this.performanceHistory.splice(0, 1);
     }
   }
@@ -104,7 +105,7 @@ export class TileSequence {
     samplesInfo.setTileSize(`${this.tile.w} x ${this.tile.h}`);
   }
 
-  increaseTileSize() {
+  increaseTileSize(skipTileReplacement: boolean = false) {
     // we're either increasing the width or the height,
     // to increase the performance load of 2x
     // (if we increase both performance load increases by 4x)
@@ -121,11 +122,13 @@ export class TileSequence {
       this.tile.h = Math.ceil(this.canvasSize.y / 8) * 8;
     }
 
-    // by subtracting tile.w to the x position,
-    // getNextTile() will pick the previous position as the next tile position
-    // basically when we increase the tile size we want the tile to remain
-    // in place
-    this.tile.x -= this.tile.w;
+    if (!skipTileReplacement) {
+      // by subtracting tile.w to the x position,
+      // getNextTile() will pick the previous position as the next tile position
+      // basically when we increase the tile size we want the tile to remain
+      // in place
+      this.tile.x -= this.tile.w;
+    }
 
     this.tileIncrementCount += 1;
     samplesInfo.setTileSize(`${this.tile.w} x ${this.tile.h}`);

@@ -114,7 +114,8 @@ export const configOptions = createConfigStore({
   ENVMAP_ROTX: 0,
   ENVMAP_ROTY: 0,
   RESTIR_INITIAL_CANDIDATES: 10, // the paper recommends 50 I think
-  RESTIR_SR_CANDIDATES: 6, // the paper recommends 6
+  // the paper recommends 6, but on my machine occupancy rates seems to be horrible at 6
+  RESTIR_SR_CANDIDATES: 3,
   RESTIR_TEMP_CANDIDATES: 2,
   ENVMAP_USE_COMPENSATED_DISTRIBUTION: false,
   USE_TEMPORAL_RESAMPLE: 1,

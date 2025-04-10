@@ -11,6 +11,7 @@ import { furnaceTestScene } from './scenes/furnaceTest';
 import { ReSTIREnvmapScene } from './scenes/ReSTIRenvmap';
 import { ReSTIRTestScene } from './scenes/ReSTIRtest';
 import { ReSTIRTest2Scene } from './scenes/ReSTIRtest2';
+import { ReSTIRTest3Scene } from './scenes/ReSTIRtest3';
 
 export type C2Scene = {
   triangles: Triangle[];
@@ -27,6 +28,7 @@ export async function createScene(): Promise<C2Scene> {
   // return ReSTIRTestScene();
   // return ReSTIREnvmapScene();
   // return ReSTIRTest2Scene();
+  return ReSTIRTest3Scene();
   // return c2FeaturesScene();
-  return envmapHorseScene();
+  // return envmapHorseScene();
 }

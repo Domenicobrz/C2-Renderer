@@ -100,9 +100,11 @@ export class ReSTIRPTSegment {
   private renderState: {
     state: 'compute-start' | 'compute' | 'sr' | 'sr-start';
     srIndex: number;
+    icIndex: number;
   } = {
     state: 'compute-start',
-    srIndex: -1
+    srIndex: -1,
+    icIndex: 0
   };
 
   constructor() {
@@ -187,7 +189,7 @@ export class ReSTIRPTSegment {
     for (let i = 0; i < this.SPATIAL_REUSE_PASSES + 1; i++) {
       this.passInfoUniformBuffer.push(
         device.createBuffer({
-          size: 3 * 4,
+          size: 4 * 4,
           usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         })
       );
@@ -512,13 +514,21 @@ export class ReSTIRPTSegment {
     });
   }
 
+  updateIcIndexBuffer() {
+    this.device.queue.writeBuffer(
+      this.passInfoUniformBuffer[0],
+      0,
+      new Uint32Array([0, this.renderState.icIndex, 0, samplesInfo.count])
+    );
+  }
+
   updateBindGroup1() {
     this.bindGroup1 = [];
 
     this.device.queue.writeBuffer(
       this.passInfoUniformBuffer[0],
       0,
-      new Uint32Array([0, 0, samplesInfo.count])
+      new Uint32Array([0, 0, 0, samplesInfo.count])
     );
 
     this.bindGroup1.push(
@@ -544,7 +554,7 @@ export class ReSTIRPTSegment {
       this.device.queue.writeBuffer(
         this.passInfoUniformBuffer[i + 1],
         0,
-        new Uint32Array([isFinalPass ? 1 : 0, passIdx, samplesInfo.count])
+        new Uint32Array([isFinalPass ? 1 : 0, 0, passIdx, samplesInfo.count])
       );
 
       this.bindGroup1.push(
@@ -654,14 +664,26 @@ export class ReSTIRPTSegment {
   }
 
   resetTileAndRenderState() {
-    this.computeTile.resetTile(new Vector2(64, 64));
-    this.spatialResampleTile.resetTile(new Vector2(64, 64));
-    this.renderState = { state: 'compute-start', srIndex: 0 };
+    this.computeTile.resetTile(new Vector2(256, 128));
+    this.spatialResampleTile.resetTile(new Vector2(256, 128));
+    this.renderState = { state: 'compute-start', srIndex: 0, icIndex: 0 };
   }
 
   resetSamplesAndTile() {
     this.resetTileAndRenderState();
     samplesInfo.reset();
+  }
+
+  // this function will be called again everytime we're starting a new icPass
+  // TODO: the issue is that it'll also update SR randoms unnecessarily...
+  updateReSTIRRandoms() {
+    // ReSTIR random numbers, which have to be different from path-tracing random numbers
+    let rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
+    this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, rarr);
+    for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
+      rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
+      this.device.queue.writeBuffer(this.srRandomsUniformBuffer[i], 0, rarr);
+    }
   }
 
   updateRandomsBuffer() {
@@ -691,13 +713,7 @@ export class ReSTIRPTSegment {
     this.device.queue.writeBuffer(this.sequenceUniformBufferOld, 0, this.oldRandomsArray);
     this.oldRandomsArray = arr!;
 
-    // ReSTIR random numbers, which have to be different from path-tracing random numbers
-    let rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
-    this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, rarr);
-    for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
-      rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
-      this.device.queue.writeBuffer(this.srRandomsUniformBuffer[i], 0, rarr);
-    }
+    this.updateReSTIRRandoms();
   }
 
   createPipeline() {
@@ -716,34 +732,39 @@ export class ReSTIRPTSegment {
     });
   }
 
-  tilePerformanceUpdates(tileSeq: TileSequence, passPerformance: ComputePassPerformance) {
+  checkTilePerformance(tileSeq: TileSequence) {
+    // tileSeq.performanceHistoryCount = 3;
+    // let avgPerf = tileSeq.getAveragePerformance();
+    // if (avgPerf === 0) return;
+    // if (!tileSeq.isNewLine()) return;
+    // if (avgPerf < 100 && tileSeq.canTileSizeBeIncreased()) {
+    //   // tileSeq.increaseTileSize(true);
+    //   if (tileSeq.canTileSizeBeIncreased()) {
+    //     tileSeq.increaseTileSize(true);
+    //   }
+    // }
+    // if (avgPerf > 150 && tileSeq.canTileSizeBeDecreased()) {
+    //   if (tileSeq.canTileSizeBeDecreased()) {
+    //     tileSeq.decreaseTileSize();
+    //   }
+    // }
+  }
+
+  saveTilePerformance(
+    tileSeq: TileSequence,
+    passPerformance: ComputePassPerformance,
+    simplified: number
+  ) {
     if (!tileSeq.isTilePerformanceMeasureable()) return;
 
-    passPerformance
-      .getDeltaInMilliseconds()
-      .then((delta) => {
-        tileSeq.saveComputationPerformance(delta);
+    tileSeq.saveComputationPerformance(simplified);
 
-        // let avgPerf = tileSeq.getAveragePerformance();
-        // if (avgPerf === 0) return;
-
-        // if (!tileSeq.isNewLine()) return;
-
-        // if (avgPerf < 50 && tileSeq.canTileSizeBeIncreased()) {
-        //   tileSeq.increaseTileSize();
-        // }
-        // if (avgPerf > 100 && tileSeq.canTileSizeBeDecreased()) {
-        //   tileSeq.decreaseTileSize();
-        // }
-
-        if (delta < 50 && tileSeq.canTileSizeBeIncreased()) {
-          tileSeq.increaseTileSize();
-        }
-        if (delta > 100 && tileSeq.canTileSizeBeDecreased()) {
-          tileSeq.decreaseTileSize();
-        }
-      })
-      .catch(() => {});
+    // passPerformance
+    //   .getDeltaInMilliseconds()
+    //   .then((delta) => {
+    //     tileSeq.saveComputationPerformance(delta);
+    //   })
+    //   .catch(() => {});
   }
 
   updateTile(tile: Tile) {
@@ -790,14 +811,16 @@ export class ReSTIRPTSegment {
       // updated every frame to update sample index count
       this.updateBindGroup1();
 
+      this.renderState.icIndex = 0;
       this.renderState.state = 'compute';
     }
 
     if (this.renderState.state == 'compute') {
       let tile = this.computeTile.getNextTile(() => {});
+      this.checkTilePerformance(this.computeTile);
       this.updateTile(tile);
 
-      console.log('compute', tile);
+      // console.log('compute', tile);
 
       // work group size in the shader is set to 8,8
       const workGroupsCount = this.computeTile.getWorkGroupCount();
@@ -828,15 +851,26 @@ export class ReSTIRPTSegment {
         this.debugBuffer.size
       );
 
+      let startTime = performance.now();
+
       // Finish encoding and submit the commands
       const computeCommandBuffer = encoder.finish();
       this.device.queue.submit([computeCommandBuffer]);
+      // await this.device.queue.onSubmittedWorkDone();
 
-      this.tilePerformanceUpdates(this.computeTile, this.passPerformance);
+      let endTime = performance.now();
+
+      this.saveTilePerformance(this.computeTile, this.passPerformance, endTime - startTime);
 
       if (this.computeTile.isTileFinished()) {
-        console.log('compute-finished', tile);
-        this.renderState.state = 'sr-start';
+        if (this.renderState.icIndex == configManager.options.RESTIR_INITIAL_CANDIDATES - 1) {
+          this.renderState.state = 'sr-start';
+        } else {
+          this.renderState.icIndex++;
+          console.log('next ic pass: ', this.renderState.icIndex);
+          this.updateIcIndexBuffer();
+          this.updateReSTIRRandoms();
+        }
       }
     }
 
@@ -848,6 +882,7 @@ export class ReSTIRPTSegment {
     if (this.renderState.state == 'sr') {
       let isLastSRPass = this.renderState.srIndex == this.SPATIAL_REUSE_PASSES - 1;
       let tile = this.spatialResampleTile.getNextTile(() => {});
+      this.checkTilePerformance(this.spatialResampleTile);
       this.updateTile(tile);
 
       // work group size in the shader is set to 8,8
@@ -896,13 +931,19 @@ export class ReSTIRPTSegment {
         this.debugBuffer.size
       );
 
+      let startTime = performance.now();
+
       // Finish encoding and submit the commands
       const computeCommandBuffer = encoder.finish();
       this.device.queue.submit([computeCommandBuffer]);
+      // await this.device.queue.onSubmittedWorkDone();
 
-      this.tilePerformanceUpdates(this.spatialResampleTile, this.passPerformance);
+      let endTime = performance.now();
+
+      this.saveTilePerformance(this.spatialResampleTile, this.passPerformance, endTime - startTime);
 
       if (this.spatialResampleTile.isTileFinished() && !isLastSRPass) {
+        console.log('next sr pass');
         this.renderState.srIndex++;
       }
     }

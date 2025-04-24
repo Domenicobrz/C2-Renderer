@@ -16,17 +16,16 @@ export function getReSTIRPTShader2(lutManager: LUTManager) {
 // seems like maximum bindgroup count is 4 so I need to add the camera sample here 
 // unfortunately and I can't create a separate bindgroup for it
 @group(1) @binding(1) var<uniform> haltonSamples: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
-@group(1) @binding(2) var<uniform> haltonSamples2: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
-@group(1) @binding(3) var<uniform> uniformRandom: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
-@group(1) @binding(4) var<uniform> config: Config;
+@group(1) @binding(2) var<uniform> uniformRandom: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
+@group(1) @binding(3) var<uniform> config: Config;
 struct PassInfo {
   finalPass: u32,
   icPassIdx: u32, // pass index for initial candidates
   passIdx: u32,   // 0 == ic pass, 1+ sr passes
   sampleIdx: u32,
 }
-@group(1) @binding(5) var<uniform> passInfo: PassInfo;
-@group(1) @binding(6) var<uniform> tile: Tile;
+@group(1) @binding(4) var<uniform> passInfo: PassInfo;
+@group(1) @binding(5) var<uniform> tile: Tile;
 
 @group(2) @binding(0) var<storage, read_write> debugBuffer: array<f32>;
 @group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;
@@ -267,7 +266,7 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
   if (isTemporalPass || isSpatialPass) {
     outputReservoir = Resample(candidates, domain);
   }
-  
+
   if (!isSpatialPass) {
     // the reason why we're using both restirPassInput
     // and restirPassOutput is due to having to save
@@ -307,7 +306,17 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
  
   // // test for compute only
   // if (!isSpatialPass) {
-  //   restirPassInput[idx] = outputReservoir;
+  //   // the reason why we're using both restirPassInput
+  //   // and restirPassOutput is due to having to save
+  //   // two different types of state:
+  //   // the temporally accumulated reservoir,
+  //   // and the initial-candidates reservoir that is 
+  //   // created over multiple render calls
+  //   if (isLastICPass) {
+  //     restirPassInput[idx] = outputReservoir;
+  //   } else {
+  //     restirPassOutput[idx] = outputReservoir;
+  //   }
   // } else {
   //   restirPassOutput[idx] = restirPassInput[idx];
     

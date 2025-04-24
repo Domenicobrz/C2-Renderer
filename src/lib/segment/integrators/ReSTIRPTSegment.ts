@@ -37,7 +37,7 @@ export class ReSTIRPTSegment {
   private textureArraySegment: TextureArraysSegment = new TextureArraysSegment();
 
   private bindGroup0: GPUBindGroup[] = [];
-  private bindGroup1: GPUBindGroup[] = [];
+  private bindGroup1: GPUBindGroup | null = null;
   private bindGroup2: GPUBindGroup | null = null;
   private bindGroup3: GPUBindGroup | null = null;
 
@@ -46,13 +46,10 @@ export class ReSTIRPTSegment {
   private canvasSize: Vector2 | null = null;
   private canvasSizeUniformBuffer: GPUBuffer;
 
-  private passInfoUniformBuffer: GPUBuffer[] = [];
+  private passInfoUniformBuffer: GPUBuffer;
 
   private sequenceUniformBuffer: GPUBuffer;
-  private sequenceUniformBufferOld: GPUBuffer;
-  private oldRandomsArray: Float32Array = new Float32Array();
-  private randomsUniformBuffer: GPUBuffer;
-  private srRandomsUniformBuffer: GPUBuffer[] = [];
+  private restirRandomsUniformBuffer: GPUBuffer;
   private tileUniformBuffer: GPUBuffer;
   private RANDOMS_BUFFER_COUNT = 200;
   private RESERVOIR_SIZE = 160;
@@ -125,7 +122,6 @@ export class ReSTIRPTSegment {
         'uniform',
         'uniform',
         'uniform',
-        'uniform',
         'uniform'
       ]),
       getComputeBindGroupLayout(device, ['storage', 'uniform']),
@@ -167,33 +163,15 @@ export class ReSTIRPTSegment {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
-    this.sequenceUniformBufferOld = device.createBuffer({
+    this.restirRandomsUniformBuffer = device.createBuffer({
       size: this.RANDOMS_BUFFER_COUNT * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
-    this.randomsUniformBuffer = device.createBuffer({
-      size: this.RANDOMS_BUFFER_COUNT * 4,
+    this.passInfoUniformBuffer = device.createBuffer({
+      size: 4 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
-
-    for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
-      this.srRandomsUniformBuffer.push(
-        device.createBuffer({
-          size: this.RANDOMS_BUFFER_COUNT * 4,
-          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-        })
-      );
-    }
-
-    for (let i = 0; i < this.SPATIAL_REUSE_PASSES + 1; i++) {
-      this.passInfoUniformBuffer.push(
-        device.createBuffer({
-          size: 4 * 4,
-          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-        })
-      );
-    }
 
     this.configUniformBuffer = device.createBuffer({
       size: configManager.bufferSize,
@@ -386,9 +364,6 @@ export class ReSTIRPTSegment {
     this.camera.e.addEventListener('change', this.onUpdateCamera.bind(this));
     this.onUpdateCamera();
 
-    // updated every frame to update sample index count
-    // this.updateBindGroup1();
-
     const bvh = new BVH(scene);
     this.bvh = bvh;
     this.bvh.computeLightPickProbabilities();
@@ -512,71 +487,41 @@ export class ReSTIRPTSegment {
         }
       ]
     });
+
+    this.createBindGroup1();
   }
 
-  updateIcIndexBuffer() {
-    this.device.queue.writeBuffer(
-      this.passInfoUniformBuffer[0],
-      0,
-      new Uint32Array([0, this.renderState.icIndex, 0, samplesInfo.count])
-    );
-  }
+  updatePassInfoBuffer() {
+    const isFinalPass = this.renderState.srIndex == this.SPATIAL_REUSE_PASSES - 1;
 
-  updateBindGroup1() {
-    this.bindGroup1 = [];
-
-    this.device.queue.writeBuffer(
-      this.passInfoUniformBuffer[0],
-      0,
-      new Uint32Array([0, 0, 0, samplesInfo.count])
-    );
-
-    this.bindGroup1.push(
-      this.device.createBindGroup({
-        label: 'compute bindgroup - camera struct',
-        layout: this.bindGroupLayouts[1],
-        entries: [
-          { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
-          { binding: 1, resource: { buffer: this.sequenceUniformBuffer } },
-          { binding: 2, resource: { buffer: this.sequenceUniformBufferOld } },
-          { binding: 3, resource: { buffer: this.randomsUniformBuffer } },
-          { binding: 4, resource: { buffer: this.configUniformBuffer } },
-          { binding: 5, resource: { buffer: this.passInfoUniformBuffer[0] } },
-          { binding: 6, resource: { buffer: this.tileUniformBuffer } }
-        ]
-      })
-    );
-
-    for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
-      const isFinalPass = i == this.SPATIAL_REUSE_PASSES - 1;
-      const passIdx = i + 1;
-
-      this.device.queue.writeBuffer(
-        this.passInfoUniformBuffer[i + 1],
-        0,
-        new Uint32Array([isFinalPass ? 1 : 0, 0, passIdx, samplesInfo.count])
-      );
-
-      this.bindGroup1.push(
-        this.device.createBindGroup({
-          label: 'compute bindgroup - camera struct',
-          layout: this.bindGroupLayouts[1],
-          entries: [
-            { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
-            { binding: 1, resource: { buffer: this.sequenceUniformBuffer } },
-            { binding: 2, resource: { buffer: this.sequenceUniformBufferOld } },
-            { binding: 3, resource: { buffer: this.srRandomsUniformBuffer[i] } },
-            { binding: 4, resource: { buffer: this.configUniformBuffer } },
-            { binding: 5, resource: { buffer: this.passInfoUniformBuffer[i + 1] } },
-            { binding: 6, resource: { buffer: this.tileUniformBuffer } }
-          ]
-        })
-      );
+    let passIdx = this.renderState.srIndex + 1;
+    if (this.renderState.state == 'compute' || this.renderState.state == 'compute-start') {
+      passIdx = 0;
     }
+
+    this.device.queue.writeBuffer(
+      this.passInfoUniformBuffer,
+      0,
+      new Uint32Array([isFinalPass ? 1 : 0, this.renderState.icIndex, passIdx, samplesInfo.count])
+    );
+  }
+
+  createBindGroup1() {
+    this.bindGroup1 = this.device.createBindGroup({
+      label: 'compute bindgroup - camera struct',
+      layout: this.bindGroupLayouts[1],
+      entries: [
+        { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
+        { binding: 1, resource: { buffer: this.sequenceUniformBuffer } },
+        { binding: 2, resource: { buffer: this.restirRandomsUniformBuffer } },
+        { binding: 3, resource: { buffer: this.configUniformBuffer } },
+        { binding: 4, resource: { buffer: this.passInfoUniformBuffer } },
+        { binding: 5, resource: { buffer: this.tileUniformBuffer } }
+      ]
+    });
   }
 
   resetRestirPassData() {
-    console.log('resetting restir pass data');
     const restirPassInput = new Float32Array(
       this.canvasSize!.x * this.canvasSize!.y * this.RESERVOIR_SIZE
     );
@@ -674,16 +619,10 @@ export class ReSTIRPTSegment {
     samplesInfo.reset();
   }
 
-  // this function will be called again everytime we're starting a new icPass
-  // TODO: the issue is that it'll also update SR randoms unnecessarily...
   updateReSTIRRandoms() {
     // ReSTIR random numbers, which have to be different from path-tracing random numbers
     let rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
-    this.device.queue.writeBuffer(this.randomsUniformBuffer, 0, rarr);
-    for (let i = 0; i < this.SPATIAL_REUSE_PASSES; i++) {
-      rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
-      this.device.queue.writeBuffer(this.srRandomsUniformBuffer[i], 0, rarr);
-    }
+    this.device.queue.writeBuffer(this.restirRandomsUniformBuffer, 0, rarr);
   }
 
   updateRandomsBuffer() {
@@ -708,10 +647,6 @@ export class ReSTIRPTSegment {
       arr = new Float32Array(this.customR2Sampler.getSamples(this.RANDOMS_BUFFER_COUNT));
       this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
     }
-
-    if (this.oldRandomsArray.length == 0) this.oldRandomsArray = arr!;
-    this.device.queue.writeBuffer(this.sequenceUniformBufferOld, 0, this.oldRandomsArray);
-    this.oldRandomsArray = arr!;
 
     this.updateReSTIRRandoms();
   }
@@ -765,6 +700,7 @@ export class ReSTIRPTSegment {
     if (!tileSeq.isTilePerformanceMeasureable()) return;
 
     tileSeq.saveComputationPerformance(simplified);
+    samplesInfo.setPerformance(simplified);
 
     // passPerformance
     //   .getDeltaInMilliseconds()
@@ -814,20 +750,19 @@ export class ReSTIRPTSegment {
         this.srUniformSampler.reset();
       }
 
-      this.updateRandomsBuffer();
-      // updated every frame to update sample index count
-      this.updateBindGroup1();
-
       this.renderState.icIndex = 0;
+      this.renderState.srIndex = 0;
       this.renderState.state = 'compute';
+
+      this.updateRandomsBuffer();
+      this.updateReSTIRRandoms();
+      this.updatePassInfoBuffer();
     }
 
     if (this.renderState.state == 'compute') {
       let tile = this.computeTile.getNextTile(() => {});
       this.checkTilePerformance(this.computeTile);
       this.updateTile(tile);
-
-      // console.log('compute', tile);
 
       // work group size in the shader is set to 8,8
       const workGroupsCount = this.computeTile.getWorkGroupCount();
@@ -843,7 +778,7 @@ export class ReSTIRPTSegment {
       const pass = encoder.beginComputePass(passDescriptor);
       pass.setPipeline(this.pipeline);
       pass.setBindGroup(0, this.bindGroup0[0]);
-      pass.setBindGroup(1, this.bindGroup1[0]);
+      pass.setBindGroup(1, this.bindGroup1);
       pass.setBindGroup(2, this.bindGroup2);
       pass.setBindGroup(3, this.bindGroup3);
       pass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
@@ -870,20 +805,23 @@ export class ReSTIRPTSegment {
       this.saveTilePerformance(this.computeTile, this.passPerformance, endTime - startTime);
 
       if (this.computeTile.isTileFinished()) {
-        if (this.renderState.icIndex == configManager.options.RESTIR_INITIAL_CANDIDATES - 1) {
-          this.renderState.state = 'sr-start';
+        let wasLastInitialCandidate =
+          this.renderState.icIndex == configManager.options.RESTIR_INITIAL_CANDIDATES - 1;
+
+        if (wasLastInitialCandidate) {
+          // move to the spatial-resample pass
+          this.renderState.state = 'sr';
+          this.renderState.srIndex = 0;
+          this.renderState.icIndex = 0;
+          this.updateReSTIRRandoms();
+          this.updatePassInfoBuffer();
         } else {
           this.renderState.icIndex++;
           console.log('next ic pass: ', this.renderState.icIndex);
-          this.updateIcIndexBuffer();
           this.updateReSTIRRandoms();
+          this.updatePassInfoBuffer();
         }
       }
-    }
-
-    if (this.renderState.state == 'sr-start') {
-      this.renderState.state = 'sr';
-      this.renderState.srIndex = 0;
     }
 
     if (this.renderState.state == 'sr') {
@@ -907,7 +845,7 @@ export class ReSTIRPTSegment {
       const srPass = encoder.beginComputePass(srPassDescriptor);
       srPass.setPipeline(this.pipeline);
       srPass.setBindGroup(0, this.bindGroup0[this.renderState.srIndex + 1]);
-      srPass.setBindGroup(1, this.bindGroup1[this.renderState.srIndex + 1]);
+      srPass.setBindGroup(1, this.bindGroup1);
       srPass.setBindGroup(2, this.bindGroup2);
       srPass.setBindGroup(3, this.bindGroup3);
       srPass.dispatchWorkgroups(workGroupsCount.x, workGroupsCount.y);
@@ -952,6 +890,8 @@ export class ReSTIRPTSegment {
       if (this.spatialResampleTile.isTileFinished() && !isLastSRPass) {
         console.log('next sr pass');
         this.renderState.srIndex++;
+        this.updateReSTIRRandoms();
+        this.updatePassInfoBuffer();
       }
     }
   }

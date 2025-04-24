@@ -30,26 +30,32 @@ type ShaderConfig = {
 export type ConfigOptions = {
   forceMaxTileSize: boolean;
   BOUNCES_COUNT: number;
-  MIS_TYPE: MIS_TYPE;
-  SAMPLER_TYPE: SAMPLER_TYPE;
-  SAMPLER_DECORRELATION: SAMPLER_DECORRELATION;
-  USE_POWER_HEURISTIC: 0 | 1;
   ENVMAP_SCALE: number;
   ENVMAP_ROTX: number;
   ENVMAP_ROTY: number;
   ENVMAP_USE_COMPENSATED_DISTRIBUTION: boolean;
   shaderConfig: ShaderConfig;
-  RESTIR_INITIAL_CANDIDATES: number;
-  RESTIR_SR_CANDIDATES: number;
-  RESTIR_TEMP_CANDIDATES: number;
-  USE_TEMPORAL_RESAMPLE: 0 | 1;
+  integrator: 'ReSTIR' | 'Simple-path-trace';
+  SimplePathTrace: {
+    MIS_TYPE: MIS_TYPE;
+    SAMPLER_TYPE: SAMPLER_TYPE;
+    SAMPLER_DECORRELATION: SAMPLER_DECORRELATION;
+    USE_POWER_HEURISTIC: 0 | 1;
+  };
+  ReSTIR: {
+    USE_POWER_HEURISTIC: 0 | 1;
+    RESTIR_INITIAL_CANDIDATES: number;
+    RESTIR_SR_CANDIDATES: number;
+    RESTIR_TEMP_CANDIDATES: number;
+    USE_TEMPORAL_RESAMPLE: 0 | 1;
+  };
 };
 
-class ConfigManager {
+export class ConfigManager {
   public options: ConfigOptions;
   public prevOptions: ConfigOptions;
   public e: EventHandler;
-  public bufferSize = 32;
+  public bufferSize = 0;
 
   constructor() {
     this.options = get(configOptions);
@@ -69,15 +75,25 @@ class ConfigManager {
   }
 
   getOptionsBuffer(): ArrayBuffer {
+    return new Uint32Array([]);
+  }
+
+  // might return a different string with each invocation if internal shader configurations
+  // have changed
+  shaderPart(): string {
+    return /* wgsl */ ``;
+  }
+}
+
+export class SPTConfigManager extends ConfigManager {
+  public bufferSize = 16;
+
+  getOptionsBuffer(): ArrayBuffer {
     return new Uint32Array([
-      this.options.MIS_TYPE,
-      this.options.SAMPLER_DECORRELATION,
-      this.options.USE_POWER_HEURISTIC,
-      this.options.BOUNCES_COUNT,
-      this.options.RESTIR_INITIAL_CANDIDATES,
-      this.options.RESTIR_SR_CANDIDATES,
-      this.options.RESTIR_TEMP_CANDIDATES,
-      this.options.USE_TEMPORAL_RESAMPLE
+      this.options.SimplePathTrace.MIS_TYPE,
+      this.options.SimplePathTrace.SAMPLER_DECORRELATION,
+      this.options.SimplePathTrace.USE_POWER_HEURISTIC,
+      this.options.BOUNCES_COUNT
     ]);
   }
 
@@ -99,6 +115,48 @@ class ConfigManager {
       SAMPLER_DECORRELATION: u32,
       USE_POWER_HEURISTIC: u32,
       BOUNCES_COUNT: i32,
+    }
+
+    struct ShaderConfig {
+      HAS_ENVMAP: bool,
+    }
+    // this object, or the shaderConfig object inside the singleton instance of ConfigManager,
+    // can be used to customize / change all the shader-parts returned by the rest of the 
+    // classes of C2
+    const shaderConfig = ShaderConfig(
+      ${this.options.shaderConfig.HAS_ENVMAP},
+    );
+    `;
+  }
+}
+
+export class ReSTIRConfigManager extends ConfigManager {
+  public bufferSize = 24;
+
+  getOptionsBuffer(): ArrayBuffer {
+    return new Uint32Array([
+      this.options.ReSTIR.USE_POWER_HEURISTIC,
+      this.options.BOUNCES_COUNT,
+      this.options.ReSTIR.RESTIR_INITIAL_CANDIDATES,
+      this.options.ReSTIR.RESTIR_SR_CANDIDATES,
+      this.options.ReSTIR.RESTIR_TEMP_CANDIDATES,
+      this.options.ReSTIR.USE_TEMPORAL_RESAMPLE
+    ]);
+  }
+
+  // might return a different string with each invocation if internal shader configurations
+  // have changed
+  shaderPart(): string {
+    return /* wgsl */ `
+
+    const DECORRELATION_NONE: u32 = ${SAMPLER_DECORRELATION.NONE};
+    const DECORRELATION_RAND_OFFSET: u32 = ${SAMPLER_DECORRELATION.RANDOM_OFFSET};
+    const DECORRELATION_RAND_ARRAY_OFFSET: u32 = ${SAMPLER_DECORRELATION.RANDOM_ARRAY_OFFSET};
+    const DECORRELATION_BLUE_NOISE_MASK: u32 = ${SAMPLER_DECORRELATION.BLUE_NOISE_MASK};
+
+    struct Config {
+      USE_POWER_HEURISTIC: u32,
+      BOUNCES_COUNT: i32,
       RESTIR_INITIAL_CANDIDATES: i32,
       RESTIR_SR_CANDIDATES: i32,
       RESTIR_TEMP_CANDIDATES: i32,
@@ -117,6 +175,3 @@ class ConfigManager {
     `;
   }
 }
-
-// exporting singleton since it's referencing the svelte store value for the config
-export const configManager = new ConfigManager();

@@ -3,7 +3,7 @@ import { Matrix4, Vector2, Vector3 } from 'three';
 import { cameraMovementInfoStore, configOptions, samplesInfo } from '../../../routes/stores/main';
 import { ResetSegment } from '../resetSegment';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
-import { configManager, SAMPLER_TYPE } from '$lib/config';
+import { ReSTIRConfigManager } from '$lib/config';
 import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
@@ -30,7 +30,7 @@ export class ReSTIRPTSegment {
   private pipeline: GPUComputePipeline | null = null;
   private bindGroupLayouts: GPUBindGroupLayout[];
   private layout: GPUPipelineLayout;
-  private configManager = configManager;
+  private configManager = new ReSTIRConfigManager();
 
   private reservoirToRadSegment = new ReservoirToRadianceSegment();
 
@@ -174,7 +174,7 @@ export class ReSTIRPTSegment {
     });
 
     this.configUniformBuffer = device.createBuffer({
-      size: configManager.bufferSize,
+      size: this.configManager.bufferSize,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
@@ -193,7 +193,7 @@ export class ReSTIRPTSegment {
     });
     this.setDebugPixelTarget(0, 0);
 
-    configManager.e.addEventListener('config-update', () => {
+    this.configManager.e.addEventListener('config-update', () => {
       this.updateConfig();
     });
 
@@ -266,8 +266,8 @@ export class ReSTIRPTSegment {
     let envmap = this.scene?.envmap;
     let updateEnvInfoBuffer = false;
 
-    if (envmap && configManager.options.ENVMAP_SCALE != envmap.scale) {
-      envmap.scale = configManager.options.ENVMAP_SCALE;
+    if (envmap && this.configManager.options.ENVMAP_SCALE != envmap.scale) {
+      envmap.scale = this.configManager.options.ENVMAP_SCALE;
 
       this.bvh!.computeLightPickProbabilities();
       let {
@@ -287,11 +287,11 @@ export class ReSTIRPTSegment {
 
     if (
       envmap &&
-      (configManager.options.ENVMAP_ROTX != envmap.rotX ||
-        configManager.options.ENVMAP_ROTY != envmap.rotY)
+      (this.configManager.options.ENVMAP_ROTX != envmap.rotX ||
+        this.configManager.options.ENVMAP_ROTY != envmap.rotY)
     ) {
-      envmap.rotX = configManager.options.ENVMAP_ROTX;
-      envmap.rotY = configManager.options.ENVMAP_ROTY;
+      envmap.rotX = this.configManager.options.ENVMAP_ROTX;
+      envmap.rotY = this.configManager.options.ENVMAP_ROTY;
       updateEnvInfoBuffer = true;
     }
 
@@ -301,10 +301,10 @@ export class ReSTIRPTSegment {
 
     if (
       envmap &&
-      configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION !=
-        configManager.prevOptions.ENVMAP_USE_COMPENSATED_DISTRIBUTION
+      this.configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION !=
+        this.configManager.prevOptions.ENVMAP_USE_COMPENSATED_DISTRIBUTION
     ) {
-      let envmapDistributionBuffer = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
+      let envmapDistributionBuffer = this.configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
         ? envmap.compensatedDistribution.getBufferData()
         : envmap.distribution.getBufferData();
       this.device.queue.writeBuffer(this.envmapPC2DBuffer!, 0, envmapDistributionBuffer);
@@ -395,20 +395,21 @@ export class ReSTIRPTSegment {
     let envmap = scene.envmap || new Envmap();
     // this will, unfortunately, trigger the updateConfig() function in the next javascript tick
     // we should hopefully be able to fix this completely in svelte 5
-    configManager.setStoreProperty({
+    this.configManager.setStoreProperty({
       ENVMAP_SCALE: envmap.scale,
       ENVMAP_ROTX: envmap.rotX,
       ENVMAP_ROTY: envmap.rotY,
       shaderConfig: {
-        ...configManager.options.shaderConfig,
+        ...this.configManager.options.shaderConfig,
         HAS_ENVMAP: scene.envmap ? true : false
       }
     });
-    let envmapDistributionBuffer = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
+    let envmapDistributionBuffer = this.configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
       ? envmap.compensatedDistribution.getBufferData()
       : envmap.distribution.getBufferData();
 
-    let envmapDistributionArrayBuffer = configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
+    let envmapDistributionArrayBuffer = this.configManager.options
+      .ENVMAP_USE_COMPENSATED_DISTRIBUTION
       ? envmap.compensatedDistribution.getArrayData()
       : envmap.distribution.getArrayData();
     let { texture: envmapTexture } = envmap.getTexture(this.device);
@@ -628,25 +629,25 @@ export class ReSTIRPTSegment {
   updateRandomsBuffer() {
     let arr: Float32Array;
 
-    if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.HALTON) {
-      arr = new Float32Array(this.haltonSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-      this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
-    }
+    // if (this.configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.HALTON) {
+    //   arr = new Float32Array(this.haltonSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+    //   this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
+    // }
 
-    if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.UNIFORM) {
-      arr = new Float32Array(this.uniformSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-      this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
-    }
+    // if (this.configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.UNIFORM) {
+    arr = new Float32Array(this.uniformSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+    this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
+    // }
 
-    if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.BLUE_NOISE) {
-      arr = new Float32Array(this.blueNoiseSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-      this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
-    }
+    // if (this.configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.BLUE_NOISE) {
+    //   arr = new Float32Array(this.blueNoiseSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+    //   this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
+    // }
 
-    if (configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.CUSTOM_R2) {
-      arr = new Float32Array(this.customR2Sampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-      this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
-    }
+    // if (this.configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.CUSTOM_R2) {
+    //   arr = new Float32Array(this.customR2Sampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+    //   this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
+    // }
 
     this.updateReSTIRRandoms();
   }
@@ -654,7 +655,7 @@ export class ReSTIRPTSegment {
   createPipeline() {
     const computeModule = this.device.createShaderModule({
       label: 'ReSTIR PT module',
-      code: getReSTIRPTShader2(this.lutManager)
+      code: getReSTIRPTShader2(this.lutManager, this.configManager)
     });
 
     this.pipeline = this.device.createComputePipeline({
@@ -806,7 +807,8 @@ export class ReSTIRPTSegment {
 
       if (this.computeTile.isTileFinished()) {
         let wasLastInitialCandidate =
-          this.renderState.icIndex == configManager.options.RESTIR_INITIAL_CANDIDATES - 1;
+          this.renderState.icIndex ==
+          this.configManager.options.ReSTIR.RESTIR_INITIAL_CANDIDATES - 1;
 
         if (wasLastInitialCandidate) {
           // move to the spatial-resample pass

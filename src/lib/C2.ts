@@ -12,6 +12,7 @@ import { get } from 'svelte/store';
 import { tick } from './utils/tick';
 import { getDeviceAndContext } from './webgpu-utils/getDeviceAndContext';
 import { ReSTIRPTSegment } from './segment/integrators/ReSTIRPTSegment';
+import { ConfigManager } from './config';
 
 export type Integrator = ComputeSegment | ReSTIRPTSegment;
 
@@ -55,7 +56,9 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   // *************** compute & render segments ****************
   const tileSequence = new TileSequence();
   // computeSegment = new ComputeSegment(tileSequence);
+  // new ConfigManager().setStoreProperty({ integrator: 'Simple-path-trace' });
   computeSegment = new ReSTIRPTSegment();
+  new ConfigManager().setStoreProperty({ integrator: 'ReSTIR' });
 
   centralStatusMessage.set('creating scene');
   // passed down to both compute and render segment

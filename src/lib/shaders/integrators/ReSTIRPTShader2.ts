@@ -1,11 +1,12 @@
+import type { ReSTIRConfigManager } from '$lib/config';
 import type { LUTManager } from '$lib/managers/lutManager';
 import { resampleLogic } from './resampleLogic';
 import { getReSTIRPTSharedPart } from './sharedPart';
 
-export function getReSTIRPTShader2(lutManager: LUTManager) {
+export function getReSTIRPTShader2(lutManager: LUTManager, configManager: ReSTIRConfigManager) {
   return /* wgsl */ `
 
-  ${getReSTIRPTSharedPart(lutManager)}
+  ${getReSTIRPTSharedPart(lutManager, configManager)}
 
 @group(0) @binding(0) var<storage, read_write> restirPassInput: array<Reservoir>;
 @group(0) @binding(1) var<storage, read_write> restirPassOutput: array<Reservoir>;

@@ -5,6 +5,7 @@
   export let disabled = false;
   export let expanded = true;
   export let roundBox = false;
+  export let withBorder = false;
 
   let childOfAnotherFolder = false;
 
@@ -26,6 +27,7 @@
 
 <div
   class="container"
+  class:withBorder
   class:roundBox
   bind:this={containerEl}
   class:childOfAnotherFolder
@@ -47,8 +49,10 @@
   .container.disabled {
     opacity: 0.35;
   }
-  .container.roundBox {
+  .container.withBorder {
     border: 1px dashed #444;
+  }
+  .container.roundBox {
     border-radius: 8px;
     overflow: hidden;
   }

@@ -1,6 +1,6 @@
 import { AABB } from '$lib/bvh/aabb';
 import { BVH } from '$lib/bvh/bvh';
-import { configManager } from '$lib/config';
+import { ReSTIRConfigManager } from '$lib/config';
 import { Camera } from '$lib/controls/Camera';
 import { Envmap } from '$lib/envmap/envmap';
 import type { LUTManager } from '$lib/managers/lutManager';
@@ -23,7 +23,7 @@ import { reservoirShaderPart } from './reservoir';
 import { getReSTIRRandomPart } from './restirRandomPart';
 import { tempShadCopy } from './tempShadCopy';
 
-export function getReSTIRPTSharedPart(lutManager: LUTManager) {
+export function getReSTIRPTSharedPart(lutManager: LUTManager, configManager: ReSTIRConfigManager) {
   return /* wgsl */ `
   // keep in mind that configManager.shaderPart() might return different shader code if the
 // internal shader configs have changed

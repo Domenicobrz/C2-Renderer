@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { configManager } from '$lib/config';
   import RangeSlider from 'svelte-range-slider-pips';
   import { configOptions } from '../../stores/main';
   import Spacer from '../Spacer.svelte';
@@ -9,21 +8,21 @@
     const newScale = parseFloat((e.target as HTMLInputElement).value);
     if (isNaN(newScale)) return;
 
-    configManager.setStoreProperty({ ENVMAP_SCALE: newScale });
+    $configOptions.ENVMAP_SCALE = newScale;
   }
 
   function onEnvmapRotXChange(e: { detail: { value: number } }) {
     const newRotX = e.detail.value;
     if (isNaN(newRotX)) return;
 
-    configManager.setStoreProperty({ ENVMAP_ROTX: newRotX });
+    $configOptions.ENVMAP_ROTX = newRotX;
   }
 
   function onEnvmapRotYChange(e: { detail: { value: number } }) {
     const newRotY = e.detail.value;
     if (isNaN(newRotY)) return;
 
-    configManager.setStoreProperty({ ENVMAP_ROTY: newRotY });
+    $configOptions.ENVMAP_ROTY = newRotY;
   }
 </script>
 

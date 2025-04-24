@@ -19,6 +19,7 @@
   import Performance from './right-sidebar/Performance.svelte';
   import StopWatch from './icons/StopWatch.svelte';
   import { tick } from '$lib/utils/tick';
+  import Integrator from './right-sidebar/Integrator.svelte';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidth: number;
@@ -75,6 +76,9 @@
     </Folder>
     <Folder name="Envmap" disabled={!$configOptions.shaderConfig.HAS_ENVMAP}>
       <Envmap />
+    </Folder>
+    <Folder name="Integrator" withBorder>
+      <Integrator />
     </Folder>
     <Folder name="Sampling" roundBox>
       <Sampling />

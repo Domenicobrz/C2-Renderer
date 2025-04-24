@@ -1,6 +1,6 @@
 import { AABB } from '$lib/bvh/aabb';
 import { BVH } from '$lib/bvh/bvh';
-import { configManager } from '$lib/config';
+import { SPTConfigManager } from '$lib/config';
 import { Diffuse } from '$lib/materials/diffuse';
 import { Emissive } from '$lib/materials/emissive';
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
@@ -23,7 +23,7 @@ import type { LUTManager } from '$lib/managers/lutManager';
 import { getRandomPart } from './parts/getRandom';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
 
-export function getComputeShader(lutManager: LUTManager) {
+export function getComputeShader(lutManager: LUTManager, configManager: SPTConfigManager) {
   return /* wgsl */ `
 // keep in mind that configManager.shaderPart() might return different shader code if the
 // internal shader configs have changed

@@ -1,6 +1,6 @@
 import { Vector2 } from 'three';
 import { samplesInfo } from '../routes/stores/main';
-import { configManager } from './config';
+import { ConfigManager } from './config';
 import type { ConfigOptions } from './config';
 
 export type Tile = {
@@ -21,6 +21,7 @@ export class TileSequence {
   public performanceHistory: number[] = [];
 
   constructor() {
+    let configManager = new ConfigManager();
     configManager.e.addEventListener('config-update', (options: ConfigOptions) => {
       this.forceMaxTileSize = options.forceMaxTileSize;
     });

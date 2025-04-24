@@ -1,44 +1,52 @@
 <script lang="ts">
-  import { SAMPLER_TYPE } from '$lib/config';
-  import { configOptions } from '../../stores/main';
-  import Separator from '../Separator.svelte';
+  import { MIS_TYPE } from '$lib/config';
+  import { configOptions } from '../../../stores/main';
+  import Separator from '../../Separator.svelte';
 </script>
+
+<p>Mis Type:</p>
+<Separator />
 
 <label>
   <input
     type="radio"
-    name="sampler-type"
-    value={SAMPLER_TYPE.UNIFORM}
-    bind:group={$configOptions.SAMPLER_TYPE}
+    name="mis-type"
+    value={MIS_TYPE.BRDF_ONLY}
+    bind:group={$configOptions.SimplePathTrace.MIS_TYPE}
   />
-  Uniform random
+  Brdf only
 </label>
 <label>
   <input
     type="radio"
-    name="sampler-type"
-    value={SAMPLER_TYPE.HALTON}
-    bind:group={$configOptions.SAMPLER_TYPE}
+    name="mis-type"
+    value={MIS_TYPE.NEXT_EVENT_ESTIMATION}
+    bind:group={$configOptions.SimplePathTrace.MIS_TYPE}
   />
-  Halton sequence
+  Next Event Estimation
+</label>
+
+<br />
+<br />
+<p>Method:</p>
+<Separator />
+<label>
+  <input
+    type="radio"
+    name="mis-heuristic"
+    value={0}
+    bind:group={$configOptions.SimplePathTrace.USE_POWER_HEURISTIC}
+  />
+  Balanced Heuristic
 </label>
 <label>
   <input
     type="radio"
-    name="sampler-type"
-    value={SAMPLER_TYPE.BLUE_NOISE}
-    bind:group={$configOptions.SAMPLER_TYPE}
+    name="mis-heuristic"
+    value={1}
+    bind:group={$configOptions.SimplePathTrace.USE_POWER_HEURISTIC}
   />
-  Blue Noise
-</label>
-<label>
-  <input
-    type="radio"
-    name="sampler-type"
-    value={SAMPLER_TYPE.CUSTOM_R2}
-    bind:group={$configOptions.SAMPLER_TYPE}
-  />
-  Sequenced R2
+  Power Heuristic
 </label>
 
 <style>

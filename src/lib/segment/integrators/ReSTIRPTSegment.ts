@@ -11,12 +11,9 @@ import { globals } from '$lib/C2';
 import { TextureArraysSegment } from '../textureArraysSegment';
 import { Orbit } from '$lib/controls/Orbit';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
-import { LUTManager, LUTtype } from '$lib/managers/lutManager';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import { UniformSampler } from '$lib/samplers/Uniform';
 import { BlueNoiseSampler } from '$lib/samplers/BlueNoise';
-import { once } from '$lib/utils/once';
-import { loadTexture } from '$lib/webgpu-utils/getTexture';
 import { CustomR2Sampler } from '$lib/samplers/CustomR2';
 import { ReservoirToRadianceSegment } from '../reservoirToRadSegment';
 import { getReSTIRPTShader2 } from '$lib/shaders/integrators/ReSTIRPTShader2';
@@ -72,7 +69,6 @@ export class ReSTIRPTSegment {
   private lightsCDFBuffer: GPUBuffer | undefined;
   private envmapPC2DBuffer: GPUBuffer | undefined;
   private envmapInfoBuffer: GPUBuffer | undefined;
-  private lutManager: LUTManager;
 
   private resetSegment: ResetSegment;
 
@@ -88,8 +84,6 @@ export class ReSTIRPTSegment {
   private uniformSampler2 = new UniformSampler('seed-string-8'); // was -3
   private blueNoiseSampler = new BlueNoiseSampler();
   private customR2Sampler = new CustomR2Sampler();
-
-  private blueNoiseTexture!: GPUTexture;
 
   private computeTile = new TileSequence();
   private spatialResampleTile = new TileSequence();
@@ -111,8 +105,6 @@ export class ReSTIRPTSegment {
     this.resetSegment = new ResetSegment(device);
 
     this.passPerformance = new ComputePassPerformance(device);
-
-    this.lutManager = new LUTManager(device);
 
     this.bindGroupLayouts = [
       getComputeBindGroupLayout(device, ['storage', 'storage', 'uniform']),
@@ -198,6 +190,35 @@ export class ReSTIRPTSegment {
     });
 
     this.requestShaderCompilation = true;
+  }
+
+  dispose() {
+    this.textureArraySegment.dispose();
+    this.resetSegment.dispose();
+
+    this.canvasSizeUniformBuffer.destroy();
+    this.passInfoUniformBuffer.destroy();
+    this.sequenceUniformBuffer.destroy();
+    this.restirRandomsUniformBuffer.destroy();
+    this.configUniformBuffer.destroy();
+    this.tileUniformBuffer.destroy();
+    this.debugBuffer.destroy();
+    this.debugPixelTargetBuffer.destroy();
+    this.debugReadBuffer.destroy();
+
+    this.restirPassBuffer1.destroy();
+    this.restirPassBuffer2.destroy();
+
+    // these two are external !! they haven't been created here
+    // this.workBuffer
+    // this.samplesCountBuffer
+
+    this.trianglesBuffer?.destroy();
+    this.materialsBuffer?.destroy();
+    this.bvhBuffer?.destroy();
+    this.lightsCDFBuffer?.destroy();
+    this.envmapPC2DBuffer?.destroy();
+    this.envmapInfoBuffer?.destroy();
   }
 
   setDebugPixelTarget(x: number, y: number) {
@@ -337,26 +358,6 @@ export class ReSTIRPTSegment {
     // rather than all at once
     this.textureArraySegment.update(scene.materials);
 
-    if (once('initialize-luts-and-blue-noise-texture')) {
-      await this.lutManager.load(
-        'luts/torranceSparrowMultiScatter.LUT',
-        LUTtype.MultiScatterTorranceSparrow
-      );
-      await this.lutManager.load(
-        'luts/multiScatterDielectricEo.LUT',
-        LUTtype.MultiScatterDielectricEo
-      );
-      await this.lutManager.load(
-        'luts/multiScatterDielectricEoInverse.LUT',
-        LUTtype.MultiScatterDielectricEoInverse
-      );
-
-      this.blueNoiseTexture = await loadTexture(
-        this.device,
-        'blue-noise-textures/256_256/HDR_RGBA_0.png'
-      );
-    }
-
     if (this.camera) {
       this.camera.dispose();
     }
@@ -480,11 +481,11 @@ export class ReSTIRPTSegment {
         },
         {
           binding: 11,
-          resource: this.lutManager.getTexture().createView({ dimension: '3d' })
+          resource: globals.common.lutManager.getTexture().createView({ dimension: '3d' })
         },
         {
           binding: 12,
-          resource: this.blueNoiseTexture.createView()
+          resource: globals.common.blueNoiseTexture.createView()
         }
       ]
     });
@@ -655,7 +656,7 @@ export class ReSTIRPTSegment {
   createPipeline() {
     const computeModule = this.device.createShaderModule({
       label: 'ReSTIR PT module',
-      code: getReSTIRPTShader2(this.lutManager, this.configManager)
+      code: getReSTIRPTShader2(globals.common.lutManager, this.configManager)
     });
 
     this.pipeline = this.device.createComputePipeline({

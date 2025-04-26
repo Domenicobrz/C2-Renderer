@@ -3,16 +3,23 @@ import { ComputeSegment } from './segment/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
 import { onKey } from './utils/keys';
-import { centralStatusMessage, renderView, samplesInfo } from '../routes/stores/main';
+import {
+  centralStatusMessage,
+  configOptions,
+  renderView,
+  samplesInfo
+} from '../routes/stores/main';
 import { createScene } from './createScene';
 import type { C2Scene } from './createScene';
-import { TileSequence } from './tile';
 import { PreviewSegment } from './segment/previewSegment';
 import { get } from 'svelte/store';
 import { tick } from './utils/tick';
 import { getDeviceAndContext } from './webgpu-utils/getDeviceAndContext';
 import { ReSTIRPTSegment } from './segment/integrators/ReSTIRPTSegment';
-import { ConfigManager } from './config';
+import { ConfigManager, type IntegratorType } from './config';
+import type { LUTManager } from './managers/lutManager';
+import { loadCommonAssets } from './loadCommonAssets';
+import { once } from './utils/once';
 
 export type Integrator = ComputeSegment | ReSTIRPTSegment;
 
@@ -26,11 +33,31 @@ export const globals: {
   device: GPUDevice;
   context: GPUCanvasContext;
   format: GPUTextureFormat;
+  canvas: HTMLCanvasElement;
+  common: {
+    lutManager: LUTManager;
+    blueNoiseTexture: GPUTexture;
+  };
+  buffers: {
+    radianceBuffer: GPUBuffer;
+    samplesCountBuffer: GPUBuffer;
+  };
+  animationFrameHandle: number | null;
 } = {
-  // not sure how to tell typescript that this value will exist when I'll try to access it
+  // not sure how to tell typescript that these values will exist when I'll try to access them
   device: null as any,
   context: null as any,
-  format: null as any
+  format: null as any,
+  canvas: null as any,
+  common: {
+    lutManager: null as any,
+    blueNoiseTexture: null as any
+  },
+  buffers: {
+    radianceBuffer: null as any,
+    samplesCountBuffer: null as any
+  },
+  animationFrameHandle: null
 };
 
 export type RendererInterface = {
@@ -52,50 +79,44 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   globals.device = device;
   globals.context = context;
   globals.format = presentationFormat;
+  globals.canvas = canvas;
 
-  // *************** compute & render segments ****************
-  const tileSequence = new TileSequence();
-  // computeSegment = new ComputeSegment(tileSequence);
-  // new ConfigManager().setStoreProperty({ integrator: 'Simple-path-trace' });
-  computeSegment = new ReSTIRPTSegment();
-  new ConfigManager().setStoreProperty({ integrator: 'ReSTIR' });
+  // will create and load lutManager's textures and bluenoisetexture
+  await loadCommonAssets();
 
   centralStatusMessage.set('creating scene');
   // passed down to both compute and render segment
   scene = await createScene();
   scene.camera.setCanvasContainer(canvas.parentElement as HTMLDivElement);
 
-  centralStatusMessage.set('processing bvh and materials');
-  await tick(); // will give us the chance of showing the message above
-  await computeSegment.updateScene(scene);
-  computeSegment.setDebugPixelTarget(163, 20);
   renderSegment = new RenderSegment(context, presentationFormat);
   renderSegment.updateScene(scene);
 
   previewSegment = new PreviewSegment(context, presentationFormat);
   previewSegment.updateScene(scene);
 
-  const resizeObserver = new ResizeObserver((entries) => {
-    onCanvasResize(canvas, device, scene, computeSegment, renderSegment, previewSegment);
+  const resizeObserver = new ResizeObserver(async (entries) => {
+    if (once('first-canvas-resize')) {
+      // will select the correct integrator based on the initial config value
+      await switchIntegrator(get(configOptions).integrator);
+    } else {
+      onCanvasResize(canvas, device, scene, computeSegment, renderSegment, previewSegment);
+    }
   });
   resizeObserver.observe(canvas);
-  // initialize work buffers immediately
-  onCanvasResize(canvas, device, scene, computeSegment, renderSegment, previewSegment);
 
   onKey('l', () => computeSegment.logDebugResult());
-
-  centralStatusMessage.set('compiling shaders');
-  await tick(); // will give us the chance of showing the message above
-  renderLoop();
-  centralStatusMessage.set('');
 
   // let msls = new MultiScatterLUTSegment();
   // msls.setSize(new Vector3(32, 32, 32), 1);
   // msls.calculateEavg(arrayData, 32);
 
+  listenForIntegratorSwitch();
+
   return {
-    getFocusDistanceFromScreenPoint:
-      computeSegment.getFocusDistanceFromScreenPoint.bind(computeSegment)
+    getFocusDistanceFromScreenPoint: (point: Vector2) => {
+      return computeSegment.getFocusDistanceFromScreenPoint(point);
+    }
   };
 }
 
@@ -107,33 +128,47 @@ function onCanvasResize(
   renderSegment: RenderSegment,
   previewSegment: PreviewSegment
 ) {
-  // since this function will be called twice at startup, this check will
-  // prevent it from running twice
-  if (canvasSize.x == canvas.width && canvasSize.y == canvas.height) {
-    return;
-  }
   canvasSize = vec2(canvas.width, canvas.height);
 
   scene.camera.onCanvasResize(canvasSize);
 
-  const input = new Float32Array(canvasSize.x * canvasSize.y * 4);
-  const workBuffer = device.createBuffer({
-    label: 'work buffer',
-    size: input.byteLength,
-    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-  });
-  device.queue.writeBuffer(workBuffer, 0, input);
+  if (globals.buffers.radianceBuffer) {
+    globals.buffers.radianceBuffer.destroy();
+  }
+  if (globals.buffers.samplesCountBuffer) {
+    globals.buffers.samplesCountBuffer.destroy();
+  }
 
-  const samplesCountBuffer = device.createBuffer({
+  const input = new Float32Array(canvasSize.x * canvasSize.y * 4);
+  globals.buffers.radianceBuffer = device.createBuffer({
     label: 'work buffer',
     size: input.byteLength,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
   });
-  device.queue.writeBuffer(samplesCountBuffer, 0, new Uint32Array(canvasSize.x * canvasSize.y));
+  device.queue.writeBuffer(globals.buffers.radianceBuffer, 0, input);
+
+  globals.buffers.samplesCountBuffer = device.createBuffer({
+    label: 'work buffer',
+    size: input.byteLength,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+  });
+  device.queue.writeBuffer(
+    globals.buffers.samplesCountBuffer,
+    0,
+    new Uint32Array(canvasSize.x * canvasSize.y)
+  );
 
   // we need to resize before we're able to render
-  computeSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
-  renderSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
+  computeSegment.resize(
+    canvasSize,
+    globals.buffers.radianceBuffer,
+    globals.buffers.samplesCountBuffer
+  );
+  renderSegment.resize(
+    canvasSize,
+    globals.buffers.radianceBuffer,
+    globals.buffers.samplesCountBuffer
+  );
   previewSegment.resize(canvasSize);
 }
 
@@ -156,7 +191,7 @@ async function renderLoop() {
   }
 
   prevRW = rw;
-  requestAnimationFrame(renderLoop);
+  globals.animationFrameHandle = requestAnimationFrame(renderLoop);
 }
 
 function previewRenderLoop() {
@@ -198,4 +233,46 @@ async function computeRenderLoop() {
       .catch(() => {});
   }
   renderSegment.render();
+}
+
+function listenForIntegratorSwitch() {
+  configOptions.subscribe((value) => {
+    let prevIntegrator = configOptions.getOldValue().integrator;
+    let currIntegrator = value.integrator;
+    if (currIntegrator != prevIntegrator) {
+      switchIntegrator(currIntegrator);
+    }
+  });
+}
+
+async function switchIntegrator(integratorType: IntegratorType) {
+  if (globals.animationFrameHandle) {
+    cancelAnimationFrame(globals.animationFrameHandle);
+  }
+
+  if (integratorType == 'ReSTIR') {
+    computeSegment = new ReSTIRPTSegment();
+  }
+  if (integratorType == 'Simple-path-trace') {
+    computeSegment = new ComputeSegment();
+  }
+  computeSegment.resetSamplesAndTile();
+
+  centralStatusMessage.set('processing bvh and materials');
+  await tick(); // will give us the chance of showing the message above
+  await computeSegment.updateScene(scene); // I don't like this...
+  onCanvasResize(
+    globals.canvas,
+    globals.device,
+    scene,
+    computeSegment,
+    renderSegment,
+    previewSegment
+  );
+  computeSegment.setDebugPixelTarget(163, 20);
+
+  centralStatusMessage.set('compiling shaders');
+  await tick(); // will give us the chance of showing the message above
+  renderLoop();
+  centralStatusMessage.set('');
 }

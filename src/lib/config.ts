@@ -25,6 +25,8 @@ type ShaderConfig = {
   HAS_ENVMAP: boolean;
 };
 
+export type IntegratorType = 'ReSTIR' | 'Simple-path-trace';
+
 // this object needs to be serializeable, because of limitations caused by
 // the optionsHistory madness inside createConfigStore(...)
 export type ConfigOptions = {
@@ -35,7 +37,7 @@ export type ConfigOptions = {
   ENVMAP_ROTY: number;
   ENVMAP_USE_COMPENSATED_DISTRIBUTION: boolean;
   shaderConfig: ShaderConfig;
-  integrator: 'ReSTIR' | 'Simple-path-trace';
+  integrator: IntegratorType;
   SimplePathTrace: {
     MIS_TYPE: MIS_TYPE;
     SAMPLER_TYPE: SAMPLER_TYPE;

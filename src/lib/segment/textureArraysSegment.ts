@@ -80,6 +80,12 @@ export class TextureArraysSegment {
     });
   }
 
+  dispose() {
+    this.textures128.destroy();
+    this.textures512.destroy();
+    this.textures1024.destroy();
+  }
+
   update(materials: Material[]) {
     let textures128count = 0;
     let images128: ImageInfo[] = [];
@@ -111,6 +117,8 @@ export class TextureArraysSegment {
     }
 
     if (textures128count > 0) {
+      if (this.textures128) this.textures128.destroy();
+
       this.textures128 = this.device.createTexture({
         label: 'texture array segment 128 texture',
         size: [128, 128, textures128count],
@@ -123,6 +131,8 @@ export class TextureArraysSegment {
     }
 
     if (textures512count > 0) {
+      if (this.textures512) this.textures512.destroy();
+
       this.textures512 = this.device.createTexture({
         label: 'texture array segment 512 texture',
         size: [512, 512, textures512count],
@@ -135,6 +145,8 @@ export class TextureArraysSegment {
     }
 
     if (textures1024count > 0) {
+      if (this.textures1024) this.textures1024.destroy();
+
       this.textures1024 = this.device.createTexture({
         label: 'texture array segment 1024 texture',
         size: [1024, 1024, textures1024count],
@@ -193,6 +205,9 @@ export class TextureArraysSegment {
       }
 
       this.render(textureArray, arrayIndex);
+
+      // free up the resources of this texture
+      texture.destroy();
     };
 
     images128.forEach((image, index) => {

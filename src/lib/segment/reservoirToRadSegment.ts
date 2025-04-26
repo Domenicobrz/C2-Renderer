@@ -1,6 +1,4 @@
 import { globals } from '$lib/C2';
-import { Camera } from '$lib/controls/Camera';
-import type { C2Scene } from '$lib/createScene';
 import { reservoirToRadShader } from '$lib/shaders/reservoirToRadShader';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { Vector2 } from 'three';

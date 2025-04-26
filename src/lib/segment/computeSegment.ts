@@ -3,7 +3,7 @@ import { getComputeShader } from '$lib/shaders/computeShader';
 import { Matrix4, Vector2, Vector3 } from 'three';
 import { cameraMovementInfoStore, configOptions, samplesInfo } from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
-import type { TileSequence, Tile } from '$lib/tile';
+import { TileSequence, type Tile } from '$lib/tile';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 import { SAMPLER_TYPE, SPTConfigManager } from '$lib/config';
 import type { C2Scene } from '$lib/createScene';
@@ -13,12 +13,9 @@ import { globals } from '$lib/C2';
 import { TextureArraysSegment } from './textureArraysSegment';
 import { Orbit } from '$lib/controls/Orbit';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
-import { LUTManager, LUTtype } from '$lib/managers/lutManager';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import { UniformSampler } from '$lib/samplers/Uniform';
 import { BlueNoiseSampler } from '$lib/samplers/BlueNoise';
-import { once } from '$lib/utils/once';
-import { loadTexture } from '$lib/webgpu-utils/getTexture';
 import { CustomR2Sampler } from '$lib/samplers/CustomR2';
 
 export class ComputeSegment {
@@ -57,11 +54,8 @@ export class ComputeSegment {
   private lightsCDFBuffer: GPUBuffer | undefined;
   private envmapPC2DBuffer: GPUBuffer | undefined;
   private envmapInfoBuffer: GPUBuffer | undefined;
-  private lutManager: LUTManager;
 
   private resetSegment: ResetSegment;
-
-  private tileSequence: TileSequence;
 
   private requestShaderCompilation = false;
 
@@ -74,18 +68,15 @@ export class ComputeSegment {
   private blueNoiseSampler = new BlueNoiseSampler();
   private customR2Sampler = new CustomR2Sampler();
 
-  private blueNoiseTexture!: GPUTexture;
+  private tileSequence = new TileSequence();
 
-  constructor(tileSequence: TileSequence) {
+  constructor() {
     let device = globals.device;
     this.device = device;
-    this.tileSequence = tileSequence;
 
     this.resetSegment = new ResetSegment(device);
 
     this.passPerformance = new ComputePassPerformance(device);
-
-    this.lutManager = new LUTManager(device);
 
     this.bindGroupLayouts = [
       getComputeBindGroupLayout(device, ['storage', 'storage', 'uniform']),
@@ -153,6 +144,25 @@ export class ComputeSegment {
     });
 
     this.requestShaderCompilation = true;
+  }
+
+  dispose() {
+    this.textureArraySegment.dispose();
+    this.resetSegment.dispose();
+
+    this.canvasSizeUniformBuffer.destroy();
+    this.randomsUniformBuffer.destroy();
+    this.configUniformBuffer.destroy();
+    this.tileUniformBuffer.destroy();
+    this.debugBuffer.destroy();
+    this.debugPixelTargetBuffer.destroy();
+    this.debugReadBuffer.destroy();
+    this.trianglesBuffer?.destroy();
+    this.materialsBuffer?.destroy();
+    this.bvhBuffer?.destroy();
+    this.lightsCDFBuffer?.destroy();
+    this.envmapPC2DBuffer?.destroy();
+    this.envmapInfoBuffer?.destroy();
   }
 
   setDebugPixelTarget(x: number, y: number) {
@@ -300,26 +310,6 @@ export class ComputeSegment {
     // rather than all at once
     this.textureArraySegment.update(scene.materials);
 
-    if (once('initialize-luts-and-blue-noise-texture')) {
-      await this.lutManager.load(
-        'luts/torranceSparrowMultiScatter.LUT',
-        LUTtype.MultiScatterTorranceSparrow
-      );
-      await this.lutManager.load(
-        'luts/multiScatterDielectricEo.LUT',
-        LUTtype.MultiScatterDielectricEo
-      );
-      await this.lutManager.load(
-        'luts/multiScatterDielectricEoInverse.LUT',
-        LUTtype.MultiScatterDielectricEoInverse
-      );
-
-      this.blueNoiseTexture = await loadTexture(
-        this.device,
-        'blue-noise-textures/256_256/HDR_RGBA_0.png'
-      );
-    }
-
     if (this.camera) {
       this.camera.dispose();
     }
@@ -454,11 +444,11 @@ export class ComputeSegment {
         },
         {
           binding: 11,
-          resource: this.lutManager.getTexture().createView({ dimension: '3d' })
+          resource: globals.common.lutManager.getTexture().createView({ dimension: '3d' })
         },
         {
           binding: 12,
-          resource: this.blueNoiseTexture.createView()
+          resource: globals.common.blueNoiseTexture.createView()
         }
       ]
     });
@@ -543,7 +533,7 @@ export class ComputeSegment {
   createPipeline() {
     const computeModule = this.device.createShaderModule({
       label: 'compute module',
-      code: getComputeShader(this.lutManager, this.configManager)
+      code: getComputeShader(globals.common.lutManager, this.configManager)
     });
 
     this.pipeline = this.device.createComputePipeline({

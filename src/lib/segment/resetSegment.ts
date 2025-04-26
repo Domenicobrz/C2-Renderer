@@ -41,6 +41,10 @@ export class ResetSegment {
     });
   }
 
+  dispose() {
+    this.canvasSizeUniformBuffer.destroy();
+  }
+
   resize(canvasSize: Vector2, workBuffer: GPUBuffer, samplesCountBuffer: GPUBuffer) {
     this.canvasSize = canvasSize;
 

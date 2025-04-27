@@ -127,6 +127,7 @@ export const configOptions = createConfigStore({
     RESTIR_INITIAL_CANDIDATES: 1, // the paper recommends 50 I think
     // the paper recommends 6, but on my machine occupancy rates seems to be horrible at 6
     RESTIR_SR_CANDIDATES: 3,
+    RESTIR_SR_PASS_COUNT: 3,
     RESTIR_TEMP_CANDIDATES: 2,
     USE_TEMPORAL_RESAMPLE: true
   },

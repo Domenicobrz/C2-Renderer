@@ -5,9 +5,10 @@
   import Spacer from '../../Spacer.svelte';
 
   let srCandidates = [$configOptions.ReSTIR.RESTIR_SR_CANDIDATES];
+  let srPassCount = [$configOptions.ReSTIR.RESTIR_SR_PASS_COUNT];
   $: {
-    console.log('update sr');
     $configOptions.ReSTIR.RESTIR_SR_CANDIDATES = srCandidates[0];
+    $configOptions.ReSTIR.RESTIR_SR_PASS_COUNT = srPassCount[0];
     $configOptions = $configOptions;
   }
 </script>
@@ -28,6 +29,19 @@
     min={1}
     max={6}
     bind:values={srCandidates}
+    pips
+    float
+    pipstep={1}
+    springValues={{ stiffness: 1, damping: 1 }}
+  />
+</div>
+<Spacer vertical={5} />
+<div class="flex-row">
+  <label>Spatial-reuse passes: </label>
+  <RangeSlider
+    min={1}
+    max={6}
+    bind:values={srPassCount}
     pips
     float
     pipstep={1}

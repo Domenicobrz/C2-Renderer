@@ -48,6 +48,7 @@ export type ConfigOptions = {
     USE_POWER_HEURISTIC: 0 | 1;
     RESTIR_INITIAL_CANDIDATES: number;
     RESTIR_SR_CANDIDATES: number;
+    RESTIR_SR_PASS_COUNT: number;
     RESTIR_TEMP_CANDIDATES: number;
     USE_TEMPORAL_RESAMPLE: boolean;
   };

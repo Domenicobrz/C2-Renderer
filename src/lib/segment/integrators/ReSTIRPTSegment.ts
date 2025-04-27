@@ -331,6 +331,11 @@ export class ReSTIRPTSegment {
         : envmap.distribution.getBufferData();
       this.device.queue.writeBuffer(this.envmapPC2DBuffer!, 0, envmapDistributionBuffer);
     }
+
+    if (this.SPATIAL_REUSE_PASSES != this.configManager.options.ReSTIR.RESTIR_SR_PASS_COUNT) {
+      this.SPATIAL_REUSE_PASSES = this.configManager.options.ReSTIR.RESTIR_SR_PASS_COUNT;
+      this.updateBindGroup0();
+    }
   }
 
   getFocusDistanceFromScreenPoint(point: Vector2): number {

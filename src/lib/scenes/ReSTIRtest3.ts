@@ -25,13 +25,13 @@ export async function ReSTIRTest3Scene(): Promise<C2Scene> {
     new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
     new Diffuse({ color: new Color(1, 0.05, 0.05) }),
     new Diffuse({ color: new Color(0.05, 1, 0.05) }),
-    // new Emissive({ color: new Color(1, 1, 1), intensity: 1500 }),
-    new Emissive({ color: new Color(1, 1, 1), intensity: 2 }),
+    new Emissive({ color: new Color(1, 1, 1), intensity: 250 }),
+    // new Emissive({ color: new Color(1, 1, 1), intensity: 5 }),
     // new Emissive({ color: new Color(1, 1, 1), intensity: 0.5 })
     new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
     // new Diffuse({ color: new Color(0.95, 0.95, 0.95) })
-    // new Dielectric({ absorption: new Color(0, 0, 0), roughness: 0.03, anisotropy: 0, eta: 1.55 })
-    new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), roughness: 0.03, anisotropy: 0 })
+    new Dielectric({ absorption: new Color(0, 0, 0), roughness: 0.03, anisotropy: 0, eta: 1.55 })
+    // new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), roughness: 0.03, anisotropy: 0 })
   ];
 
   // let plane = new PlaneGeometry(8, 8);
@@ -69,17 +69,18 @@ export async function ReSTIRTest3Scene(): Promise<C2Scene> {
     triangles = [...triangles, ...geometryToTriangles(pg, mi)];
   }
 
-  let lightS = 2.8;
+  // let lightS = 2.8;
+  let lightS = 0.28;
   let light = new PlaneGeometry(lightS, lightS);
   light.rotateX(Math.PI * 0.5);
   light.translate(3, 3.9, 0);
   triangles = [...triangles, ...geometryToTriangles(light, 3)];
 
-  let lightSC = 4.3;
-  let lightC = new PlaneGeometry(lightSC, lightSC);
-  lightC.rotateX(Math.PI * 0.5);
-  lightC.translate(3, 3.5, 0);
-  triangles = [...triangles, ...geometryToTriangles(lightC, 0)];
+  // let lightSC = 4.3;
+  // let lightC = new PlaneGeometry(lightSC, lightSC);
+  // lightC.rotateX(Math.PI * 0.5);
+  // lightC.translate(3, 3.5, 0);
+  // triangles = [...triangles, ...geometryToTriangles(lightC, 0)];
 
   // let lightCs = 3;
   // let lightC = new PlaneGeometry(lightCs, lightCs);
@@ -102,7 +103,7 @@ export async function ReSTIRTest3Scene(): Promise<C2Scene> {
   camera.aperture = 0;
   camera.fov = 0.69;
   camera.focusDistance = 9.53;
-  camera.exposure = 1.85;
+  camera.exposure = 1;
 
   return { triangles, materials, camera };
 }

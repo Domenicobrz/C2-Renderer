@@ -153,6 +153,8 @@ export class TileSequence {
     samplesInfo.setTileSize(`${sizex} x ${sizey}`);
     // we decided tilesize will be a multiple of 8
     this.tile = { x: this.canvasSize.x, y: this.canvasSize.y, w: sizex, h: sizey };
+
+    this.performanceHistory = [];
   }
 
   getNextTile(onTileStart: () => void) {

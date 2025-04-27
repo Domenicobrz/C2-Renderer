@@ -256,11 +256,7 @@ async function switchIntegrator(integratorType: IntegratorType) {
   if (integratorType == 'Simple-path-trace') {
     computeSegment = new ComputeSegment();
   }
-  computeSegment.resetSamplesAndTile();
 
-  centralStatusMessage.set('processing bvh and materials');
-  await tick(); // will give us the chance of showing the message above
-  await computeSegment.updateScene(scene); // I don't like this...
   onCanvasResize(
     globals.canvas,
     globals.device,
@@ -269,6 +265,11 @@ async function switchIntegrator(integratorType: IntegratorType) {
     renderSegment,
     previewSegment
   );
+
+  centralStatusMessage.set('processing bvh and materials');
+  await tick(); // will give us the chance of showing the message above
+  await computeSegment.updateScene(scene); // I don't like this...
+
   computeSegment.setDebugPixelTarget(163, 20);
 
   centralStatusMessage.set('compiling shaders');

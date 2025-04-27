@@ -71,6 +71,7 @@ export class ReSTIRPTSegment {
   private envmapInfoBuffer: GPUBuffer | undefined;
 
   private resetSegment: ResetSegment;
+  private requestReset: boolean = false;
 
   private requestShaderCompilation = false;
 
@@ -263,7 +264,7 @@ export class ReSTIRPTSegment {
 
   onUpdateCamera() {
     if (!this.camera) return;
-    this.resetSamplesAndTile();
+    this.requestReset = true;
 
     cameraMovementInfoStore.update((v) => {
       v.position = this.camera.position.clone();
@@ -275,7 +276,7 @@ export class ReSTIRPTSegment {
   }
 
   updateConfig() {
-    this.resetSamplesAndTile();
+    this.requestReset = true;
 
     this.device.queue.writeBuffer(
       this.configUniformBuffer,
@@ -348,7 +349,8 @@ export class ReSTIRPTSegment {
   }
 
   async updateScene(scene: C2Scene) {
-    this.resetSamplesAndTile();
+    this.requestReset = true;
+
     // if we have a new envmap, we might have to require a shader re-compilation
     this.requestShaderCompilation = true;
     this.scene = scene;
@@ -539,8 +541,6 @@ export class ReSTIRPTSegment {
     this.computeTile.setCanvasSize(canvasSize);
     this.spatialResampleTile.setCanvasSize(canvasSize);
 
-    this.resetSamplesAndTile();
-
     this.canvasSize = canvasSize;
 
     this.device.queue.writeBuffer(
@@ -552,21 +552,23 @@ export class ReSTIRPTSegment {
     console.warn(
       'This gets very close to the default size limit of 256mb, my GPU supports up to 2gb but needs to be requested separately on the adapter'
     );
-    const restirPassInput = new Float32Array(canvasSize.x * canvasSize.y * this.RESERVOIR_SIZE);
+    const restirPassInputByteLength = canvasSize.x * canvasSize.y * this.RESERVOIR_SIZE * 4;
+    if (this.restirPassBuffer1) this.restirPassBuffer1.destroy();
+    if (this.restirPassBuffer2) this.restirPassBuffer2.destroy();
     this.restirPassBuffer1 = this.device.createBuffer({
       label: 'restir pass data buffer',
-      size: restirPassInput.byteLength,
+      size: restirPassInputByteLength,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
     this.restirPassBuffer2 = this.device.createBuffer({
       label: 'restir pass data buffer',
-      size: restirPassInput.byteLength,
+      size: restirPassInputByteLength,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
-    this.device.queue.writeBuffer(this.restirPassBuffer1, 0, restirPassInput);
-    this.device.queue.writeBuffer(this.restirPassBuffer2, 0, restirPassInput);
 
     this.updateBindGroup0();
+
+    this.requestReset = true;
   }
 
   updateBindGroup0() {
@@ -610,14 +612,24 @@ export class ReSTIRPTSegment {
     }
   }
 
-  resetTileAndRenderState() {
+  // This method will be called after the first onCanvasResize() call is made
+  // inside switchIntegrator(...) in C2.ts
+  resetSamplesAndTile() {
+    this.requestReset = false;
+
     this.computeTile.resetTile(new Vector2(64, 64));
     this.spatialResampleTile.resetTile(new Vector2(64, 64));
     this.renderState = { state: 'compute-start', srIndex: 0, icIndex: 0 };
-  }
+    this.updatePassInfoBuffer();
 
-  resetSamplesAndTile() {
-    this.resetTileAndRenderState();
+    this.resetRestirPassData();
+    this.resetSegment.reset();
+
+    this.haltonSampler.reset();
+    this.blueNoiseSampler.reset();
+    this.uniformSampler.reset();
+    this.srUniformSampler.reset();
+
     samplesInfo.reset();
   }
 
@@ -721,6 +733,10 @@ export class ReSTIRPTSegment {
   }
 
   async compute() {
+    if (this.requestReset) {
+      this.resetSamplesAndTile();
+    }
+
     if (this.requestShaderCompilation) {
       this.createPipeline();
       this.requestShaderCompilation = false;
@@ -741,17 +757,6 @@ export class ReSTIRPTSegment {
       throw new Error('canvas size dimensions is 0');
 
     if (this.renderState.state == 'compute-start') {
-      if (samplesInfo.count === 0) {
-        this.resetTileAndRenderState();
-
-        this.resetSegment.reset();
-        this.resetRestirPassData();
-        this.haltonSampler.reset();
-        this.blueNoiseSampler.reset();
-        this.uniformSampler.reset();
-        this.srUniformSampler.reset();
-      }
-
       this.renderState.icIndex = 0;
       this.renderState.srIndex = 0;
       this.renderState.state = 'compute';

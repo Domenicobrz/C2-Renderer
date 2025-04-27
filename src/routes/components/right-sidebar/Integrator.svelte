@@ -3,6 +3,7 @@
   import Folder from '../Folder.svelte';
   import Separator from '../Separator.svelte';
   import Spacer from '../Spacer.svelte';
+  import ReSTIRPTParams from './ReSTIR/ReSTIRPTParams.svelte';
   import Decorrelation from './Simple-path-trace/Decorrelation.svelte';
   import MisOptions from './Simple-path-trace/MisOptions.svelte';
   import Sampler from './Simple-path-trace/Sampler.svelte';
@@ -42,7 +43,11 @@
   </Folder>
 {/if}
 
-{#if $configOptions.integrator == 'ReSTIR'}{/if}
+{#if $configOptions.integrator == 'ReSTIR'}
+  <Folder name="ReSTIR PT Params">
+    <ReSTIRPTParams />
+  </Folder>
+{/if}
 
 <style>
   p {

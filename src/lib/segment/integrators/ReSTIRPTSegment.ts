@@ -71,7 +71,7 @@ export class ReSTIRPTSegment {
   private envmapInfoBuffer: GPUBuffer | undefined;
 
   private resetSegment: ResetSegment;
-  private requestReset: boolean = false;
+  private requestedReset: boolean = false;
 
   private requestShaderCompilation = false;
 
@@ -264,7 +264,7 @@ export class ReSTIRPTSegment {
 
   onUpdateCamera() {
     if (!this.camera) return;
-    this.requestReset = true;
+    this.requestReset();
 
     cameraMovementInfoStore.update((v) => {
       v.position = this.camera.position.clone();
@@ -276,7 +276,7 @@ export class ReSTIRPTSegment {
   }
 
   updateConfig() {
-    this.requestReset = true;
+    this.requestReset();
 
     this.device.queue.writeBuffer(
       this.configUniformBuffer,
@@ -349,7 +349,7 @@ export class ReSTIRPTSegment {
   }
 
   async updateScene(scene: C2Scene) {
-    this.requestReset = true;
+    this.requestReset();
 
     // if we have a new envmap, we might have to require a shader re-compilation
     this.requestShaderCompilation = true;
@@ -568,7 +568,7 @@ export class ReSTIRPTSegment {
 
     this.updateBindGroup0();
 
-    this.requestReset = true;
+    this.requestReset();
   }
 
   updateBindGroup0() {
@@ -612,10 +612,19 @@ export class ReSTIRPTSegment {
     }
   }
 
+  requestReset() {
+    this.requestedReset = true;
+    // this line is necessary since if we've already reached the
+    // samples limit, without resetting the samples to 0
+    // the compute() function wouldn't run and thus wouldn't
+    // reset our buffers
+    samplesInfo.reset();
+  }
+
   // This method will be called after the first onCanvasResize() call is made
   // inside switchIntegrator(...) in C2.ts
   resetSamplesAndTile() {
-    this.requestReset = false;
+    this.requestedReset = false;
 
     this.computeTile.resetTile(new Vector2(64, 64));
     this.spatialResampleTile.resetTile(new Vector2(64, 64));
@@ -630,7 +639,7 @@ export class ReSTIRPTSegment {
     this.uniformSampler.reset();
     this.srUniformSampler.reset();
 
-    samplesInfo.reset();
+    // samplesInfo.reset(); // done inside requestReset()
   }
 
   updateReSTIRRandoms() {
@@ -733,7 +742,7 @@ export class ReSTIRPTSegment {
   }
 
   async compute() {
-    if (this.requestReset) {
+    if (this.requestedReset) {
       this.resetSamplesAndTile();
     }
 

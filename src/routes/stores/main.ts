@@ -21,7 +21,7 @@ type SamplesInfo = {
 };
 export const samplesInfo = (function createSamplesInfoStore() {
   let store = writable<SamplesInfo>({
-    limit: 1,
+    limit: 10,
     count: 0,
     ms: 0,
     tileSize: '',
@@ -128,7 +128,7 @@ export const configOptions = createConfigStore({
     // the paper recommends 6, but on my machine occupancy rates seems to be horrible at 6
     RESTIR_SR_CANDIDATES: 3,
     RESTIR_TEMP_CANDIDATES: 2,
-    USE_TEMPORAL_RESAMPLE: 1
+    USE_TEMPORAL_RESAMPLE: true
   },
 
   shaderConfig: {

@@ -73,6 +73,9 @@
     <Folder name="Info">
       <Info />
     </Folder>
+    <Folder name="Sampling" roundBox>
+      <Sampling />
+    </Folder>
     <Folder name="Camera">
       <CameraSettings {canvasRef} {renderer} />
     </Folder>
@@ -81,9 +84,6 @@
     </Folder>
     <Folder name="Integrator" withBorder>
       <Integrator />
-    </Folder>
-    <Folder name="Sampling" roundBox>
-      <Sampling />
     </Folder>
     <Folder name="Performance" expanded={false}>
       <Performance />

@@ -49,7 +49,7 @@ export type ConfigOptions = {
     RESTIR_INITIAL_CANDIDATES: number;
     RESTIR_SR_CANDIDATES: number;
     RESTIR_TEMP_CANDIDATES: number;
-    USE_TEMPORAL_RESAMPLE: 0 | 1;
+    USE_TEMPORAL_RESAMPLE: boolean;
   };
 };
 
@@ -142,7 +142,7 @@ export class ReSTIRConfigManager extends ConfigManager {
       this.options.ReSTIR.RESTIR_INITIAL_CANDIDATES,
       this.options.ReSTIR.RESTIR_SR_CANDIDATES,
       this.options.ReSTIR.RESTIR_TEMP_CANDIDATES,
-      this.options.ReSTIR.USE_TEMPORAL_RESAMPLE
+      this.options.ReSTIR.USE_TEMPORAL_RESAMPLE ? 1 : 0
     ]);
   }
 

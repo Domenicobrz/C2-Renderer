@@ -770,6 +770,12 @@ export class ReSTIRPTSegment {
     if (this.canvasSize.x === 0 || this.canvasSize.y === 0)
       throw new Error('canvas size dimensions is 0');
 
+    samplesInfo.setReSTIRState({
+      state: this.renderState.state,
+      srPassIndex: this.renderState.srIndex,
+      initialCandidateIndex: this.renderState.icIndex
+    });
+
     if (this.renderState.state == 'compute-start') {
       this.renderState.icIndex = 0;
       this.renderState.srIndex = 0;
@@ -839,7 +845,6 @@ export class ReSTIRPTSegment {
           this.updatePassInfoBuffer();
         } else {
           this.renderState.icIndex++;
-          console.log('next ic pass: ', this.renderState.icIndex);
           this.updateReSTIRRandoms();
           this.updatePassInfoBuffer();
         }
@@ -910,7 +915,6 @@ export class ReSTIRPTSegment {
       this.saveTilePerformance(this.spatialResampleTile, this.passPerformance, endTime - startTime);
 
       if (this.spatialResampleTile.isTileFinished() && !isLastSRPass) {
-        console.log('next sr pass');
         this.renderState.srIndex++;
         this.updateReSTIRRandoms();
         this.updatePassInfoBuffer();

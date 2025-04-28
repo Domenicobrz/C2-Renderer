@@ -12,12 +12,21 @@ export const renderView = writable<'preview' | 'realtime' | 'compute'>('compute'
 export const centralErrorStatusMessage = writable<string>('');
 export const centralStatusMessage = writable<string>('');
 
+type ReSTIRState = {
+  state: string;
+  initialCandidateIndex: number;
+  srPassIndex: number;
+};
+
 type SamplesInfo = {
   limit: number;
   count: number;
   ms: number;
   tileSize: string;
   clickTarget: string;
+  integrator: {
+    ReSTIR: ReSTIRState | null;
+  };
 };
 export const samplesInfo = (function createSamplesInfoStore() {
   let store = writable<SamplesInfo>({
@@ -25,7 +34,10 @@ export const samplesInfo = (function createSamplesInfoStore() {
     count: 0,
     ms: 0,
     tileSize: '',
-    clickTarget: '(0, 0)'
+    clickTarget: '(0, 0)',
+    integrator: {
+      ReSTIR: null
+    }
   });
 
   return {
@@ -53,6 +65,12 @@ export const samplesInfo = (function createSamplesInfoStore() {
     setLimit: (value: number) => {
       store.update((si) => {
         si.limit = value;
+        return si;
+      });
+    },
+    setReSTIRState: (state: ReSTIRState) => {
+      store.update((si) => {
+        si.integrator.ReSTIR = state;
         return si;
       });
     },

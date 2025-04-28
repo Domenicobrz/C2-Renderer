@@ -71,4 +71,13 @@
   span {
     font-size: 15px;
   }
+
+  input[type='text'] {
+    background: #454545;
+    color: #ddd;
+    border-radius: 4px;
+    padding: 3px 7px;
+    border: 1px solid #636363;
+    font-size: 12px;
+  }
 </style>

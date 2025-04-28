@@ -171,7 +171,7 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
     } else {
       // uniform circle sampling
       // TODO: the paper recommends using a low discrepancy sequence here
-      let circleRadiusInPixels = 10.0;   // the paper recommends 10.0
+      let circleRadiusInPixels = config.SR_CIRCLE_RADIUS;   // the paper recommends 10.0
       let rands = getRand2D_2();
       let r = circleRadiusInPixels * sqrt(rands.x);
       let theta = rands.y * 2.0 * PI;

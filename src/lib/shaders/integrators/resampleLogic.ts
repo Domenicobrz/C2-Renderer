@@ -1,8 +1,6 @@
 import { GBHBiased, GBHPairWise, GBHStandard } from './gbhVariants';
 
 export const resampleLogic = /* wgsl */ `
-const MAX_CONFIDENCE = 10.0;
-
 fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
 

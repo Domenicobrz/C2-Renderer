@@ -4,11 +4,13 @@
   import Toggle from '../../Toggle.svelte';
   import Spacer from '../../Spacer.svelte';
 
+  let maxConfidence = [$configOptions.ReSTIR.MAX_CONFIDENCE];
   let srCandidates = [$configOptions.ReSTIR.RESTIR_SR_CANDIDATES];
   let srPassCount = [$configOptions.ReSTIR.RESTIR_SR_PASS_COUNT];
   $: {
     $configOptions.ReSTIR.RESTIR_SR_CANDIDATES = srCandidates[0];
     $configOptions.ReSTIR.RESTIR_SR_PASS_COUNT = srPassCount[0];
+    $configOptions.ReSTIR.MAX_CONFIDENCE = maxConfidence[0];
     $configOptions = $configOptions;
   }
 </script>
@@ -20,9 +22,29 @@
     bind:value={$configOptions.ReSTIR.RESTIR_INITIAL_CANDIDATES}
   /></span
 >
+<Spacer vertical={12} />
+<span
+  >Spatial-reuse radius: <input
+    class="initial-candidates"
+    type="text"
+    bind:value={$configOptions.ReSTIR.SR_CIRCLE_RADIUS}
+  /></span
+>
 <Spacer vertical={14} />
 <Toggle label="Use temporal resample:" bind:checked={$configOptions.ReSTIR.USE_TEMPORAL_RESAMPLE} />
 <Spacer vertical={5} />
+<div class="flex-row">
+  <label>Max confidence: </label>
+  <RangeSlider
+    min={1}
+    max={20}
+    bind:values={maxConfidence}
+    pips
+    float
+    pipstep={1}
+    springValues={{ stiffness: 1, damping: 1 }}
+  />
+</div>
 <div class="flex-row">
   <label>Spatial-reuse candidates: </label>
   <RangeSlider

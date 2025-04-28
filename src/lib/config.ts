@@ -49,6 +49,8 @@ export type ConfigOptions = {
     RESTIR_INITIAL_CANDIDATES: number;
     RESTIR_SR_CANDIDATES: number;
     RESTIR_SR_PASS_COUNT: number;
+    SR_CIRCLE_RADIUS: number;
+    MAX_CONFIDENCE: number;
     RESTIR_TEMP_CANDIDATES: number;
     USE_TEMPORAL_RESAMPLE: boolean;
   };
@@ -134,17 +136,31 @@ export class SPTConfigManager extends ConfigManager {
 }
 
 export class ReSTIRConfigManager extends ConfigManager {
-  public bufferSize = 24;
+  public bufferSize = 32;
 
   getOptionsBuffer(): ArrayBuffer {
-    return new Uint32Array([
-      this.options.ReSTIR.USE_POWER_HEURISTIC,
-      this.options.BOUNCES_COUNT,
-      this.options.ReSTIR.RESTIR_INITIAL_CANDIDATES,
-      this.options.ReSTIR.RESTIR_SR_CANDIDATES,
-      this.options.ReSTIR.RESTIR_TEMP_CANDIDATES,
-      this.options.ReSTIR.USE_TEMPORAL_RESAMPLE ? 1 : 0
-    ]);
+    const ConfigValues = new ArrayBuffer(32);
+    const ConfigViews = {
+      USE_POWER_HEURISTIC: new Uint32Array(ConfigValues, 0, 1),
+      BOUNCES_COUNT: new Int32Array(ConfigValues, 4, 1),
+      RESTIR_INITIAL_CANDIDATES: new Int32Array(ConfigValues, 8, 1),
+      RESTIR_SR_CANDIDATES: new Int32Array(ConfigValues, 12, 1),
+      RESTIR_TEMP_CANDIDATES: new Int32Array(ConfigValues, 16, 1),
+      USE_TEMPORAL_RESAMPLE: new Uint32Array(ConfigValues, 20, 1),
+      MAX_CONFIDENCE: new Float32Array(ConfigValues, 24, 1),
+      SR_CIRCLE_RADIUS: new Float32Array(ConfigValues, 28, 1)
+    };
+
+    ConfigViews.USE_POWER_HEURISTIC.set([this.options.ReSTIR.USE_POWER_HEURISTIC]);
+    ConfigViews.BOUNCES_COUNT.set([this.options.BOUNCES_COUNT]);
+    ConfigViews.RESTIR_INITIAL_CANDIDATES.set([this.options.ReSTIR.RESTIR_INITIAL_CANDIDATES]);
+    ConfigViews.RESTIR_SR_CANDIDATES.set([this.options.ReSTIR.RESTIR_SR_CANDIDATES]);
+    ConfigViews.RESTIR_TEMP_CANDIDATES.set([this.options.ReSTIR.RESTIR_TEMP_CANDIDATES]);
+    ConfigViews.USE_TEMPORAL_RESAMPLE.set([this.options.ReSTIR.USE_TEMPORAL_RESAMPLE ? 1 : 0]);
+    ConfigViews.MAX_CONFIDENCE.set([this.options.ReSTIR.MAX_CONFIDENCE]);
+    ConfigViews.SR_CIRCLE_RADIUS.set([this.options.ReSTIR.SR_CIRCLE_RADIUS]);
+
+    return ConfigValues;
   }
 
   // might return a different string with each invocation if internal shader configurations
@@ -164,6 +180,8 @@ export class ReSTIRConfigManager extends ConfigManager {
       RESTIR_SR_CANDIDATES: i32,
       RESTIR_TEMP_CANDIDATES: i32,
       USE_TEMPORAL_RESAMPLE: u32,
+      MAX_CONFIDENCE: f32,
+      SR_CIRCLE_RADIUS: f32,
     }
 
     struct ShaderConfig {

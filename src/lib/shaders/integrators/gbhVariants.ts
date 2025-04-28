@@ -134,7 +134,7 @@ fn Resample(
     r.Y.firstVertexSeed = canonicalFirstVertexSeed;
   }
 
-  r.c = clamp(r.c, 1.0, MAX_CONFIDENCE);
+  r.c = clamp(r.c, 1.0, config.MAX_CONFIDENCE);
 
   return r;
 }
@@ -373,7 +373,7 @@ fn Resample(
     r.Y.firstVertexSeed = canonicalFirstVertexSeed;
   }
 
-  r.c = clamp(r.c, 1.0, MAX_CONFIDENCE);
+  r.c = clamp(r.c, 1.0, config.MAX_CONFIDENCE);
 
   return r;
 }
@@ -461,7 +461,7 @@ fn Resample(
     r.Y.firstVertexSeed = canonicalFirstVertexSeed;
   }
 
-  r.c = clamp(r.c, 1.0, MAX_CONFIDENCE);
+  r.c = clamp(r.c, 1.0, config.MAX_CONFIDENCE);
 
   return r;
 }

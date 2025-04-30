@@ -2,8 +2,6 @@ export const getReSTIRRandomPart = /* wgsl */ `
 const RANDOMS_VEC4F_ARRAY_COUNT = 50;
 const RANDOMS_SAMPLES_COUNT = RANDOMS_VEC4F_ARRAY_COUNT * 4;
 var<private> randomsOffset: f32 = 0;
-var<private> randomsOffsetsArray = array<f32, 8>(0,0,0,0,0,0,0,0);
-var<private> randomsOffsetsArrayIndex: u32 = 0;
 var<private> randomsSeed: u32 = 0;
 var<private> randomsCount: u32 = 0;
 
@@ -37,30 +35,12 @@ fn initializeRandoms(seed: u32) {
   // re-setting the variables, in ReSTIR PT we'll call initializeRandoms() more than once
   randomsSeed = seed;
   randomsCount = 0;
-
   randomsOffset = 0;
-  randomsOffsetsArray = array<f32, 8>(0,0,0,0,0,0,0,0);
-  randomsOffsetsArrayIndex = 0;
 
-  // if (
-  //   config.SAMPLER_DECORRELATION == DECORRELATION_BLUE_NOISE_MASK
-  // ) {
-  //   let tx1 = mod1u(tid.x, 256);
-  //   let ty1 = mod1u(tid.y, 256);
-  //   let blueNoise1 = textureLoad(blueNoise256, vec2u(tx1, ty1), 0);
-  //   let tx2 = mod1u(tid.x + 128, 256);
-  //   let ty2 = mod1u(tid.y + 128, 256);
-  //   let blueNoise2 = textureLoad(blueNoise256, vec2u(tx2, ty2), 0);
-  
-  //   randomsOffsetsArray[0] = blueNoise1.x;
-  //   randomsOffsetsArray[1] = blueNoise1.y;
-  //   randomsOffsetsArray[2] = blueNoise1.z;
-  //   randomsOffsetsArray[3] = blueNoise1.w;
-  //   randomsOffsetsArray[4] = blueNoise2.x;
-  //   randomsOffsetsArray[5] = blueNoise2.y;
-  //   randomsOffsetsArray[6] = blueNoise2.z;
-  //   randomsOffsetsArray[7] = blueNoise2.w;
-  // }
+  // you can't do blue noise decorrelation since you only have access to a seed when initializing 
+  // randoms, and blue noise decorrelation requires you to "overlay" blue noise offsets from
+  // the pixels on the blue noise image texture. if the pixel adjacent to this one doesn't take
+  // the blue noise offsets that are adjacent on the image texture, decorrelation obviously wont work
 }
 
 fn selectRandomArraySampleComponent(sample: vec4f, index: u32) -> f32 {

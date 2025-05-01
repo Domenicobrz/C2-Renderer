@@ -410,6 +410,7 @@ fn Resample(
       activeCandidates += 1.0;
     }
   }
+  let mi = 1.0 / activeCandidates;
 
   for (var i: i32 = 0; i < M; i++) {
     /*

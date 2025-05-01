@@ -8,6 +8,7 @@
   import MisOptions from './Simple-path-trace/MisOptions.svelte';
   import Sampler from './Simple-path-trace/Sampler.svelte';
   import ReSTIRSampler from './ReSTIR/Sampler.svelte';
+  import GBH from './ReSTIR/GBH.svelte';
 </script>
 
 <p>Integrator Type:</p>
@@ -50,6 +51,9 @@
   </Folder>
   <Folder name="Spatial-reuse sampler">
     <ReSTIRSampler />
+  </Folder>
+  <Folder name="Generalized Balance Heuristic">
+    <GBH />
   </Folder>
 {/if}
 

@@ -65,7 +65,7 @@ struct PassInfo {
 const MAX_SR_CANDIDATES_COUNT = 6;
 var<private> temporalResample = false;
 
-${resampleLogic}
+${resampleLogic(configManager)}
 
 fn initialCandidatesReservoir(tid: vec3u, domain: vec3u, idx: u32) -> Reservoir {
   var reservoir = Reservoir(

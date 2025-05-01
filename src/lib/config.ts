@@ -60,6 +60,7 @@ export type ConfigOptions = {
     RESTIR_TEMP_CANDIDATES: number;
     USE_TEMPORAL_RESAMPLE: boolean;
     SAMPLER_TYPE: ReSTIR_SAMPLER_TYPE;
+    GBH_VARIANT: 'Pairwise MIS' | '1/M Biased';
   };
 };
 

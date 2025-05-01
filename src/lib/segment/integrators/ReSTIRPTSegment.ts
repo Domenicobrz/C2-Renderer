@@ -336,6 +336,13 @@ export class ReSTIRPTSegment {
       this.SPATIAL_REUSE_PASSES = this.configManager.options.ReSTIR.RESTIR_SR_PASS_COUNT;
       this.updateBindGroup0();
     }
+
+    if (
+      this.configManager.options.ReSTIR.GBH_VARIANT !=
+      this.configManager.prevOptions.ReSTIR.GBH_VARIANT
+    ) {
+      this.requestShaderCompilation = true;
+    }
   }
 
   getFocusDistanceFromScreenPoint(point: Vector2): number {

@@ -1,6 +1,8 @@
+import type { ReSTIRConfigManager } from '$lib/config';
 import { GBHBiased, GBHPairWise, GBHStandard } from './gbhVariants';
 
-export const resampleLogic = /* wgsl */ `
+export function resampleLogic(configManager: ReSTIRConfigManager) {
+  return /* wgsl */ `
 fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
 
@@ -61,6 +63,7 @@ fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u) -> RandomReplayR
 }
 
 ${/* GBHStandard */ ''}
-${/* GBHBiased */ ''}
-${GBHPairWise}
+${configManager.options.ReSTIR.GBH_VARIANT == 'Pairwise MIS' ? GBHPairWise : ''}
+${configManager.options.ReSTIR.GBH_VARIANT == '1/M Biased' ? GBHBiased : ''}
 `;
+}

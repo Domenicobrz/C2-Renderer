@@ -150,7 +150,8 @@ export const configOptions = createConfigStore({
     RESTIR_TEMP_CANDIDATES: 2,
     SR_CIRCLE_RADIUS: 10.0,
     MAX_CONFIDENCE: 10,
-    USE_TEMPORAL_RESAMPLE: true
+    USE_TEMPORAL_RESAMPLE: true,
+    GBH_VARIANT: 'Pairwise MIS'
   },
 
   shaderConfig: {

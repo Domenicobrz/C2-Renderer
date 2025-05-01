@@ -14,6 +14,12 @@ export enum SAMPLER_TYPE {
   CUSTOM_R2 = 3
 }
 
+export enum ReSTIR_SAMPLER_TYPE {
+  UNIFORM = 0,
+  HALTON_2_THEN_UNIFORM = 1,
+  BLUE_NOISE = 2
+}
+
 export enum SAMPLER_DECORRELATION {
   NONE = 0,
   RANDOM_OFFSET = 1,
@@ -53,6 +59,7 @@ export type ConfigOptions = {
     MAX_CONFIDENCE: number;
     RESTIR_TEMP_CANDIDATES: number;
     USE_TEMPORAL_RESAMPLE: boolean;
+    SAMPLER_TYPE: ReSTIR_SAMPLER_TYPE;
   };
 };
 
@@ -80,7 +87,7 @@ export class ConfigManager {
   }
 
   getOptionsBuffer(): ArrayBuffer {
-    return new Uint32Array([]);
+    return new ArrayBuffer();
   }
 
   // might return a different string with each invocation if internal shader configurations
@@ -99,7 +106,7 @@ export class SPTConfigManager extends ConfigManager {
       this.options.SimplePathTrace.SAMPLER_DECORRELATION,
       this.options.SimplePathTrace.USE_POWER_HEURISTIC,
       this.options.BOUNCES_COUNT
-    ]);
+    ]).buffer;
   }
 
   // might return a different string with each invocation if internal shader configurations
@@ -167,11 +174,6 @@ export class ReSTIRConfigManager extends ConfigManager {
   // have changed
   shaderPart(): string {
     return /* wgsl */ `
-
-    const DECORRELATION_NONE: u32 = ${SAMPLER_DECORRELATION.NONE};
-    const DECORRELATION_RAND_OFFSET: u32 = ${SAMPLER_DECORRELATION.RANDOM_OFFSET};
-    const DECORRELATION_RAND_ARRAY_OFFSET: u32 = ${SAMPLER_DECORRELATION.RANDOM_ARRAY_OFFSET};
-    const DECORRELATION_BLUE_NOISE_MASK: u32 = ${SAMPLER_DECORRELATION.BLUE_NOISE_MASK};
 
     struct Config {
       USE_POWER_HEURISTIC: u32,

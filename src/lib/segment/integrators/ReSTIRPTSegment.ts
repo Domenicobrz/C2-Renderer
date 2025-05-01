@@ -3,7 +3,7 @@ import { Matrix4, Vector2, Vector3 } from 'three';
 import { cameraMovementInfoStore, configOptions, samplesInfo } from '../../../routes/stores/main';
 import { ResetSegment } from '../resetSegment';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
-import { ReSTIRConfigManager } from '$lib/config';
+import { ReSTIR_SAMPLER_TYPE, ReSTIRConfigManager } from '$lib/config';
 import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
@@ -649,8 +649,33 @@ export class ReSTIRPTSegment {
 
   updateReSTIRRandoms() {
     // ReSTIR random numbers, which have to be different from path-tracing random numbers
-    let rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
-    this.device.queue.writeBuffer(this.restirRandomsUniformBuffer, 0, rarr);
+    if (this.renderState.state == 'sr' || this.renderState.state == 'sr-start') {
+      let samplerType = this.configManager.options.ReSTIR.SAMPLER_TYPE;
+
+      if (samplerType == ReSTIR_SAMPLER_TYPE.UNIFORM) {
+        let rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
+        this.device.queue.writeBuffer(this.restirRandomsUniformBuffer, 0, rarr);
+      }
+
+      if (samplerType == ReSTIR_SAMPLER_TYPE.BLUE_NOISE) {
+        let rarr = new Float32Array(this.blueNoiseSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
+        this.device.queue.writeBuffer(this.restirRandomsUniformBuffer, 0, rarr);
+      }
+
+      if (samplerType == ReSTIR_SAMPLER_TYPE.HALTON_2_THEN_UNIFORM) {
+        let haltonArr = this.haltonSampler.getSamples(2);
+        let uniformArr = this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT - 2);
+        this.device.queue.writeBuffer(
+          this.restirRandomsUniformBuffer,
+          0,
+          new Float32Array([...haltonArr, ...uniformArr])
+        );
+      }
+    } else {
+      // for initial-candidates passes we'll just use standard uniform random numbers
+      let rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
+      this.device.queue.writeBuffer(this.restirRandomsUniformBuffer, 0, rarr);
+    }
   }
 
   updateRandomsBuffer() {

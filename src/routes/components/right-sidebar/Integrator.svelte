@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { configOptions } from '../../stores/main';
   import Folder from '../Folder.svelte';
   import Separator from '../Separator.svelte';
@@ -7,6 +7,7 @@
   import Decorrelation from './Simple-path-trace/Decorrelation.svelte';
   import MisOptions from './Simple-path-trace/MisOptions.svelte';
   import Sampler from './Simple-path-trace/Sampler.svelte';
+  import ReSTIRSampler from './ReSTIR/Sampler.svelte';
 </script>
 
 <p>Integrator Type:</p>
@@ -46,6 +47,9 @@
 {#if $configOptions.integrator == 'ReSTIR'}
   <Folder name="ReSTIR PT Params">
     <ReSTIRPTParams />
+  </Folder>
+  <Folder name="Spatial-reuse sampler">
+    <ReSTIRSampler />
   </Folder>
 {/if}
 

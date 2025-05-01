@@ -1,4 +1,4 @@
-import type { ConfigOptions } from '$lib/config';
+import { ReSTIR_SAMPLER_TYPE, type ConfigOptions } from '$lib/config';
 import { get, writable } from 'svelte/store';
 import { Vector2, Vector3 } from 'three';
 
@@ -141,6 +141,7 @@ export const configOptions = createConfigStore({
   },
 
   ReSTIR: {
+    SAMPLER_TYPE: ReSTIR_SAMPLER_TYPE.UNIFORM,
     USE_POWER_HEURISTIC: 1,
     RESTIR_INITIAL_CANDIDATES: 1, // the paper recommends 50 I think
     // the paper recommends 6, but on my machine occupancy rates seems to be horrible at 6

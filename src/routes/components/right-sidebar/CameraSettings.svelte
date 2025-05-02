@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Vector2 } from 'three';
   import type { Vector3 } from 'three';
-  import { cameraInfoStore, cameraMovementInfoStore } from '../../stores/main';
+  import { cameraInfoStore, cameraMovementInfoStore, configOptions } from '../../stores/main';
   import IronSightIcon from '../icons/IronSightIcon.svelte';
   import Spacer from '../Spacer.svelte';
   import type { RendererInterface } from '$lib/C2';
@@ -12,6 +12,8 @@
 
   export let canvasRef: HTMLCanvasElement;
   export let renderer: RendererInterface;
+
+  $: isUsingReSTIR = $configOptions.integrator == 'ReSTIR';
 
   $: {
     if (canvasRef) {
@@ -127,13 +129,24 @@
   />
 </span>
 <Spacer vertical={15} />
-<Toggle label="Cat's eye bokeh:" bind:checked={$cameraInfoStore.catsEyeBokehEnabled} />
-<Spacer vertical={10} />
-<div class="flex-row ce-options" class:disabled={!$cameraInfoStore.catsEyeBokehEnabled}>
-  <span>Cat's eye bokeh<br />(mult, pow)</span>
-  <input class="samples-limit-input" type="text" bind:value={$cameraInfoStore.catsEyeBokehMult} />
-  <Spacer horizontal={4} />
-  <input class="samples-limit-input" type="text" bind:value={$cameraInfoStore.catsEyeBokehPow} />
+
+<div class:locked={isUsingReSTIR}>
+  <Toggle label="Cat's eye bokeh:" bind:checked={$cameraInfoStore.catsEyeBokehEnabled} />
+  <Spacer vertical={10} />
+  <div
+    class="flex-row ce-options"
+    class:disabled={!$cameraInfoStore.catsEyeBokehEnabled && !isUsingReSTIR}
+  >
+    <span>Cat's eye bokeh<br />(mult, pow)</span>
+    <input class="samples-limit-input" type="text" bind:value={$cameraInfoStore.catsEyeBokehMult} />
+    <Spacer horizontal={4} />
+    <input class="samples-limit-input" type="text" bind:value={$cameraInfoStore.catsEyeBokehPow} />
+  </div>
+
+  {#if isUsingReSTIR}
+    <Spacer vertical={7} />
+    <p class="warning">Cat's eye bokeh is unavailable with ReSTIR-PT</p>
+  {/if}
 </div>
 
 <Folder name="Camera movement" roundBox expanded={false}>
@@ -267,5 +280,15 @@
   p.darken-span span {
     color: #aaa;
     user-select: text;
+  }
+
+  .locked {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+
+  p.warning {
+    color: #ffbd77;
   }
 </style>

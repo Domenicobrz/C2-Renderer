@@ -62,6 +62,7 @@ export const globals: {
 
 export type RendererInterface = {
   getFocusDistanceFromScreenPoint: (point: Vector2) => number;
+  restart: () => void;
 };
 
 export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInterface> {
@@ -116,6 +117,12 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   return {
     getFocusDistanceFromScreenPoint: (point: Vector2) => {
       return computeSegment.getFocusDistanceFromScreenPoint(point);
+    },
+    restart: () => {
+      if (computeSegment instanceof ReSTIRPTSegment) {
+        return computeSegment.requestReset();
+      }
+      return computeSegment.resetSamplesAndTile();
     }
   };
 }

@@ -89,7 +89,7 @@
       <Performance />
     </Folder>
     <Folder name="Operate" roundBox>
-      <Operate />
+      <Operate {renderer} />
     </Folder>
   </div>
 </main>

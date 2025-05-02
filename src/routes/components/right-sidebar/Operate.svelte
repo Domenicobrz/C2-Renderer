@@ -1,8 +1,11 @@
 <script lang="ts">
+  import type { RendererInterface } from '$lib/C2';
   import { samplesInfo } from '../../stores/main';
 
+  export let renderer: RendererInterface;
+
   function restart() {
-    samplesInfo.reset();
+    renderer.restart();
   }
 
   function stop() {

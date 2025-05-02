@@ -650,8 +650,6 @@ export class ReSTIRPTSegment {
     this.blueNoiseSampler.reset();
     this.uniformSampler.reset();
     this.srUniformSampler.reset();
-
-    // samplesInfo.reset(); // done inside requestReset()
   }
 
   updateReSTIRRandoms() {

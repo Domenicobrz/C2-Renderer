@@ -6,7 +6,7 @@
 <label>
   <input
     type="radio"
-    name="sampler-type"
+    name="ReSTIR-sampler-type"
     value={ReSTIR_SAMPLER_TYPE.UNIFORM}
     bind:group={$configOptions.ReSTIR.SAMPLER_TYPE}
   />
@@ -15,7 +15,7 @@
 <label>
   <input
     type="radio"
-    name="sampler-type"
+    name="ReSTIR-sampler-type"
     value={ReSTIR_SAMPLER_TYPE.HALTON_2_THEN_UNIFORM}
     bind:group={$configOptions.ReSTIR.SAMPLER_TYPE}
   />
@@ -24,7 +24,7 @@
 <label>
   <input
     type="radio"
-    name="sampler-type"
+    name="ReSTIR-sampler-type"
     value={ReSTIR_SAMPLER_TYPE.BLUE_NOISE}
     bind:group={$configOptions.ReSTIR.SAMPLER_TYPE}
   />

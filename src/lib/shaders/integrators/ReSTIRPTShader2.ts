@@ -64,11 +64,11 @@ struct PassInfo {
 const MAX_SR_CANDIDATES_COUNT = 6;
 var<private> temporalResample = false;
 
-fn initialCandidatesReservoir(tid: vec3u, domain: vec3u, idx: u32) -> Reservoir {
+fn initialCandidatesReservoir(tid: vec3u, domain: vec2u, idx: u32) -> Reservoir {
   var reservoir = Reservoir(
                         // seed will be set inside the loop
     PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec3i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+    vec2i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
   );
 
   initializeRandoms2(tid);
@@ -188,13 +188,13 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
         if (dot(normal1, normal0) < 0.9) {
           candidates[i] = Reservoir(
             PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-            vec3i(-1, -1, -1), vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0),
+            vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0),
           );
         }
       } else {
         candidates[i] = Reservoir(
           PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-          vec3i(-1, -1, -1), vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0),
+          vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0),
         );
       }
     }
@@ -221,11 +221,11 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
 
   temporalResample = (passInfo.passIdx == 0 && config.USE_TEMPORAL_RESAMPLE > 0);
 
-  let domain = vec3u(tid.xy, 0);
+  let domain = vec2u(tid.xy);
 
   let emptyReservoir = Reservoir(
     PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec3i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+    vec2i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
   );
 
   var prevReservoir = restirPassInput[idx];

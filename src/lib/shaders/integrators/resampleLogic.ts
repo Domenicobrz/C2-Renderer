@@ -3,13 +3,13 @@ import { GBHBiased, GBHPairWise, GBHStandard } from './gbhVariants';
 
 export function resampleLogic(configManager: ReSTIRConfigManager) {
   return /* wgsl */ `
-fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u) -> RandomReplayResult {
+fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec2u) -> RandomReplayResult {
   let idx = tid.y * canvasSize.x + tid.x;
 
   // explained in segment/integrators/firstVertexSeed.md
   initializeRandoms(firstVertexSeed);
   var rayContribution: f32;
-  var ray = getCameraRay(tid, idx, &rayContribution);
+  var ray = getCameraRay(vec3u(tid, 0), idx, &rayContribution);
 
   // then we'll use the path-info seed number, and also have to remember to
   // skip the camera randoms
@@ -40,7 +40,9 @@ fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec3u) -> RandomReplayR
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
-      let rrStepResult = shade(ires, &ray, &unusedReservoir, &throughput, &pathInfoCopy, &pathSampleInfo, &lastBrdfMis, true, tid, i);
+      let rrStepResult = shade(
+        ires, &ray, &unusedReservoir, &throughput, &pathInfoCopy, &pathSampleInfo, &lastBrdfMis, true, vec3u(tid, 0), i
+      );
 
       if (rrStepResult.shouldTerminate) {
         return rrStepResult;

@@ -61,7 +61,7 @@ fn generalizedBalanceHeuristic(
 
 fn Resample(
   candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>, 
-  domain: vec3u
+  domain: vec2u
 ) -> Reservoir {
   // ******* important: first candidate is the current pixel's reservoir ***********
   // ******* I should probably update this function to reflect that ***********
@@ -73,7 +73,7 @@ fn Resample(
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the domain value
     PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec3i(domain), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+    vec2i(domain), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
   );
 
   var M : i32 = config.RESTIR_SR_CANDIDATES;
@@ -233,7 +233,7 @@ fn generalizedBalanceHeuristicPairwiseMIS_NonCanonical(
 
 fn Resample(
   candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>, 
-  domain: vec3u
+  domain: vec2u
 ) -> Reservoir {
   // ******* important: first candidate is the current pixel's reservoir ***********
   // ******* I should probably update this function to reflect that ***********
@@ -245,7 +245,7 @@ fn Resample(
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the domain value
     PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec3i(domain), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+    vec2i(domain), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
   );
 
   var M : i32 = config.RESTIR_SR_CANDIDATES;
@@ -269,7 +269,7 @@ fn Resample(
     var skip = false;
     var path = PathInfo();
     var firstVertexSeed: u32 = 0;
-    var targetDomain = vec3u(0);
+    var targetDomain = vec2u(0);
     var randomReplayResult = RandomReplayResult(0, vec3f(0), true, vec2f(0.0));
 
     if (i < M) {
@@ -302,7 +302,7 @@ fn Resample(
     
       path = candidates[0].Y;
       firstVertexSeed = XjCandidate.Y.firstVertexSeed;
-      targetDomain = vec3u(XjCandidate.domain);
+      targetDomain = vec2u(XjCandidate.domain);
     }
 
     if (!skip) {
@@ -382,7 +382,7 @@ fn Resample(
 export let GBHBiased = /* wgsl */ `
 fn Resample(
   candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>, 
-  domain: vec3u
+  domain: vec2u
 ) -> Reservoir {
   // ******* important: first candidate is the current pixel's reservoir ***********
   // ******* I should probably update this function to reflect that ***********
@@ -394,7 +394,7 @@ fn Resample(
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the domain value
     PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec3i(domain), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+    vec2i(domain), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
   );
 
   var M : i32 = config.RESTIR_SR_CANDIDATES;

@@ -1,7 +1,11 @@
 import { BVH } from '$lib/bvh/bvh';
 import { getComputeShader } from '$lib/shaders/computeShader';
 import { Matrix4, Vector2, Vector3 } from 'three';
-import { cameraMovementInfoStore, configOptions, samplesInfo } from '../../routes/stores/main';
+import {
+  cameraMovementInfoStore,
+  centralStatusMessage,
+  samplesInfo
+} from '../../routes/stores/main';
 import { ResetSegment } from './resetSegment';
 import { TileSequence, type Tile } from '$lib/tile';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
@@ -530,13 +534,15 @@ export class ComputeSegment {
     }
   }
 
-  createPipeline() {
+  async createPipeline() {
+    centralStatusMessage.set('compiling shaders');
+
     const computeModule = this.device.createShaderModule({
       label: 'compute module',
       code: getComputeShader(globals.common.lutManager, this.configManager)
     });
 
-    this.pipeline = this.device.createComputePipeline({
+    this.pipeline = await this.device.createComputePipelineAsync({
       label: 'compute pipeline',
       layout: this.layout,
       compute: {
@@ -544,11 +550,13 @@ export class ComputeSegment {
         entryPoint: 'compute'
       }
     });
+
+    centralStatusMessage.set('');
   }
 
   async compute() {
     if (this.requestShaderCompilation) {
-      this.createPipeline();
+      await this.createPipeline();
       this.requestShaderCompilation = false;
     }
 

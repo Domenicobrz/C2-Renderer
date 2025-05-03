@@ -276,11 +276,9 @@ async function switchIntegrator(integratorType: IntegratorType) {
   centralStatusMessage.set('processing bvh and materials');
   await tick(); // will give us the chance of showing the message above
   await computeSegment.updateScene(scene); // I don't like this...
+  centralStatusMessage.set('');
 
   computeSegment.setDebugPixelTarget(163, 20);
 
-  centralStatusMessage.set('compiling shaders');
-  await tick(); // will give us the chance of showing the message above
   renderLoop();
-  centralStatusMessage.set('');
 }

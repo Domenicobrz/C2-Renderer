@@ -1,6 +1,10 @@
 import { BVH } from '$lib/bvh/bvh';
 import { Matrix4, Vector2, Vector3 } from 'three';
-import { cameraMovementInfoStore, configOptions, samplesInfo } from '../../../routes/stores/main';
+import {
+  cameraMovementInfoStore,
+  centralStatusMessage,
+  samplesInfo
+} from '../../../routes/stores/main';
 import { ResetSegment } from '../resetSegment';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 import { ReSTIR_SAMPLER_TYPE, ReSTIRConfigManager } from '$lib/config';
@@ -14,7 +18,6 @@ import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout'
 import { HaltonSampler } from '$lib/samplers/Halton';
 import { UniformSampler } from '$lib/samplers/Uniform';
 import { BlueNoiseSampler } from '$lib/samplers/BlueNoise';
-import { CustomR2Sampler } from '$lib/samplers/CustomR2';
 import { ReservoirToRadianceSegment } from '../reservoirToRadSegment';
 import { getReSTIRPTShader2 } from '$lib/shaders/integrators/ReSTIRPTShader2';
 import { TileSequence, type Tile } from '$lib/tile';
@@ -692,13 +695,15 @@ export class ReSTIRPTSegment {
     this.updateReSTIRRandoms();
   }
 
-  createPipeline() {
+  async createPipeline() {
+    centralStatusMessage.set('compiling shaders');
+
     const computeModule = this.device.createShaderModule({
       label: 'ReSTIR PT module',
       code: getReSTIRPTShader2(globals.common.lutManager, this.configManager)
     });
 
-    this.pipeline = this.device.createComputePipeline({
+    this.pipeline = await this.device.createComputePipelineAsync({
       label: 'ReSTIR PT pipeline',
       layout: this.layout,
       compute: {
@@ -706,6 +711,8 @@ export class ReSTIRPTSegment {
         entryPoint: 'compute'
       }
     });
+
+    centralStatusMessage.set('');
   }
 
   checkTilePerformance(tileSeq: TileSequence) {
@@ -765,7 +772,7 @@ export class ReSTIRPTSegment {
     }
 
     if (this.requestShaderCompilation) {
-      this.createPipeline();
+      await this.createPipeline();
       this.requestShaderCompilation = false;
     }
 

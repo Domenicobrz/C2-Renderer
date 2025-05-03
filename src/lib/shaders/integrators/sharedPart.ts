@@ -19,6 +19,7 @@ import { pbrtMathUtilsPart } from '../parts/pbrtMathUtils';
 import { randomPart } from '../parts/random';
 import { shadingNormalsPart } from '../parts/shadingNormal';
 import { texturePart } from '../parts/texture';
+import { resampleLogic } from './resampleLogic';
 import { reservoirShaderPart } from './reservoir';
 import { getReSTIRRandomPart } from './restirRandomPart';
 import { tempShadCopy } from './tempShadCopy';
@@ -218,5 +219,6 @@ fn getLuminance(emission: vec3f) -> f32 {
 }
 
 ${tempShadCopy}
+${resampleLogic(configManager)}
 `;
 }

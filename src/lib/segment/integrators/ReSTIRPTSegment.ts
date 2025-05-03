@@ -84,7 +84,6 @@ export class ReSTIRPTSegment {
   private srUniformSampler = new UniformSampler('seed-string-7'); // was -2
   private uniformSampler2 = new UniformSampler('seed-string-8'); // was -3
   private blueNoiseSampler = new BlueNoiseSampler();
-  private customR2Sampler = new CustomR2Sampler();
 
   private computeTile = new TileSequence();
   private spatialResampleTile = new TileSequence();
@@ -677,34 +676,18 @@ export class ReSTIRPTSegment {
         );
       }
     } else {
-      // for initial-candidates passes we'll just use standard uniform random numbers
+      // for initial-candidates reservoirs we'll just use standard uniform random numbers
       let rarr = new Float32Array(this.uniformSampler2.getSamples(this.RANDOMS_BUFFER_COUNT));
       this.device.queue.writeBuffer(this.restirRandomsUniformBuffer, 0, rarr);
     }
   }
 
-  updateRandomsBuffer() {
-    let arr: Float32Array;
-
-    // if (this.configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.HALTON) {
-    //   arr = new Float32Array(this.haltonSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-    //   this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
-    // }
-
-    // if (this.configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.UNIFORM) {
-    arr = new Float32Array(this.uniformSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-    this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
-    // }
-
-    // if (this.configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.BLUE_NOISE) {
-    //   arr = new Float32Array(this.blueNoiseSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-    //   this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
-    // }
-
-    // if (this.configManager.options.SAMPLER_TYPE == SAMPLER_TYPE.CUSTOM_R2) {
-    //   arr = new Float32Array(this.customR2Sampler.getSamples(this.RANDOMS_BUFFER_COUNT));
-    //   this.device.queue.writeBuffer(this.sequenceUniformBuffer, 0, arr);
-    // }
+  updateRandomSeed() {
+    this.device.queue.writeBuffer(
+      this.sequenceUniformBuffer,
+      0,
+      new Float32Array(this.uniformSampler.getSamples(1))
+    );
 
     this.updateReSTIRRandoms();
   }
@@ -811,7 +794,7 @@ export class ReSTIRPTSegment {
       this.renderState.srIndex = 0;
       this.renderState.state = 'compute';
 
-      this.updateRandomsBuffer();
+      this.updateRandomSeed();
       this.updateReSTIRRandoms();
       this.updatePassInfoBuffer();
     }
@@ -871,10 +854,12 @@ export class ReSTIRPTSegment {
           this.renderState.state = 'sr';
           this.renderState.srIndex = 0;
           this.renderState.icIndex = 0;
+          this.updateRandomSeed();
           this.updateReSTIRRandoms();
           this.updatePassInfoBuffer();
         } else {
           this.renderState.icIndex++;
+          this.updateRandomSeed();
           this.updateReSTIRRandoms();
           this.updatePassInfoBuffer();
         }

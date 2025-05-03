@@ -1,6 +1,5 @@
 import type { ReSTIRConfigManager } from '$lib/config';
 import type { LUTManager } from '$lib/managers/lutManager';
-import { resampleLogic } from './resampleLogic';
 import { getReSTIRPTSharedPart } from './sharedPart';
 
 export function getReSTIRPTShader2(lutManager: LUTManager, configManager: ReSTIRConfigManager) {
@@ -16,7 +15,7 @@ export function getReSTIRPTShader2(lutManager: LUTManager, configManager: ReSTIR
 @group(1) @binding(0) var<uniform> camera: Camera;
 // seems like maximum bindgroup count is 4 so I need to add the camera sample here 
 // unfortunately and I can't create a separate bindgroup for it
-@group(1) @binding(1) var<uniform> haltonSamples: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
+@group(1) @binding(1) var<uniform> randomSeed: f32;
 @group(1) @binding(2) var<uniform> uniformRandom: array<vec4f, RANDOMS_VEC4F_ARRAY_COUNT>;
 @group(1) @binding(3) var<uniform> config: Config;
 struct PassInfo {
@@ -65,8 +64,6 @@ struct PassInfo {
 const MAX_SR_CANDIDATES_COUNT = 6;
 var<private> temporalResample = false;
 
-${resampleLogic(configManager)}
-
 fn initialCandidatesReservoir(tid: vec3u, domain: vec3u, idx: u32) -> Reservoir {
   var reservoir = Reservoir(
                         // seed will be set inside the loop
@@ -79,7 +76,7 @@ fn initialCandidatesReservoir(tid: vec3u, domain: vec3u, idx: u32) -> Reservoir 
   let ic = passInfo.icPassIdx;
 
   // if Path info will be accepted, it will also take this seed and save it in the reservoir
-  let seed = hashPixelAndSeed(tid.xy, u32(haltonSamples[ic].x * f32(1099087573)));
+  let seed = hashPixelAndSeed(tid.xy, u32(randomSeed * f32(1099087573)));
   let firstVertexSeed = seed;
 
   initializeRandoms(seed);

@@ -1,7 +1,11 @@
-### High priority:
+### Medium priority:
 
 The emitted power of area lights doesn't follow the approach in PBRT (`DiffuseAreaLight::Phi`):
 https://pbr-book.org/4ed/Light_Sources/Area_Lights
+
+---
+
+camera holds some buffers, I'll have to create a dispose method
 
 ---
 

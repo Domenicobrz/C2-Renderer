@@ -4,6 +4,7 @@ import type { Material } from './materials/material';
 import type { Triangle } from './primitives/triangle';
 import { c2FeaturesScene } from './scenes/c2features';
 import { c2Features2Scene } from './scenes/c2features2';
+import { c2FeaturesScene_Debug } from './scenes/c2features_debug';
 import { cornellSphereScene } from './scenes/cornellSphere';
 import { envmapHorseScene } from './scenes/envmapHorse';
 import { envmapSphereScene } from './scenes/envmapSphere';
@@ -28,7 +29,8 @@ export async function createScene(): Promise<C2Scene> {
   // return ReSTIRTestScene();
   // return ReSTIREnvmapScene();
   // return ReSTIRTest2Scene();
-  return ReSTIRTest3Scene();
+  // return ReSTIRTest3Scene();
   // return c2FeaturesScene();
+  return c2FeaturesScene_Debug();
   // return envmapHorseScene();
 }

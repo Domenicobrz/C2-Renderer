@@ -14,6 +14,13 @@ fn rrEnvmapPathConstruction(
       let mi = *lastBrdfMis; // will be 1 in this case
       let pHat = emissive * *throughput; // throughput will be 1 in this case
 
+      // if(inspectRR) {
+      //   debugLog(663.0);
+      //   debugLog(length(emissive));
+      //   debugLog(length(*throughput));
+      //   debugLog(*lastBrdfMis);
+      // }
+
       rrStepResult.valid = 1;
       rrStepResult.shouldTerminate = true;
       rrStepResult.jacobian = vec2f(1.0);
@@ -77,6 +84,14 @@ fn rrPathConstruction(
     if (pathIsBrdfSampled && u32(debugInfo.bounce) == pi.bounceCount) {
       let mi = *lastBrdfMis; // will be 1 in this case
       let pHat = emissive * *throughput; // throughput will be 1 in this case
+
+      // if (inspectRR) {
+      //   debugLog(778.0);
+      //   debugLog(length(*throughput));
+      //   debugLog(length(pHat));
+      //   debugLog(length(emissive));
+      //   debugLog(*lastBrdfMis);
+      // }
 
       rrStepResult.valid = 1;
       rrStepResult.shouldTerminate = true;

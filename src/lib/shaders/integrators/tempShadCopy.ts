@@ -252,6 +252,16 @@ fn getNormalsAtPoint(
   }
   var normals = SurfaceNormals(geometricNormal, vertexNormal, vertexNormal);
 
+  // only used for getShadingNormal. Truth be told, we should change
+  // this function's signature but I don't want to deal with that for now
+  // TODO: change getShadingNormal such that it's not necessary to
+  // create a fake ires struct
+  let fakeIres = BVHIntersectionResult(
+    false, 0, vec3f(0.0),
+    surfaceAttributes.uv, surfaceAttributes.normal, surfaceAttributes.tangent,
+    triangle, -1, vec2f(0.0),
+  );
+
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
     let bumpMapLocation = vec2i(
       bitcast<i32>(materialData[11]),
@@ -262,22 +272,23 @@ fn getNormalsAtPoint(
     let uvRepeat = vec2f(materialData[5], materialData[6]);
 
     if (bumpMapLocation.x > -1) {
-      // only used for getShadingNormal. Truth be told, we should change
-      // this function's signature but I don't want to deal with that for now
-      // TODO: change getShadingNormal such that it's not necessary to
-      // create a fake ires struct
-      let fakeIres = BVHIntersectionResult(
-        false,
-        0,
-        vec3f(0.0),
-        surfaceAttributes.uv,
-        surfaceAttributes.normal,
-        surfaceAttributes.tangent,
-        triangle,
-        -1,
-        vec2f(0.0),
+      normals.shading = getShadingNormal(
+        bumpMapLocation, bumpStrength, uvRepeat, vertexNormal, 
+        *ray, fakeIres, bumpOffset
       );
+    }
+  }
 
+  if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
+    let bumpMapLocation = vec2i(
+      bitcast<i32>(materialData[10]),
+      bitcast<i32>(materialData[11]),
+    );
+
+    let bumpStrength = materialData[6];
+    let uvRepeat = vec2f(materialData[8], materialData[9]);
+
+    if (bumpMapLocation.x > -1) {
       normals.shading = getShadingNormal(
         bumpMapLocation, bumpStrength, uvRepeat, vertexNormal, 
         *ray, fakeIres, bumpOffset
@@ -365,6 +376,20 @@ fn shade(
   // v v v v v  this whole thing stinks and I don't understand it anymore, refactor it v v v v v
   // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
   (*ray).origin = ires.hitPoint;
+
+  // if (inspectRR) {
+  //   debugLog(444.0);
+  //   debugLog(f32(debugInfo.bounce));
+  //   debugLog(555.0);
+  //   debugLog(ires.hitPoint.x);
+  //   debugLog(ires.hitPoint.y);
+  //   debugLog(ires.hitPoint.z);
+  //   debugLog(665.0);
+  //   debugLog(normals.shading.x);
+  //   debugLog(normals.shading.y);
+  //   debugLog(normals.shading.z);
+  // }
+
   // in practice however, only for Dielectrics we need the exact origin, 
   // for TorranceSparrow/Diffuse we can apply the bump offset if necessary
   if (materialType != ${MATERIAL_TYPE.DIELECTRIC}) {
@@ -481,6 +506,15 @@ fn shade(
   t *= cosTerm(normals.shading, brdfSample.dir, materialType);
 
   *throughput *= t;
+
+  // if (inspectRR) {
+  //   debugLog(776.0);
+  //   // debugLog(length(brdfSample.brdf));
+  //   // debugLog(1.0 / brdfSample.pdf);
+  //   // debugLog(length(t));
+  //   // debugLog(cosTerm(normals.shading, brdfSample.dir, materialType));
+  //   debugLog(length(*throughput));
+  // }
 
   // already found reconnection vertex previously
   if (

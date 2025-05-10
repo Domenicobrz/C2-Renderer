@@ -278,7 +278,9 @@ async function switchIntegrator(integratorType: IntegratorType) {
   await computeSegment.updateScene(scene); // I don't like this...
   centralStatusMessage.set('');
 
-  computeSegment.setDebugPixelTarget(163, 20);
+  // computeSegment.setDebugPixelTarget(637, 59);
+  computeSegment.setDebugPixelTarget(713, 41);
+  // computeSegment.setDebugPixelTarget(715, 42);
 
   renderLoop();
 }

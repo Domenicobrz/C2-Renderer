@@ -30,7 +30,7 @@ type SamplesInfo = {
 };
 export const samplesInfo = (function createSamplesInfoStore() {
   let store = writable<SamplesInfo>({
-    limit: 10,
+    limit: 1,
     count: 0,
     ms: 0,
     tileSize: '',
@@ -123,7 +123,7 @@ export const cameraMovementInfoStore = writable<CameraMovementInfo>({
 
 export const configOptions = createConfigStore({
   forceMaxTileSize: false,
-  BOUNCES_COUNT: 10,
+  BOUNCES_COUNT: 3,
 
   ENVMAP_SCALE: 1,
   ENVMAP_ROTX: 0,
@@ -145,12 +145,12 @@ export const configOptions = createConfigStore({
     USE_POWER_HEURISTIC: 1,
     RESTIR_INITIAL_CANDIDATES: 1, // the paper recommends 50 I think
     // the paper recommends 6, but on my machine occupancy rates seems to be horrible at 6
-    RESTIR_SR_CANDIDATES: 6,
-    RESTIR_SR_PASS_COUNT: 3,
+    RESTIR_SR_CANDIDATES: 3,
+    RESTIR_SR_PASS_COUNT: 1,
     RESTIR_TEMP_CANDIDATES: 2,
     SR_CIRCLE_RADIUS: 10.0,
     MAX_CONFIDENCE: 10,
-    USE_TEMPORAL_RESAMPLE: true,
+    USE_TEMPORAL_RESAMPLE: false,
     GBH_VARIANT: 'Pairwise MIS'
   },
 

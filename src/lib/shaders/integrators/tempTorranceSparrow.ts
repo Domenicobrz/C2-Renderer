@@ -19,15 +19,23 @@ fn getTSMaterialData(
   data[4] = 0; 
   data[5] = 0;
 
-  // roughness, anisotropy
-  var roughness = materialsData[offset + 4]; 
-  let anisotropy = materialsData[offset + 5]; 
-
   // bump strength
   data[6] = materialsData[offset + 6]; 
 
   // will be used for roughness, since it's used in the multiscattering func
   data[7] = 0.0;
+
+  // uvRepeat, used for bumpMapping
+  data[8] = materialsData[offset + 7];
+  data[9] = materialsData[offset + 8];
+
+  // bumpMapLocation, used for bumpMapping
+  data[10] = materialsData[offset + 15];
+  data[11] = materialsData[offset + 16];
+
+  // roughness, anisotropy
+  var roughness = materialsData[offset + 4]; 
+  let anisotropy = materialsData[offset + 5]; 
 
   let uvRepeat = vec2f(
     materialsData[offset + 7],

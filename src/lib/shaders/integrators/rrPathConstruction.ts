@@ -82,14 +82,6 @@ fn rrPathConstruction(
       let mi = *lastBrdfMis; // will be 1 in this case
       let pHat = emissive * *throughput; // throughput will be 1 in this case
 
-      // if (inspectRR) {
-      //   debugLog(778.0);
-      //   debugLog(length(*throughput));
-      //   debugLog(length(pHat));
-      //   debugLog(length(emissive));
-      //   debugLog(*lastBrdfMis);
-      // }
-
       rrStepResult.valid = 1;
       rrStepResult.shouldTerminate = true;
       rrStepResult.jacobian = vec2f(1.0);

@@ -377,19 +377,6 @@ fn shade(
   // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
   (*ray).origin = ires.hitPoint;
 
-  // if (inspectRR) {
-  //   debugLog(444.0);
-  //   debugLog(f32(debugInfo.bounce));
-  //   debugLog(555.0);
-  //   debugLog(ires.hitPoint.x);
-  //   debugLog(ires.hitPoint.y);
-  //   debugLog(ires.hitPoint.z);
-  //   debugLog(665.0);
-  //   debugLog(normals.shading.x);
-  //   debugLog(normals.shading.y);
-  //   debugLog(normals.shading.z);
-  // }
-
   // in practice however, only for Dielectrics we need the exact origin, 
   // for TorranceSparrow/Diffuse we can apply the bump offset if necessary
   if (materialType != ${MATERIAL_TYPE.DIELECTRIC}) {
@@ -506,15 +493,6 @@ fn shade(
   t *= cosTerm(normals.shading, brdfSample.dir, materialType);
 
   *throughput *= t;
-
-  // if (inspectRR) {
-  //   debugLog(776.0);
-  //   // debugLog(length(brdfSample.brdf));
-  //   // debugLog(1.0 / brdfSample.pdf);
-  //   // debugLog(length(t));
-  //   // debugLog(cosTerm(normals.shading, brdfSample.dir, materialType));
-  //   debugLog(length(*throughput));
-  // }
 
   // already found reconnection vertex previously
   if (

@@ -36,10 +36,6 @@ fn generalizedBalanceHeuristic(
     // if (Xj.isNull > 0) { continue; }
     if (XjCandidate.domain.x < 0) { continue; }
 
-    if (inspectRR) {
-      debugLog(888.0);
-    }
-
     // shift Y into Xj's pixel
     let randomReplayResult = randomReplay(Y, XjCandidate.Y.firstVertexSeed, vec2u(XjCandidate.domain));
     if (randomReplayResult.valid > 0) {
@@ -53,10 +49,6 @@ fn generalizedBalanceHeuristic(
       let XjConfidence = XjCandidate.c;
       let res = XjConfidence * length(Xj.F) * J;
 
-      if (inspectRR) {
-        debugLog(res);
-      }
-
       denominator += res;
     }
   }
@@ -66,11 +58,6 @@ fn generalizedBalanceHeuristic(
 
   return numerator / denominator;
 }
-
-
-
-
-var<private> inspectRR = false;
 
 fn Resample(
   candidates: array<Reservoir, MAX_SR_CANDIDATES_COUNT>, 
@@ -96,12 +83,7 @@ fn Resample(
 
   let canonicalFirstVertexSeed = candidates[0].Y.firstVertexSeed;
 
-  var miSum = 0.0;
-  debugLog(111.0);
-
   for (var i: i32 = 0; i < M; i++) {
-    // debugLog(f32(candidates[i].domain.x));
-    // debugLog(f32(candidates[i].domain.y));
     /*
       since the very first candidate is this pixel's reservoir,
       I can probably avoid the random replay
@@ -116,22 +98,7 @@ fn Resample(
       continue;
     }
 
-    // debugLog(3333.0);
-    // debugLog(f32(Xi.Y.bounceCount));
-    // debugLog(f32(Xi.Y.reconnectionBounce));
-    // debugLog(select(0.0, 1.0, pathEndsInEnvmap(Xi.Y)));
-    // debugLog(select(0.0, 1.0, pathIsLightSampled(Xi.Y)));
-    // debugLog(select(0.0, 1.0, pathIsBrdfSampled(Xi.Y)));
-    // debugLog(select(0.0, 1.0, pathReconnects(Xi.Y)));
-
-    // if (i == 1) {
-    //   inspectRR = true;
-    // }
     let randomReplayResult = randomReplay(Xi.Y, canonicalFirstVertexSeed, domain);
-    // if (i == 1) {
-    //   inspectRR = false;
-    // }
-
 
     // remember that the random-replay will end up creating a new path-info
     // that computed internally a different jacobian compared to the jacobian
@@ -148,26 +115,9 @@ fn Resample(
     let Wxi = Xi.Wy * jacobian;
     var wi = 0.0;
 
-    // debugLog(55555.0);
-    // debugLog(f32(randomReplayResult.valid));
-
     if (randomReplayResult.valid > 0) {
-      if (i == 0) {
-        inspectRR = true;
-      }
       var mi = generalizedBalanceHeuristic(X, Y, confidence, i, candidates);
       wi = mi * length(Y.F) * Wxi;
-      if (i == 0) {
-        inspectRR = false;
-      }
-    
-      // debugLog(444.0);
-      // debugLog(wi);
-      // debugLog(mi);
-      // debugLog(length(Y.F));
-      // debugLog(Wxi);
-      // debugLog(444.0);
-      // miSum += mi;
     }
 
     if (wi > 0.0) {
@@ -177,14 +127,6 @@ fn Resample(
       r.c += Xi.c;
     }
   }
-
-  // debugLog(555.0);
-  // debugLog(miSum);
-  debugLog(999.0);
-  debugLog(999.0);
-  debugLog(999.0);
-  debugLog(999.0);
-  debugLog(999.0);
 
   if (r.isNull <= 0.0) {
     r.Wy = 1 / length(r.Y.F) * r.wSum;

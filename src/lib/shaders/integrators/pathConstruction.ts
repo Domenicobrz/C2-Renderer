@@ -320,14 +320,6 @@ fn envmapPathConstruction(
     let pHat = emissive * *throughput; // throughput will be 1 in this case
     let wi = mi * length(pHat);
 
-    // debugLog(4455.0);
-    // debugLog(f32(debugInfo.bounce));
-    // debugLog(wi);
-    // debugLog(mi);
-    // debugLog(length(pHat));
-    // debugLog(length(emissive));
-    // debugLog(length(*throughput));
-
     // non reconnectible path, we'll do pure Random-replay
     let pathInfo = PathInfo(
       pHat * mi,

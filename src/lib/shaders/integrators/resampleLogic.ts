@@ -48,11 +48,6 @@ fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec2u) -> RandomReplayR
         return rrStepResult;
       }
     } else if (shaderConfig.HAS_ENVMAP) {
-      if (inspectRR) {
-        debugLog(1234.0);
-        debugLog(f32(debugInfo.bounce));
-      }
-
       // we bounced off into the envmap
       let envmapRad = getEnvmapRadiance(ray.direction);
       let rrStepResult = rrEnvmapPathConstruction( 
@@ -69,8 +64,8 @@ fn randomReplay(pi: PathInfo, firstVertexSeed: u32, tid: vec2u) -> RandomReplayR
   return RandomReplayResult(0, vec3f(0), true, vec2f(0.0));
 }
 
-${GBHStandard}
-${/* configManager.options.ReSTIR.GBH_VARIANT == 'Pairwise MIS' ? GBHPairWise : '' */ ''}
-${/* configManager.options.ReSTIR.GBH_VARIANT == '1/M Biased' ? GBHBiased : '' */ ''}
+${/* GBHStandard */ ''}
+${configManager.options.ReSTIR.GBH_VARIANT == 'Pairwise MIS' ? GBHPairWise : ''}
+${configManager.options.ReSTIR.GBH_VARIANT == '1/M Biased' ? GBHBiased : ''}
 `;
 }

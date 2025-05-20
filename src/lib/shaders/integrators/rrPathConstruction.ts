@@ -7,29 +7,26 @@ fn rrEnvmapPathConstruction(
   throughput: ptr<function, vec3f>, 
   emissive: vec3f,
 ) -> RandomReplayResult {
-  var rrStepResult = RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
+  if (
+    pathDoesNotReconnect(*pi) &&
+    pathIsBrdfSampled(*pi) && 
+    pathEndsInEnvmap(*pi) && 
+    u32(debugInfo.bounce) == pi.bounceCount
+  ) {
+    let mi = *lastBrdfMis; // will be 1 in this case
+    let pHat = emissive * *throughput; // throughput will be 1 in this case
 
-  if (pathDoesNotReconnect(*pi)) {
-    if (pathIsBrdfSampled(*pi) && pathEndsInEnvmap(*pi) && u32(debugInfo.bounce) == pi.bounceCount) {
-      let mi = *lastBrdfMis; // will be 1 in this case
-      let pHat = emissive * *throughput; // throughput will be 1 in this case
+    var rrStepResult = RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
+    rrStepResult.valid = 1;
+    rrStepResult.shouldTerminate = true;
+    rrStepResult.jacobian = vec2f(1.0);
+    rrStepResult.pHat = pHat * mi;
 
-      // if(inspectRR) {
-      //   debugLog(663.0);
-      //   debugLog(length(emissive));
-      //   debugLog(length(*throughput));
-      //   debugLog(*lastBrdfMis);
-      // }
-
-      rrStepResult.valid = 1;
-      rrStepResult.shouldTerminate = true;
-      rrStepResult.jacobian = vec2f(1.0);
-      rrStepResult.pHat = pHat * mi;
-      return rrStepResult;
-    }
+    return rrStepResult;
+  } else {
+    const failedShiftResult = RandomReplayResult(0, vec3f(0.0), true, vec2f(0.0));
+    return failedShiftResult;
   }
-
-  return rrStepResult;
 }
 
 fn rrPathConstruction(

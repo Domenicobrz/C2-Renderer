@@ -42,6 +42,6 @@ ________________________________________________________________________________
 ```
 
 Sometimes, in the GBH you'll realize that certain paths shouldn't contribute, e.g.:
-you get inside the GBH with a brdf-sampled path that escapes into the envmap at bounce 2.
+you get inside the GBH with a canonical brdf-sampled path that escapes into the envmap at bounce 2.
 the first spatial-reuse candidate inside the GBH loop, also escapes into the envmap at bounce 2 and contributes a little bit
 the second spatial-reuse candidate inside the GBH loop, also escapes into the envmap, but at bounce 1 instead of 2. And it contributes a significant portion to the mi value. But wait. That should not be possible, since the envmap path stops at 1 bounce, and not 2, like the canonical candidate states. This path should have not contributed at all since it breaks invertibility, but it did contribute when it shouldn't have. This is a real-world example of a bug I've found in my implementation and how I managed to find the problem

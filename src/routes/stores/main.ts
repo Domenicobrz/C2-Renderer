@@ -18,6 +18,8 @@ type ReSTIRState = {
   srPassIndex: number;
 };
 
+export const adapterInfo = writable<Record<string, number>>({});
+
 type SamplesInfo = {
   limit: number;
   count: number;

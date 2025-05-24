@@ -18,8 +18,8 @@
   import Operate from './right-sidebar/Operate.svelte';
   import Performance from './right-sidebar/Performance.svelte';
   import StopWatch from './icons/StopWatch.svelte';
-  import { tick } from '$lib/utils/tick';
   import Integrator from './right-sidebar/Integrator.svelte';
+  import AdapterInfo from './right-sidebar/AdapterInfo.svelte';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidth: number;
@@ -87,6 +87,9 @@
     </Folder>
     <Folder name="Performance" expanded={false}>
       <Performance />
+    </Folder>
+    <Folder name="Adapter Info" expanded={false}>
+      <AdapterInfo />
     </Folder>
     <Folder name="Operate" roundBox>
       <Operate {renderer} />

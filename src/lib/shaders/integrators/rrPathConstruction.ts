@@ -60,6 +60,7 @@ fn rrPathConstruction(
   let pathDoesNotReconnect = !pathReconnects;
   let pathIsBrdfSampled = pathIsBrdfSampled(*pi);
   let pathIsLightSampled = pathIsLightSampled(*pi);
+  let pathReconnectionLobes = unpackPathFlags((*pi).flags).reconnectionLobes;
   
   // invertibility check
   if (isCurrentVertexConnectible && pathReconnects && u32(debugInfo.bounce) < pi.reconnectionBounce) {
@@ -155,7 +156,7 @@ fn rrPathConstruction(
 
     // next vertex lobe will necessarily be identical since we're reconnecting to the same
     // xk, however for the previous vertex, xk-1, which is this vertex, we have to make this check
-    let hasDifferentLobes = i32(lobeIndex) != pi.reconnectionLobes.x;
+    let hasDifferentLobes = lobeIndex != pathReconnectionLobes.x;
     let isConnectible = isRough && !isTooShort && !hasDifferentLobes;
 
     if (!isConnectible) {
@@ -211,7 +212,7 @@ fn rrPathConstruction(
       mi = getMisWeight(brdfPdf, lightPdf);
       // emitters have no mi. This however should be fixed. Also notice how here we're looking for
       // reconnection lobe x, whereas in the next case we'll be checking lobe y 
-      if (pi.reconnectionLobes.x == 2) {  
+      if (pathReconnectionLobes.x == 2) {  
         mi = 1.0;
       }
     }
@@ -262,7 +263,7 @@ fn rrPathConstruction(
     let isTooShort = isSegmentTooShortForReconnection(w_vec);
     // next vertex lobe will necessarily be identical since we're reconnecting to the same
     // xk, however for the previous vertex, xk-1, which is this vertex, we have to make this check
-    let hasDifferentLobes = i32(lobeIndex) != pi.reconnectionLobes.x;
+    let hasDifferentLobes = lobeIndex != pathReconnectionLobes.x;
     let isConnectible = isRough && !isTooShort && !hasDifferentLobes;
     
     if (!isConnectible) {
@@ -330,7 +331,7 @@ fn rrPathConstruction(
         mi = getMisWeight(brdfPdfXk, lightPdfXk);
   
         // emitters have no mi. This however should be fixed
-        if (pi.reconnectionLobes.y == 2) {  
+        if (pathReconnectionLobes.y == 2) {  
           mi = 1.0;
         }
       }

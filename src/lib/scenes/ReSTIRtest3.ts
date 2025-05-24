@@ -76,28 +76,28 @@ export async function ReSTIRTest3Scene(): Promise<C2Scene> {
   light.translate(3, 3.9, 0);
   triangles = [...triangles, ...geometryToTriangles(light, 3)];
 
-  // for (let i = 0; i < 1000; i++) {
-  //   let cr = r() * 1;
-  //   let cg = r() * 1;
-  //   let cb = r() * 1;
-  //   materials.push(new Emissive({ color: new Color(cr, cg, cb), intensity: 15 }));
+  for (let i = 0; i < 1000; i++) {
+    let cr = r() * 1;
+    let cg = r() * 1;
+    let cb = r() * 1;
+    materials.push(new Emissive({ color: new Color(cr, cg, cb), intensity: 15 }));
 
-  //   let lightS = 0.1;
-  //   let light = new PlaneGeometry(lightS, lightS);
-  //   light.rotateX(Math.PI * 2.0 * r());
-  //   light.rotateY(Math.PI * 2.0 * r());
-  //   light.rotateZ(Math.PI * 2.0 * r());
-  //   light.translate(nr() * 5, nr() * 5, nr() * 5);
-  //   triangles = [...triangles, ...geometryToTriangles(light, materials.length - 1)];
+    let lightS = 0.1;
+    let light = new PlaneGeometry(lightS, lightS);
+    light.rotateX(Math.PI * 2.0 * r());
+    light.rotateY(Math.PI * 2.0 * r());
+    light.rotateZ(Math.PI * 2.0 * r());
+    light.translate(nr() * 5, nr() * 5, nr() * 5);
+    triangles = [...triangles, ...geometryToTriangles(light, materials.length - 1)];
 
-  //   let coverS = 1;
-  //   let cover = new PlaneGeometry(coverS, coverS);
-  //   cover.rotateX(Math.PI * 2.0 * r());
-  //   cover.rotateY(Math.PI * 2.0 * r());
-  //   cover.rotateZ(Math.PI * 2.0 * r());
-  //   cover.translate(nr() * 5, nr() * 5, nr() * 5);
-  //   triangles = [...triangles, ...geometryToTriangles(cover, 0)];
-  // }
+    let coverS = 1;
+    let cover = new PlaneGeometry(coverS, coverS);
+    cover.rotateX(Math.PI * 2.0 * r());
+    cover.rotateY(Math.PI * 2.0 * r());
+    cover.rotateZ(Math.PI * 2.0 * r());
+    cover.translate(nr() * 5, nr() * 5, nr() * 5);
+    triangles = [...triangles, ...geometryToTriangles(cover, 0)];
+  }
 
   // let lightSC = 4.3;
   // let lightC = new PlaneGeometry(lightSC, lightSC);

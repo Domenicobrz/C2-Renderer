@@ -33,11 +33,13 @@ fn generalizedBalanceHeuristic(
     // unuseable. This would have been easier if we had access to a dynamic array but sadly we can't
     // same applies for candidates that have been removed because of Gbuffer differences
 
+    let candidateDomain = unpackDomain(XjCandidate.packedDomain);
+
     // if (Xj.isNull > 0) { continue; }
-    if (XjCandidate.domain.x < 0) { continue; }
+    if (candidateDomain.x < 0) { continue; }
 
     // shift Y into Xj's pixel
-    let randomReplayResult = randomReplay(Y, XjCandidate.Y.firstVertexSeed, vec2u(XjCandidate.domain));
+    let randomReplayResult = randomReplay(Y, XjCandidate.Y.firstVertexSeed, vec2u(candidateDomain));
     if (randomReplayResult.valid > 0) {
       // shift Y -> Xj and evaluate jacobian
       var Xj = Y;
@@ -72,8 +74,8 @@ fn Resample(
     // In this case, it's important because for next spatial iterations
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the domain value
-    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec2i(domain), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, vec2f(0), vec2f(0), vec3f(0), vec3f(0), -1),
+    candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0), packDomain(vec2i(domain))
   );
 
   var M : i32 = config.RESTIR_SR_CANDIDATES;
@@ -158,7 +160,8 @@ fn generalizedBalanceHeuristicPairwiseMIS_Canonical(
   var cTot = 0.0;
   for (var i = 0; i < M; i++) {
     let XjCandidate = candidates[i];
-    if (XjCandidate.domain.x < 0) { continue; }
+    let candidateDomain = unpackDomain(XjCandidate.packedDomain);
+    if (candidateDomain.x < 0) { continue; }
     cTot += XjCandidate.c;
   }
   let cC = candidates[0].c;
@@ -176,8 +179,9 @@ fn generalizedBalanceHeuristicPairwiseMIS_Canonical(
     if (i == 0) { continue; } // skip canonical
 
     let XjCandidate = candidates[i];
-
-    if (XjCandidate.domain.x < 0) { continue; }
+    let candidateDomain = unpackDomain(XjCandidate.packedDomain);
+    
+    if (candidateDomain.x < 0) { continue; }
 
     var denominator = numerator;
 
@@ -213,7 +217,9 @@ fn generalizedBalanceHeuristicPairwiseMIS_NonCanonical(
   var cTot = 0.0;
   for (var i = 0; i < M; i++) {
     let XjCandidate = candidates[i];
-    if (XjCandidate.domain.x < 0) { continue; }
+    let candidateDomain = unpackDomain(XjCandidate.packedDomain);
+
+    if (candidateDomain.x < 0) { continue; }
     cTot += XjCandidate.c;
   }
   
@@ -245,8 +251,8 @@ fn Resample(
     // In this case, it's important because for next spatial iterations
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the domain value
-    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec2i(domain), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, vec2f(0), vec2f(0), vec3f(0), vec3f(0), -1),
+    candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0), packDomain(vec2i(domain))
   );
 
   var M : i32 = config.RESTIR_SR_CANDIDATES;
@@ -299,11 +305,14 @@ fn Resample(
       let j = i-M;
       if (j == 0) { skip = true; } // skip canonical
       let XjCandidate = candidates[j];
-      if (XjCandidate.domain.x < 0) { skip = true; }
+      let candidateDomain = unpackDomain(XjCandidate.packedDomain);
+
+      if (candidateDomain.x < 0) { skip = true; }
     
       path = candidates[0].Y;
       firstVertexSeed = XjCandidate.Y.firstVertexSeed;
-      targetDomain = vec2u(XjCandidate.domain);
+  
+      targetDomain = vec2u(candidateDomain);
     }
 
     if (!skip) {
@@ -394,8 +403,8 @@ fn Resample(
     // In this case, it's important because for next spatial iterations
     // when we return the reservoir, we have to set it as a valid pixel, by
     // assigning something other that -1,-1 to the domain value
-    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec2i(domain), candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, vec2f(0), vec2f(0), vec3f(0), vec3f(0), -1),
+    candidates[0].Gbuffer, 0.0, 0.0, 0.0, 1.0, vec3f(0.0), packDomain(vec2i(domain))
   );
 
   var M : i32 = config.RESTIR_SR_CANDIDATES;

@@ -52,7 +52,7 @@ export class ReSTIRPTSegment {
   private restirRandomsUniformBuffer: GPUBuffer;
   private tileUniformBuffer: GPUBuffer;
   private RANDOMS_BUFFER_COUNT = 200;
-  private RESERVOIR_SIZE = 160;
+  private RESERVOIR_SIZE = 128;
 
   private configUniformBuffer: GPUBuffer;
 

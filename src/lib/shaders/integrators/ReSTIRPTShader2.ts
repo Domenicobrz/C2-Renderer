@@ -67,8 +67,8 @@ var<private> temporalResample = false;
 fn initialCandidatesReservoir(tid: vec3u, domain: vec2u, idx: u32) -> Reservoir {
   var reservoir = Reservoir(
                         // seed will be set inside the loop
-    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec2i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, vec2f(0), vec2f(0), vec3f(0), vec3f(0), -1),
+    vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0), packDomain(vec2i(domain))
   );
 
   initializeRandoms2(tid);
@@ -87,7 +87,7 @@ fn initialCandidatesReservoir(tid: vec3u, domain: vec2u, idx: u32) -> Reservoir 
   var pathSampleInfo = PathSampleInfo(
     false, vec3f(0.0), vec3f(0.0), 0, 0, -1, vec3f(1.0), -1
   );
-  var pi = PathInfo(vec3f(0.0), firstVertexSeed, seed, 0, 0, 0, 0, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1));
+  var pi = PathInfo(vec3f(0.0), firstVertexSeed, seed, 0, 0, 0, vec2f(0), vec2f(0), vec3f(0), vec3f(0), 0);
   var throughput = vec3f(1.0);
   var rad = vec3f(0.0);
   var lastBrdfMis = 1.0;
@@ -187,14 +187,14 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
 
         if (dot(normal1, normal0) < 0.9) {
           candidates[i] = Reservoir(
-            PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-            vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0),
+            PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, vec2f(0), vec2f(0), vec3f(0), vec3f(0), -1),
+            vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0), packDomain(vec2i(-1, -1))
           );
         }
       } else {
         candidates[i] = Reservoir(
-          PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-          vec2i(-1, -1), vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0),
+          PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, vec2f(0), vec2f(0), vec3f(0), vec3f(0), -1),
+          vec4f(0,0,0,-1), 0.0, currConfidence, 0.0, 1.0, vec3f(0.0), packDomain(vec2i(-1, -1))
         );
       }
     }
@@ -224,8 +224,8 @@ fn getSpatialResampleCandidates(tid: vec3u, idx: u32) -> array<Reservoir, MAX_SR
   let domain = vec2u(tid.xy);
 
   let emptyReservoir = Reservoir(
-    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, -1, vec2f(0), vec3f(0), vec3f(0), vec2f(0), vec2i(-1)),
-    vec2i(domain), vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0),
+    PathInfo(vec3f(0.0), 0, 0, 0, 0, 0, vec2f(0), vec2f(0), vec3f(0), vec3f(0), -1),
+    vec4f(0,0,0,-1), 0.0, 0.0, 0.0, 1.0, vec3f(0.0), packDomain(vec2i(domain))
   );
 
   var prevReservoir = restirPassInput[idx];

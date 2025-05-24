@@ -49,24 +49,38 @@ fn neePathConstruction(
         jacobian.y = 1.0;  // explanation on envmapJacobian.md
       }
 
+      var pathFlags = PathFlags();
+      pathFlags.lightSampled = 1;
+      pathFlags.brdfSampled = 0;
+      pathFlags.endsInEnvmap = u32(select(0, 1, isEnvmap));
+      pathFlags.reconnects = 1;
+      pathFlags.reconnectionLobes = vec2u(lobeIndex, 2);
+
       let pathInfo = PathInfo(
         pHat * mi,
         pi.seed,
         pi.seed,
         u32(debugInfo.bounce + 1),
-        setPathFlags(lobeIndex, 1, 0, u32(select(0, 1, isEnvmap)), 1), // set flags to "path ends by NEE" and "reconnects"
+        // set flags to "path ends by NEE" and "reconnects"
+        packPathFlags(pathFlags), 
         u32(debugInfo.bounce + 1),        // reconnects at xk, which is the light vertex
-        lightPointSample.triangleIndex, 
+        jacobian,
         lightPointSample.barycentrics, 
         lightPointSample.radiance, 
         lightDirectionSample.dir,  // used in rrPathConstruction when hitting envmaps
-        jacobian,
-        vec2i(i32(lobeIndex), 2)
+        lightPointSample.triangleIndex, 
       );
     
       // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
       updateReservoir(reservoir, pathInfo, wi);
     } else {
+      var pathFlags = PathFlags();
+      pathFlags.lightSampled = 1;
+      pathFlags.brdfSampled = 0;
+      pathFlags.endsInEnvmap = u32(select(0, 1, isEnvmap));
+      pathFlags.reconnects = 0;
+      pathFlags.reconnectionLobes = vec2u(0, 0);
+
       // non reconnectible path, we'll do pure Random-replay
       let pathInfo = PathInfo(
         pHat * mi,
@@ -74,14 +88,13 @@ fn neePathConstruction(
         pi.seed,
         u32(debugInfo.bounce + 1),
         // set flags to "path ends by NEE" and "doesn't reconnect"
-        setPathFlags(lobeIndex, 1, 0, u32(select(0, 1, isEnvmap)), 0), 
+        packPathFlags(pathFlags), 
         0,        
-        -1, 
+        vec2f(1.0),
         vec2f(0), 
         vec3f(0), 
         vec3f(0),
-        vec2f(1.0),
-        vec2i(-1, -1) 
+        -1, 
       );
     
       // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
@@ -116,7 +129,14 @@ fn neePathConstruction(
     // pi.reconnectionBounce = u32(debugInfo.bounce); // reconnects at xk, xk+1 is the light vertex
     // pi.reconnectionTriangleIndex = ires.triangleIndex; 
     // pi.reconnectionBarycentrics = ires.barycentrics; 
-    piCopy.flags = setPathFlags(lobeIndex, 1, 0, u32(select(0, 1, isEnvmap)), 1); // set flags to "path ends by NEE" and "reconnects"
+    
+    var pathFlags = unpackPathFlags(piCopy.flags); // we need to unpack since reconnectionLobes are already stored inside piCopy.flags
+    pathFlags.lightSampled = 1;
+    pathFlags.brdfSampled = 0;
+    pathFlags.endsInEnvmap = u32(select(0, 1, isEnvmap));
+    pathFlags.reconnects = 1;
+    piCopy.flags = packPathFlags(pathFlags); // set flags to "path ends by NEE" and "reconnects"
+
     piCopy.reconnectionRadiance = lightPointSample.radiance; 
     piCopy.reconnectionDirection = lightDirectionSample.dir;
     piCopy.jacobian = jacobian;
@@ -169,19 +189,25 @@ fn emissiveSurfacePathConstruction(
     let pHat = emissive * *throughput; // throughput will be 1 in this case
     let wi = mi * length(pHat);
 
+    var pathFlags = PathFlags();
+    pathFlags.lightSampled = 0;
+    pathFlags.brdfSampled = 1;
+    pathFlags.endsInEnvmap = 0;
+    pathFlags.reconnects = 0;
+    pathFlags.reconnectionLobes = vec2u(0, 0);
+
     let pathInfo = PathInfo(
       pHat * mi,
       pi.seed,
       pi.seed,
       u32(debugInfo.bounce),
-      setPathFlags(lobeIndex, 0, 1, 0, 0), // set flags to "path ends by NEE" and "doesn't reconnect"
+      packPathFlags(pathFlags), // set flags to "path ends by NEE" and "doesn't reconnect"
       0,        
-      -1, 
+      vec2f(1.0),
       vec2f(0.0), 
       vec3f(0.0), 
       vec3f(0),
-      vec2f(1.0),
-      vec2i(-1, -1)
+      -1, 
     );
     
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
@@ -195,6 +221,13 @@ fn emissiveSurfacePathConstruction(
     let pHat = emissive * *throughput; // throughput will be 1 in this case
     let wi = mi * length(pHat);
 
+    var pathFlags = PathFlags();
+    pathFlags.lightSampled = 0;
+    pathFlags.brdfSampled = 1;
+    pathFlags.endsInEnvmap = 0;
+    pathFlags.reconnects = 0;
+    pathFlags.reconnectionLobes = vec2u(0, 0);
+
     // non reconnectible path, we'll do pure Random-replay
     let pathInfo = PathInfo(
       pHat * mi,
@@ -202,14 +235,13 @@ fn emissiveSurfacePathConstruction(
       pi.seed,
       u32(debugInfo.bounce),
       // set flags to "path ends by BRDF" and "doesn't reconnect"
-      setPathFlags(lobeIndex, 0, 1, 0, 0), 
+      packPathFlags(pathFlags), 
       0,        
-      -1, 
+      vec2f(1.0),
       vec2f(0), 
       vec3f(0), 
       vec3f(0),
-      vec2f(1.0),
-      vec2i(-1, -1) // 2 is the emissive lobe-index
+      -1, 
     );
   
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
@@ -249,7 +281,13 @@ fn emissiveSurfacePathConstruction(
     // pi.reconnectionBarycentrics = ires.barycentrics;
     // these last elements will be updated by Emissive for the brdf
     // path
-    piCopy.flags = setPathFlags(lobeIndex, 0, 1, 0, 1); // set flags to "path ends by BRDF" and "reconnects"
+    var pathFlags = unpackPathFlags(piCopy.flags); // we need to unpack since reconnectionLobes are already stored inside piCopy.flags
+    pathFlags.lightSampled = 0;
+    pathFlags.brdfSampled = 1;
+    pathFlags.endsInEnvmap = 0;
+    pathFlags.reconnects = 1;
+    piCopy.flags = packPathFlags(pathFlags); // set flags to "path ends by BRDF" and "reconnects"
+
     piCopy.reconnectionRadiance = emissive; 
     piCopy.jacobian = jacobian;
 
@@ -268,11 +306,14 @@ fn emissiveSurfacePathConstruction(
     var piCopy = *pi;
     // the jacobian has already been calculated in the previous vertex, we don't need to add to it here.
     // the previous bounce handled the rest
-    // *****ERROR***** here I'm setting a lobeIndex that is overwriting what should be stored in the path's flags
-    // *****ERROR***** here I'm setting a lobeIndex that is overwriting what should be stored in the path's flags
-    // *****ERROR***** here I'm setting a lobeIndex that is overwriting what should be stored in the path's flags
-    // *****ERROR***** here I'm setting a lobeIndex that is overwriting what should be stored in the path's flags
-    piCopy.flags = setPathFlags(lobeIndex, 0, 1, 0, 1);
+    
+    var pathFlags = unpackPathFlags(piCopy.flags); // we need to unpack since reconnectionLobes are already stored inside piCopy.flags
+    pathFlags.lightSampled = 0;
+    pathFlags.brdfSampled = 1;
+    pathFlags.endsInEnvmap = 0;
+    pathFlags.reconnects = 1;
+    piCopy.flags = packPathFlags(pathFlags);
+
     piCopy.F = pHat * mi;
     piCopy.bounceCount = u32(debugInfo.bounce);
     piCopy.reconnectionRadiance = emissive;
@@ -320,6 +361,13 @@ fn envmapPathConstruction(
     let pHat = emissive * *throughput; // throughput will be 1 in this case
     let wi = mi * length(pHat);
 
+    var pathFlags = PathFlags();
+    pathFlags.lightSampled = 0;
+    pathFlags.brdfSampled = 1;
+    pathFlags.endsInEnvmap = 1;
+    pathFlags.reconnects = 0;
+    pathFlags.reconnectionLobes = vec2u(0, 0);
+
     // non reconnectible path, we'll do pure Random-replay
     let pathInfo = PathInfo(
       pHat * mi,
@@ -327,14 +375,13 @@ fn envmapPathConstruction(
       pi.seed,
       u32(debugInfo.bounce),
       // set flags to "path ends by BRDF" and "doesn't reconnect"
-      setPathFlags(0, 0, 1, 1, 0), 
+      packPathFlags(pathFlags), 
       0,        
-      -1, 
+      vec2f(1.0),
       vec2f(0), 
       vec3f(0), 
       vec3f(0),
-      vec2f(1.0),
-      vec2i(-1, -1) // 2 is the emissive lobe-index
+      -1, 
     );
   
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
@@ -350,10 +397,11 @@ fn envmapPathConstruction(
     let pHat = emissive * *throughput;
 
     var piCopy = *pi;
-    // I can't set all the flags here since I would overwrite the rec. vertex lobeIndex
-    // I don't think this flag is necessary though since we're not checking for it
-    // in rrPathConstruction for the "one before light" reconnection case   
-    piCopy.flags = setEndsInEnvmapFlag(piCopy.flags, true);
+
+    var pathFlags = unpackPathFlags(piCopy.flags); // we need to unpack since reconnectionLobes are already stored inside piCopy.flags
+    pathFlags.endsInEnvmap = 1;   
+    piCopy.flags = packPathFlags(pathFlags);
+
     piCopy.F = pHat * mi;
     piCopy.bounceCount = u32(debugInfo.bounce);
     piCopy.reconnectionRadiance = emissive;
@@ -407,7 +455,6 @@ fn setReconnectionVertex(
     let w_vec = psi.prevVertexPosition - ires.hitPoint;
     let w_km1 = normalize(w_vec);
 
-    pi.reconnectionLobes = vec2i(psi.prevLobeIndex, i32(lobeIndex));
     pi.reconnectionBounce = u32(debugInfo.bounce); // reconnects at xk, xk+1 is the light vertex
     pi.reconnectionTriangleIndex = ires.triangleIndex; 
     pi.reconnectionBarycentrics = ires.barycentrics;
@@ -418,7 +465,14 @@ fn setReconnectionVertex(
     );
     pi.reconnectionRadiance = vec3f(0);
     pi.reconnectionDirection = brdfDirectionSample.dir;
-    pi.flags = setPathFlags(lobeIndex, 0, 1, 0, 1);
+
+    var pathFlags = PathFlags();
+    pathFlags.lightSampled = 0;
+    pathFlags.brdfSampled = 1;
+    pathFlags.endsInEnvmap = 0;
+    pathFlags.reconnects = 1;
+    pathFlags.reconnectionLobes = vec2u(u32(psi.prevLobeIndex), lobeIndex);
+    pi.flags = packPathFlags(pathFlags);
 
     psi.reconnectionVertexIndex = debugInfo.bounce;
   }

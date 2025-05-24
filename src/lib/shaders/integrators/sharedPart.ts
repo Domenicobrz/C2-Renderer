@@ -93,7 +93,6 @@ ${reservoirShaderPart}
 // this struct does not have to be saved in the reservoir,
 // hence why we're creating a separate struct
 struct PathSampleInfo {
-
   // some of these might be unnecessary now that I'm always reconnecting at xkm1
   wasPrevVertexRough: bool,
   prevVertexPosition: vec3f,
@@ -110,6 +109,14 @@ struct RandomReplayResult {
   pHat: vec3f,
   shouldTerminate: bool,
   jacobian: vec2f,
+}
+
+struct PathFlags {
+  lightSampled: u32,
+  brdfSampled: u32,
+  endsInEnvmap: u32,
+  reconnects: u32,
+  reconnectionLobes: vec2u,
 }
 
 fn isSegmentTooShortForReconnection(segment: vec3f) -> bool {
@@ -159,30 +166,43 @@ fn pathReconnectsOneVertextBeforeLight(pi: PathInfo) -> bool {
   return pathReconnects(pi) && pi.bounceCount == (pi.reconnectionBounce+1);
 }
 
-const endsInEnvmapBitPosition: u32 = 2u;
-fn setEndsInEnvmapFlag(existingFlags: u32, shouldEndInEnvmap: bool) -> u32 {
-  const endsInEnvmapMask: u32 = (1u << endsInEnvmapBitPosition); // 0x00000004
-
-  var modifiedFlags: u32 = existingFlags;
-  if (shouldEndInEnvmap) {
-    modifiedFlags = modifiedFlags | endsInEnvmapMask;
-  } else {
-    modifiedFlags = modifiedFlags & (~endsInEnvmapMask);
-  }
-
-  return modifiedFlags;
+fn packPathFlags(flags: PathFlags) -> u32 {
+  var pathFlags: u32 = 0;
+  pathFlags |= ((flags.lightSampled & 1u) << 0u);
+  pathFlags |= ((flags.brdfSampled & 1u) << 1u);
+  pathFlags |= ((flags.endsInEnvmap & 1u) << 2u);
+  pathFlags |= ((flags.reconnects & 1u) << 3u);
+  // Bits 4-15 are currently unused
+  // 0xFFu is 255 in decimal, or 0b11111111
+  pathFlags |= ((flags.reconnectionLobes.x & 0xFFu) << 16u);
+  pathFlags |= ((flags.reconnectionLobes.y & 0xFFu) << 24u);
+  return pathFlags;
 }
 
-fn setPathFlags(
-  lobeIndex: u32, lightSampled: u32, brdfSampled: u32, endsInEnvmap: u32, reconnects: u32
-) -> u32 {
-  var pathFlags: u32 = 0;
-  pathFlags |= (lightSampled << 0);
-  pathFlags |= (brdfSampled << 1);
-  pathFlags |= (endsInEnvmap << endsInEnvmapBitPosition);
-  pathFlags |= (reconnects << 3);
-  pathFlags |= (lobeIndex << 16);
-  return pathFlags;
+fn unpackPathFlags(packed: u32) -> PathFlags {
+  var flags: PathFlags;
+  flags.lightSampled = (packed >> 0u) & 1u;
+  flags.brdfSampled = (packed >> 1u) & 1u;
+  flags.endsInEnvmap = (packed >> 2u) & 1u;
+  flags.reconnects = (packed >> 3u) & 1u;
+  flags.reconnectionLobes.x = (packed >> 16u) & 0xFFu;
+  flags.reconnectionLobes.y = (packed >> 24u) & 0xFFu;
+  return flags;
+}
+
+fn packDomain(domain: vec2i) -> u32 {
+  let x_packed: u32 = u32(domain.x) & 0xFFFFu;
+  let y_packed: u32 = (u32(domain.y) & 0xFFFFu) << 16u;
+  return x_packed | y_packed;
+}
+
+fn unpackDomain(packedDomain: u32) -> vec2i {
+  var domain: vec2i;
+  let x_unsigned16: u32 = packedDomain & 0xFFFFu;
+  domain.x = (i32(x_unsigned16 << 16u)) >> 16; 
+  let y_unsigned16: u32 = (packedDomain >> 16u) & 0xFFFFu;
+  domain.y = (i32(y_unsigned16 << 16u)) >> 16;
+  return domain;
 }
 
 fn updateReservoir(reservoir: ptr<function, Reservoir>, Y: PathInfo, wi: f32) -> bool {

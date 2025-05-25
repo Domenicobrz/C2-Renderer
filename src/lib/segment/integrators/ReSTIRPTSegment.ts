@@ -540,9 +540,8 @@ export class ReSTIRPTSegment {
   }
 
   resetRestirPassData() {
-    const restirPassInput = new Float32Array(
-      this.canvasSize!.x * this.canvasSize!.y * this.RESERVOIR_SIZE
-    );
+    const byteSize = this.canvasSize!.x * this.canvasSize!.y * this.RESERVOIR_SIZE;
+    const restirPassInput = new Uint8Array(byteSize);
     this.device.queue.writeBuffer(this.restirPassBuffer1, 0, restirPassInput);
     this.device.queue.writeBuffer(this.restirPassBuffer2, 0, restirPassInput);
   }
@@ -563,10 +562,12 @@ export class ReSTIRPTSegment {
       new Uint32Array([canvasSize.x, canvasSize.y])
     );
 
+    console.log('resize', canvasSize.x, canvasSize.y);
+
     console.warn(
       'This gets very close to the default size limit of 256mb, my GPU supports up to 2gb but needs to be requested separately on the adapter'
     );
-    const restirPassInputByteLength = canvasSize.x * canvasSize.y * this.RESERVOIR_SIZE * 4;
+    const restirPassInputByteLength = canvasSize.x * canvasSize.y * this.RESERVOIR_SIZE;
     if (this.restirPassBuffer1) this.restirPassBuffer1.destroy();
     if (this.restirPassBuffer2) this.restirPassBuffer2.destroy();
     this.restirPassBuffer1 = this.device.createBuffer({

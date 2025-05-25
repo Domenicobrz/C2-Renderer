@@ -56,7 +56,7 @@ fn neePathConstruction(
       pathFlags.brdfSampled = false;
       pathFlags.endsInEnvmap = isEnvmap;
       pathFlags.reconnects = true;
-      pathFlags.reconnectionLobes = vec2u(lobeIndex, i32(${MATERIAL_TYPE.EMISSIVE}));
+      pathFlags.reconnectionLobes = vec2u(lobeIndex, u32(${MATERIAL_TYPE.EMISSIVE}));
 
       let pathInfo = PathInfo(
         pHat * mi,

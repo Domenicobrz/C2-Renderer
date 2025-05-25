@@ -2,6 +2,7 @@ import { BVH } from '$lib/bvh/bvh';
 import { Matrix4, Vector2, Vector3 } from 'three';
 import {
   cameraMovementInfoStore,
+  centralErrorStatusMessage,
   centralStatusMessage,
   samplesInfo
 } from '../../../routes/stores/main';
@@ -53,6 +54,7 @@ export class ReSTIRPTSegment {
   private tileUniformBuffer: GPUBuffer;
   private RANDOMS_BUFFER_COUNT = 200;
   private RESERVOIR_SIZE = 128;
+  private restirPassInputMBcount = 0;
 
   private configUniformBuffer: GPUBuffer;
 
@@ -562,12 +564,15 @@ export class ReSTIRPTSegment {
       new Uint32Array([canvasSize.x, canvasSize.y])
     );
 
-    console.log('resize', canvasSize.x, canvasSize.y);
-
-    console.warn(
-      'This gets very close to the default size limit of 256mb, my GPU supports up to 2gb but needs to be requested separately on the adapter'
-    );
     const restirPassInputByteLength = canvasSize.x * canvasSize.y * this.RESERVOIR_SIZE;
+    this.restirPassInputMBcount = restirPassInputByteLength / (1024 * 1024);
+
+    if (restirPassInputByteLength > globals.adapter.limits.maxStorageBufferBindingSize) {
+      centralErrorStatusMessage.set(
+        'Error: ReSTIR buffer size exceeds maximum storage buffer byte allocation for your GPU - Lower the resolution of your canvas'
+      );
+    }
+
     if (this.restirPassBuffer1) this.restirPassBuffer1.destroy();
     if (this.restirPassBuffer2) this.restirPassBuffer2.destroy();
     this.restirPassBuffer1 = this.device.createBuffer({
@@ -794,7 +799,8 @@ export class ReSTIRPTSegment {
     samplesInfo.setReSTIRState({
       state: this.renderState.state,
       srPassIndex: this.renderState.srIndex,
-      initialCandidateIndex: this.renderState.icIndex
+      initialCandidateIndex: this.renderState.icIndex,
+      bufferSizeMB: this.restirPassInputMBcount
     });
 
     if (this.renderState.state == 'compute-start') {

@@ -31,6 +31,7 @@ let canvasSize = new Vector2(-1, -1);
 
 export const globals: {
   device: GPUDevice;
+  adapter: GPUAdapter;
   context: GPUCanvasContext;
   format: GPUTextureFormat;
   canvas: HTMLCanvasElement;
@@ -46,6 +47,7 @@ export const globals: {
 } = {
   // not sure how to tell typescript that these values will exist when I'll try to access them
   device: null as any,
+  adapter: null as any,
   context: null as any,
   format: null as any,
   canvas: null as any,
@@ -69,7 +71,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   // WebGPU typescript types are loaded from an external library:
   // https://github.com/gpuweb/types
   // apparently the standard installation didn't include WebGPU types
-  const { device, context } = await getDeviceAndContext(canvas);
+  const { device, context, adapter } = await getDeviceAndContext(canvas);
 
   const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
   context.configure({
@@ -78,6 +80,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   });
 
   globals.device = device;
+  globals.adapter = adapter;
   globals.context = context;
   globals.format = presentationFormat;
   globals.canvas = canvas;

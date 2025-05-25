@@ -5,7 +5,6 @@ export async function getDeviceAndContext(canvas: HTMLCanvasElement) {
 
   try {
     const adapter = await navigator.gpu?.requestAdapter();
-
     if (!adapter) {
       errorMessage = 'WebGPU not available: No adapter found.';
       throw new Error(errorMessage);
@@ -78,7 +77,7 @@ export async function getDeviceAndContext(canvas: HTMLCanvasElement) {
     );
     console.log(` - Max Buffer Size: ${device.limits.maxBufferSize / (1024 * 1024)} MB`);
 
-    return { device, context };
+    return { device, context, adapter };
   } catch (err) {
     let finalErrorMessage = errorMessage;
     if (err instanceof Error) {

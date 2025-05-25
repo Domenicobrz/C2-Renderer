@@ -16,6 +16,7 @@ type ReSTIRState = {
   state: string;
   initialCandidateIndex: number;
   srPassIndex: number;
+  bufferSizeMB: number;
 };
 
 export const adapterInfo = writable<Record<string, number>>({});

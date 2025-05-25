@@ -60,9 +60,11 @@
     {/if}
 
     {#if $centralErrorStatusMessage}
-      <p class="csm csm-error">
-        {$centralErrorStatusMessage}
-      </p>
+      <div class="csm-dialog">
+        <p class="csm csm-error">
+          {$centralErrorStatusMessage}
+        </p>
+      </div>
     {/if}
   </div>
 

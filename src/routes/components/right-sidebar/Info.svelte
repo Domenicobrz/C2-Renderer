@@ -15,11 +15,18 @@
 
 {#if $configOptions.integrator == 'ReSTIR'}
   <Separator />
-  <p>ReSTIR PT State: <span>{$samplesInfo.integrator.ReSTIR?.state}</span></p>
+  <p>ReSTIR PT State: <span>{$samplesInfo.integrator.ReSTIR?.state ?? ''}</span></p>
   <p>
-    Initial Candidate index: <span>{$samplesInfo.integrator.ReSTIR?.initialCandidateIndex}</span>
+    Initial Candidate index: <span
+      >{$samplesInfo.integrator.ReSTIR?.initialCandidateIndex ?? ''}</span
+    >
   </p>
-  <p>Spatial Re-sample index: <span>{$samplesInfo.integrator.ReSTIR?.srPassIndex}</span></p>
+  <p>Spatial Re-sample index: <span>{$samplesInfo.integrator.ReSTIR?.srPassIndex ?? ''}</span></p>
+  <p>
+    ReSTIR Buffer size (MB): <span
+      >{$samplesInfo.integrator.ReSTIR?.bufferSizeMB.toFixed(0) ?? ''} (x2)</span
+    >
+  </p>
 {/if}
 
 <style>

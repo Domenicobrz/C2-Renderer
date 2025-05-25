@@ -346,26 +346,20 @@ fn shade(
   );
 
   var isRough = false;
-  var lobeIndex = 0;
+  var lobeIndex = i32(materialType);
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
     isRough = true;
-    lobeIndex = 1;
   }
   if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
     isRough = true;
-    lobeIndex = 2;
   }  
-  if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
+  if (
+    materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW} ||
+    materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW} 
+  ) {
     let ax = materialData[4];
     let ay = materialData[5];
     isRough = min(ax, ay) > 0.15;
-    lobeIndex = 3;
-  }
-  if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
-    let ax = materialData[4];
-    let ay = materialData[5];
-    isRough = min(ax, ay) > 0.15;
-    lobeIndex = 4;
   }
 
   let gBufferDepth = length((*ray).origin - ires.hitPoint);

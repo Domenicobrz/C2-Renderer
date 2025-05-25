@@ -1,3 +1,5 @@
+import { MATERIAL_TYPE } from '$lib/materials/material';
+
 export let pathConstruction = /* wgsl */ `
 fn neePathConstruction(
   lightDirectionSample: LightDirectionSample,
@@ -54,7 +56,7 @@ fn neePathConstruction(
       pathFlags.brdfSampled = false;
       pathFlags.endsInEnvmap = isEnvmap;
       pathFlags.reconnects = true;
-      pathFlags.reconnectionLobes = vec2u(lobeIndex, 2);
+      pathFlags.reconnectionLobes = vec2u(lobeIndex, i32(${MATERIAL_TYPE.EMISSIVE}));
 
       let pathInfo = PathInfo(
         pHat * mi,

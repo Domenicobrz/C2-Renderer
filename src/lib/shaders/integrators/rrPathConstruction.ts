@@ -219,7 +219,7 @@ fn rrPathConstruction(
       mi = getMisWeight(brdfPdf, lightPdf);
       // emitters have no mi. This however should be fixed. Also notice how here we're looking for
       // reconnection lobe x, whereas in the next case we'll be checking lobe y 
-      if (pathReconnectionLobes.x == 2) {  
+      if (pathReconnectionLobes.x == i32(${MATERIAL_TYPE.EMISSIVE})) {  
         mi = 1.0;
       }
     }
@@ -338,7 +338,7 @@ fn rrPathConstruction(
         mi = getMisWeight(brdfPdfXk, lightPdfXk);
   
         // emitters have no mi. This however should be fixed
-        if (pathReconnectionLobes.y == 2) {  
+        if (pathReconnectionLobes.y == i32(${MATERIAL_TYPE.EMISSIVE})) {  
           mi = 1.0;
         }
       }

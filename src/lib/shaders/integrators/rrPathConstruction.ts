@@ -7,10 +7,15 @@ fn rrEnvmapPathConstruction(
   throughput: ptr<function, vec3f>, 
   emissive: vec3f,
 ) -> RandomReplayResult {
+  let unpackedFlags = unpackPathFlags((*pi).flags);
+  let pathDoesNotReconnect = !unpackedFlags.reconnects;
+  let pathIsBrdfSampled = unpackedFlags.brdfSampled;
+  let pathEndsInEnvmap = unpackedFlags.endsInEnvmap;
+
   if (
-    pathDoesNotReconnect(*pi) &&
-    pathIsBrdfSampled(*pi) && 
-    pathEndsInEnvmap(*pi) && 
+    pathDoesNotReconnect &&
+    pathIsBrdfSampled && 
+    pathEndsInEnvmap && 
     u32(debugInfo.bounce) == pi.bounceCount
   ) {
     let mi = *lastBrdfMis; // will be 1 in this case
@@ -56,11 +61,13 @@ fn rrPathConstruction(
   let isTooShort = isSegmentTooShortForReconnection(w_vec);
   var isCurrentVertexConnectible = psi.wasPrevVertexRough && isRough && !isTooShort;
 
-  let pathReconnects = pathReconnects(*pi);
+  let unpackedFlags = unpackPathFlags((*pi).flags);
+  let pathReconnects = unpackedFlags.reconnects;
   let pathDoesNotReconnect = !pathReconnects;
-  let pathIsBrdfSampled = pathIsBrdfSampled(*pi);
-  let pathIsLightSampled = pathIsLightSampled(*pi);
-  let pathReconnectionLobes = unpackPathFlags((*pi).flags).reconnectionLobes;
+  let pathIsBrdfSampled = unpackedFlags.brdfSampled;
+  let pathIsLightSampled = unpackedFlags.lightSampled;
+  let pathReconnectionLobes = unpackedFlags.reconnectionLobes;
+  let pathEndsInEnvmap = unpackedFlags.endsInEnvmap;
   
   // invertibility check
   if (isCurrentVertexConnectible && pathReconnects && u32(debugInfo.bounce) < pi.reconnectionBounce) {
@@ -128,7 +135,7 @@ fn rrPathConstruction(
     pathReconnectsAtLightVertex(*pi) && 
     pi.reconnectionBounce == u32(debugInfo.bounce+1)
   ) {
-    let wasEnvmap = pathEndsInEnvmap(*pi);
+    let wasEnvmap = pathEndsInEnvmap;
 
     var w_vec = vec3f(0.0);
     var w_km1 = vec3f(0.0);

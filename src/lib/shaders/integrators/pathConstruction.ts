@@ -50,10 +50,10 @@ fn neePathConstruction(
       }
 
       var pathFlags = PathFlags();
-      pathFlags.lightSampled = 1;
-      pathFlags.brdfSampled = 0;
-      pathFlags.endsInEnvmap = u32(select(0, 1, isEnvmap));
-      pathFlags.reconnects = 1;
+      pathFlags.lightSampled = true;
+      pathFlags.brdfSampled = false;
+      pathFlags.endsInEnvmap = isEnvmap;
+      pathFlags.reconnects = true;
       pathFlags.reconnectionLobes = vec2u(lobeIndex, 2);
 
       let pathInfo = PathInfo(
@@ -75,10 +75,10 @@ fn neePathConstruction(
       updateReservoir(reservoir, pathInfo, wi);
     } else {
       var pathFlags = PathFlags();
-      pathFlags.lightSampled = 1;
-      pathFlags.brdfSampled = 0;
-      pathFlags.endsInEnvmap = u32(select(0, 1, isEnvmap));
-      pathFlags.reconnects = 0;
+      pathFlags.lightSampled = true;
+      pathFlags.brdfSampled = false;
+      pathFlags.endsInEnvmap = isEnvmap;
+      pathFlags.reconnects = false;
       pathFlags.reconnectionLobes = vec2u(0, 0);
 
       // non reconnectible path, we'll do pure Random-replay
@@ -131,10 +131,10 @@ fn neePathConstruction(
     // pi.reconnectionBarycentrics = ires.barycentrics; 
     
     var pathFlags = unpackPathFlags(piCopy.flags); // we need to unpack since reconnectionLobes are already stored inside piCopy.flags
-    pathFlags.lightSampled = 1;
-    pathFlags.brdfSampled = 0;
-    pathFlags.endsInEnvmap = u32(select(0, 1, isEnvmap));
-    pathFlags.reconnects = 1;
+    pathFlags.lightSampled = true;
+    pathFlags.brdfSampled = false;
+    pathFlags.endsInEnvmap = isEnvmap;
+    pathFlags.reconnects = true;
     piCopy.flags = packPathFlags(pathFlags); // set flags to "path ends by NEE" and "reconnects"
 
     piCopy.reconnectionRadiance = lightPointSample.radiance; 
@@ -190,10 +190,10 @@ fn emissiveSurfacePathConstruction(
     let wi = mi * length(pHat);
 
     var pathFlags = PathFlags();
-    pathFlags.lightSampled = 0;
-    pathFlags.brdfSampled = 1;
-    pathFlags.endsInEnvmap = 0;
-    pathFlags.reconnects = 0;
+    pathFlags.lightSampled = false;
+    pathFlags.brdfSampled = true;
+    pathFlags.endsInEnvmap = false;
+    pathFlags.reconnects = false;
     pathFlags.reconnectionLobes = vec2u(0, 0);
 
     let pathInfo = PathInfo(
@@ -222,10 +222,10 @@ fn emissiveSurfacePathConstruction(
     let wi = mi * length(pHat);
 
     var pathFlags = PathFlags();
-    pathFlags.lightSampled = 0;
-    pathFlags.brdfSampled = 1;
-    pathFlags.endsInEnvmap = 0;
-    pathFlags.reconnects = 0;
+    pathFlags.lightSampled = false;
+    pathFlags.brdfSampled = true;
+    pathFlags.endsInEnvmap = false;
+    pathFlags.reconnects = false;
     pathFlags.reconnectionLobes = vec2u(0, 0);
 
     // non reconnectible path, we'll do pure Random-replay
@@ -282,10 +282,10 @@ fn emissiveSurfacePathConstruction(
     // these last elements will be updated by Emissive for the brdf
     // path
     var pathFlags = unpackPathFlags(piCopy.flags); // we need to unpack since reconnectionLobes are already stored inside piCopy.flags
-    pathFlags.lightSampled = 0;
-    pathFlags.brdfSampled = 1;
-    pathFlags.endsInEnvmap = 0;
-    pathFlags.reconnects = 1;
+    pathFlags.lightSampled = false;
+    pathFlags.brdfSampled = true;
+    pathFlags.endsInEnvmap = false;
+    pathFlags.reconnects = true;
     piCopy.flags = packPathFlags(pathFlags); // set flags to "path ends by BRDF" and "reconnects"
 
     piCopy.reconnectionRadiance = emissive; 
@@ -308,10 +308,10 @@ fn emissiveSurfacePathConstruction(
     // the previous bounce handled the rest
     
     var pathFlags = unpackPathFlags(piCopy.flags); // we need to unpack since reconnectionLobes are already stored inside piCopy.flags
-    pathFlags.lightSampled = 0;
-    pathFlags.brdfSampled = 1;
-    pathFlags.endsInEnvmap = 0;
-    pathFlags.reconnects = 1;
+    pathFlags.lightSampled = false;
+    pathFlags.brdfSampled = true;
+    pathFlags.endsInEnvmap = false;
+    pathFlags.reconnects = true;
     piCopy.flags = packPathFlags(pathFlags);
 
     piCopy.F = pHat * mi;
@@ -362,10 +362,10 @@ fn envmapPathConstruction(
     let wi = mi * length(pHat);
 
     var pathFlags = PathFlags();
-    pathFlags.lightSampled = 0;
-    pathFlags.brdfSampled = 1;
-    pathFlags.endsInEnvmap = 1;
-    pathFlags.reconnects = 0;
+    pathFlags.lightSampled = false;
+    pathFlags.brdfSampled = true;
+    pathFlags.endsInEnvmap = true;
+    pathFlags.reconnects = false;
     pathFlags.reconnectionLobes = vec2u(0, 0);
 
     // non reconnectible path, we'll do pure Random-replay
@@ -399,7 +399,7 @@ fn envmapPathConstruction(
     var piCopy = *pi;
 
     var pathFlags = unpackPathFlags(piCopy.flags); // we need to unpack since reconnectionLobes are already stored inside piCopy.flags
-    pathFlags.endsInEnvmap = 1;   
+    pathFlags.endsInEnvmap = true;   
     piCopy.flags = packPathFlags(pathFlags);
 
     piCopy.F = pHat * mi;
@@ -467,10 +467,10 @@ fn setReconnectionVertex(
     pi.reconnectionDirection = brdfDirectionSample.dir;
 
     var pathFlags = PathFlags();
-    pathFlags.lightSampled = 0;
-    pathFlags.brdfSampled = 1;
-    pathFlags.endsInEnvmap = 0;
-    pathFlags.reconnects = 1;
+    pathFlags.lightSampled = false;
+    pathFlags.brdfSampled = true;
+    pathFlags.endsInEnvmap = false;
+    pathFlags.reconnects = true;
     pathFlags.reconnectionLobes = vec2u(u32(psi.prevLobeIndex), lobeIndex);
     pi.flags = packPathFlags(pathFlags);
 

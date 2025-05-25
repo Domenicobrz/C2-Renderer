@@ -112,10 +112,10 @@ struct RandomReplayResult {
 }
 
 struct PathFlags {
-  lightSampled: u32,
-  brdfSampled: u32,
-  endsInEnvmap: u32,
-  reconnects: u32,
+  lightSampled: bool,
+  brdfSampled: bool,
+  endsInEnvmap: bool,
+  reconnects: bool,
   reconnectionLobes: vec2u,
 }
 
@@ -129,29 +129,8 @@ fn isSegmentTooShortForReconnection(segment: vec3f) -> bool {
   // return true;
 }
 
-fn pathEndsInEnvmap(pi: PathInfo) -> bool {
-  return ((pi.flags >> 2) & 1) == 1;
-}
-
-fn pathIsLightSampled(pi: PathInfo) -> bool {
-  return (pi.flags & 1) > 0;
-}
-
-fn pathIsBrdfSampled(pi: PathInfo) -> bool {
-  return (pi.flags & 2) > 0;
-}
-
-// not currently being used
-// fn pathHasLobeIndex(pi: PathInfo, lobeIndex: u32) -> bool {
-//   return (pi.flags >> 16) == lobeIndex;
-// }
-
 fn pathReconnects(pi: PathInfo) -> bool {
-  return ((pi.flags >> 3) & 1) == 1;
-}
-
-fn pathDoesNotReconnect(pi: PathInfo) -> bool {
-  return !pathReconnects(pi);
+  return ((pi.flags >> 3) & 1u) == 1;
 }
 
 fn pathReconnectsAtLightVertex(pi: PathInfo) -> bool {
@@ -167,11 +146,11 @@ fn pathReconnectsOneVertextBeforeLight(pi: PathInfo) -> bool {
 }
 
 fn packPathFlags(flags: PathFlags) -> u32 {
-  var pathFlags: u32 = 0;
-  pathFlags |= ((flags.lightSampled & 1u) << 0u);
-  pathFlags |= ((flags.brdfSampled & 1u) << 1u);
-  pathFlags |= ((flags.endsInEnvmap & 1u) << 2u);
-  pathFlags |= ((flags.reconnects & 1u) << 3u);
+  var pathFlags: u32 = 0u; // Use 0u for clarity
+  pathFlags |= (u32(flags.lightSampled) << 0u); // u32(bool) is 0u or 1u, so & 1u is not strictly needed
+  pathFlags |= (u32(flags.brdfSampled) << 1u);
+  pathFlags |= (u32(flags.endsInEnvmap) << 2u);
+  pathFlags |= (u32(flags.reconnects) << 3u);  // remember to update pathReconnects(...) if you move this one around
   // Bits 4-15 are currently unused
   // 0xFFu is 255 in decimal, or 0b11111111
   pathFlags |= ((flags.reconnectionLobes.x & 0xFFu) << 16u);
@@ -181,10 +160,10 @@ fn packPathFlags(flags: PathFlags) -> u32 {
 
 fn unpackPathFlags(packed: u32) -> PathFlags {
   var flags: PathFlags;
-  flags.lightSampled = (packed >> 0u) & 1u;
-  flags.brdfSampled = (packed >> 1u) & 1u;
-  flags.endsInEnvmap = (packed >> 2u) & 1u;
-  flags.reconnects = (packed >> 3u) & 1u;
+  flags.lightSampled = bool((packed >> 0u) & 1u); // bool(u32) converts 0u to false, non-0u to true
+  flags.brdfSampled = bool((packed >> 1u) & 1u);
+  flags.endsInEnvmap = bool((packed >> 2u) & 1u);
+  flags.reconnects = bool((packed >> 3u) & 1u);
   flags.reconnectionLobes.x = (packed >> 16u) & 0xFFu;
   flags.reconnectionLobes.y = (packed >> 24u) & 0xFFu;
   return flags;

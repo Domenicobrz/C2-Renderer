@@ -408,6 +408,10 @@ fn shade(
     }
   }
 
+  let unpackedFlags = unpackPathFlags((*pi).flags);
+  let pathDoesNotReconnect = !unpackedFlags.reconnects;;
+  let pathIsLightSampled = unpackedFlags.lightSampled;
+
   // !!!! careful !!!!
   // !!!! careful !!!!
   // sampleBrdf and sampleLight should *always* use the same number of rands in every material
@@ -415,7 +419,7 @@ fn shade(
 
   let brdfSample = sampleBrdf(materialData, ray, surfaceAttributes, normals);
   var lightSample = LightDirectionSample(vec3f(0), 0, 0, vec3f(0), LightSample());
-  let pathIsPureRRThatEndsWithLightSampleNow = pathDoesNotReconnect(*pi) && pathIsLightSampled(*pi) && u32(debugInfo.bounce + 1) == pi.bounceCount;
+  let pathIsPureRRThatEndsWithLightSampleNow = pathDoesNotReconnect && pathIsLightSampled && u32(debugInfo.bounce + 1) == pi.bounceCount;
   if (
     !isRandomReplay || 
     (isRandomReplay && pathIsPureRRThatEndsWithLightSampleNow)

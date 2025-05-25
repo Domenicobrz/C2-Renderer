@@ -138,7 +138,7 @@ export class Diffuse extends Material {
 
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
+        getTangentFromTriangle(ires.surfaceAttributes.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
       
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
         let TBN = mat3x3f(tangent, bitangent, N);
@@ -199,10 +199,10 @@ export class Diffuse extends Material {
 
         var color = material.color;
         if (material.mapLocation.x > -1) {
-          color *= getTexelFromTextureArrays(material.mapLocation, ires.uv, material.mapUvRepeat).xyz;
+          color *= getTexelFromTextureArrays(material.mapLocation, ires.surfaceAttributes.uv, material.mapUvRepeat).xyz;
         }
 
-        var vertexNormal = ires.normal;
+        var vertexNormal = ires.surfaceAttributes.normal;
         // the normal flip is calculated using the geometric normal to avoid
         // black edges on meshes displaying strong smooth-shading via vertex normals
         if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
@@ -212,8 +212,8 @@ export class Diffuse extends Material {
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
-            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-            ires, &bumpOffset
+            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, ires.surfaceAttributes, *ray, 
+            ires.triangle, &bumpOffset
           );
         }
 

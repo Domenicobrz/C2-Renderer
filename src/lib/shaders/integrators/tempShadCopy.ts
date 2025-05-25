@@ -252,16 +252,6 @@ fn getNormalsAtPoint(
   }
   var normals = SurfaceNormals(geometricNormal, vertexNormal, vertexNormal);
 
-  // only used for getShadingNormal. Truth be told, we should change
-  // this function's signature but I don't want to deal with that for now
-  // TODO: change getShadingNormal such that it's not necessary to
-  // create a fake ires struct
-  let fakeIres = BVHIntersectionResult(
-    false, 0, vec3f(0.0),
-    surfaceAttributes.uv, surfaceAttributes.normal, surfaceAttributes.tangent,
-    triangle, -1, vec2f(0.0),
-  );
-
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
     let bumpMapLocation = vec2i(
       bitcast<i32>(materialData[11]),
@@ -273,8 +263,8 @@ fn getNormalsAtPoint(
 
     if (bumpMapLocation.x > -1) {
       normals.shading = getShadingNormal(
-        bumpMapLocation, bumpStrength, uvRepeat, vertexNormal, 
-        *ray, fakeIres, bumpOffset
+        bumpMapLocation, bumpStrength, uvRepeat, surfaceAttributes, 
+        *ray, triangle, bumpOffset
       );
     }
   }
@@ -290,8 +280,8 @@ fn getNormalsAtPoint(
 
     if (bumpMapLocation.x > -1) {
       normals.shading = getShadingNormal(
-        bumpMapLocation, bumpStrength, uvRepeat, vertexNormal, 
-        *ray, fakeIres, bumpOffset
+        bumpMapLocation, bumpStrength, uvRepeat, surfaceAttributes, 
+        *ray, triangle, bumpOffset
       );
     }
   }

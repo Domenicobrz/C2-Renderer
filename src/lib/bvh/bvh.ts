@@ -340,9 +340,7 @@ export class BVH {
         hit: bool,
         t: f32,
         hitPoint: vec3f,
-        uv: vec2f,
-        normal: vec3f,
-        tangent: vec3f,
+        surfaceAttributes: SurfaceAttributes,
         triangle: Triangle,
         triangleIndex: i32,
         barycentrics: vec2f,
@@ -522,7 +520,7 @@ export class BVH {
 
         if (!aabbIntersect(ray.origin, ray.direction, rootNode.aabb).hit) {
           return BVHIntersectionResult(
-            false, 0, vec3f(0), vec2f(0), vec3f(0), vec3f(0), triangles[0], 0, vec2f(0)
+            false, 0, vec3f(0), SurfaceAttributes(), triangles[0], 0, vec2f(0)
           );
         }
 
@@ -603,9 +601,11 @@ export class BVH {
           closestIntersection.hit, 
           closestIntersection.t, 
           closestIntersection.hitPoint, 
-          closestIntersection.uv,
-          closestIntersection.normal,
-          closestIntersection.tangent,
+          SurfaceAttributes(
+            closestIntersection.normal,
+            closestIntersection.uv,
+            closestIntersection.tangent
+          ),
           triangles[closestPrimitiveIndex],
           closestPrimitiveIndex,
           closestIntersection.barycentrics

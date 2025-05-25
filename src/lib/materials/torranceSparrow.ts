@@ -383,12 +383,12 @@ export class TorranceSparrow extends Material {
 
         if (material.mapLocation.x > -1) {
           material.color *= getTexelFromTextureArrays(
-            material.mapLocation, ires.uv, material.mapUvRepeat
+            material.mapLocation, ires.surfaceAttributes.uv, material.mapUvRepeat
           ).xyz;
         }
         if (material.roughnessMapLocation.x > -1) {
           let roughness = getTexelFromTextureArrays(
-            material.roughnessMapLocation, ires.uv, material.uvRepeat
+            material.roughnessMapLocation, ires.surfaceAttributes.uv, material.uvRepeat
           ).xy;
           material.roughness *= roughness.x;
           material.roughness = max(material.roughness, ${TorranceSparrow.MIN_INPUT_ROUGHNESS});
@@ -398,7 +398,7 @@ export class TorranceSparrow extends Material {
         material.ax = axay.x;
         material.ay = axay.y;
 
-        var vertexNormal = ires.normal;
+        var vertexNormal = ires.surfaceAttributes.normal;
         if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
           vertexNormal = -vertexNormal;
         }
@@ -406,8 +406,8 @@ export class TorranceSparrow extends Material {
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
-            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-            ires, &bumpOffset
+            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, ires.surfaceAttributes, *ray, 
+            ires.triangle, &bumpOffset
           );
         }
 
@@ -427,7 +427,7 @@ export class TorranceSparrow extends Material {
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
+        getTangentFromTriangle(ires.surfaceAttributes.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
 
         // normal could be flipped at some point, should we also flip TB?
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping

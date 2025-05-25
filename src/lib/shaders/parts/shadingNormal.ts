@@ -1,10 +1,11 @@
 export const shadingNormalsPart = /* wgsl */ `
   fn getShadingNormal(
-    mapLocation: vec2i, strength: f32, uvRepeat: vec2f, normal: vec3f, ray: Ray, 
-    ires: BVHIntersectionResult, rayOffset: ptr<function, f32>
+    mapLocation: vec2i, strength: f32, uvRepeat: vec2f, surfaceAttributes: SurfaceAttributes, ray: Ray, 
+    triangle: Triangle, rayOffset: ptr<function, f32>
   ) -> vec3f {
-    let uv = ires.uv; 
-    let triangle = ires.triangle;
+    let uv = surfaceAttributes.uv; 
+    let vertexNormal = surfaceAttributes.normal;
+    let vertexTangent = surfaceAttributes.tangent;
     
     var uv1: vec2f;
     var uv2: vec2f;
@@ -61,12 +62,12 @@ export const shadingNormalsPart = /* wgsl */ `
     // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
     var tangent = vec3f(0.0);
     var bitangent = vec3f(0.0);
-    getTangentFromTriangle(ires.tangent, triangle.geometricNormal, normal, &tangent, &bitangent);
+    getTangentFromTriangle(vertexTangent, triangle.geometricNormal, vertexNormal, &tangent, &bitangent);
     
     // negated bitangent to switch handedness
     // I think bump / normal maps are authored with a right-handed system in mind
     // where z points towards "us"
-    let tbn = mat3x3f(tangent, -bitangent, normal);
+    let tbn = mat3x3f(tangent, -bitangent, vertexNormal);
     let framedNormal = normalize( tbn * sn );
     
     // for now we're disabling real ray offsets calculations since they cause issues

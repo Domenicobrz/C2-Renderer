@@ -391,10 +391,10 @@ export class EONDiffuse extends Material {
         var material: EONDiffuse = createEONDiffuse(ires.triangle.materialOffset);
 
         if (material.mapLocation.x > -1) {
-          material.color *= getTexelFromTextureArrays(material.mapLocation, ires.uv, material.mapUvRepeat).xyz;
+          material.color *= getTexelFromTextureArrays(material.mapLocation, ires.surfaceAttributes.uv, material.mapUvRepeat).xyz;
         }
 
-        var vertexNormal = ires.normal;
+        var vertexNormal = ires.surfaceAttributes.normal;
         // the normal flip is calculated using the geometric normal to avoid
         // black edges on meshes displaying strong smooth-shading via vertex normals
         if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
@@ -404,8 +404,8 @@ export class EONDiffuse extends Material {
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
-            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-            ires, &bumpOffset
+            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, ires.surfaceAttributes, *ray, 
+            ires.triangle, &bumpOffset
           );
         }
 
@@ -426,7 +426,7 @@ export class EONDiffuse extends Material {
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
+        getTangentFromTriangle(ires.surfaceAttributes.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
 
         // normal could be flipped at some point, should we also flip TB?
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping

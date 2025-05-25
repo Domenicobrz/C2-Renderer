@@ -500,13 +500,13 @@ export class Dielectric extends Material {
         // however it can be desireable from an artistic point of view
         if (material.absorptionMapLocation.x > -1) {
           absorption *= getTexelFromTextureArrays(
-            material.absorptionMapLocation, ires.uv, material.mapUvRepeat
+            material.absorptionMapLocation, ires.surfaceAttributes.uv, material.mapUvRepeat
           ).xyz;
         }
 
         if (material.roughnessMapLocation.x > -1) {
           let roughness = getTexelFromTextureArrays(
-            material.roughnessMapLocation, ires.uv, material.uvRepeat
+            material.roughnessMapLocation, ires.surfaceAttributes.uv, material.uvRepeat
           ).xy;
           material.roughness *= roughness.x;
           material.roughness = max(material.roughness, ${Dielectric.MIN_INPUT_ROUGHNESS});
@@ -516,13 +516,13 @@ export class Dielectric extends Material {
         material.ax = axay.x;
         material.ay = axay.y;
 
-        var vertexNormal = ires.normal;
+        var vertexNormal = ires.surfaceAttributes.normal;
         var N = vertexNormal;
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
           N = getShadingNormal(
-            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-            ires, &bumpOffset
+            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, ires.surfaceAttributes, *ray, 
+            ires.triangle, &bumpOffset
           );
         }
 
@@ -548,7 +548,7 @@ export class Dielectric extends Material {
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
+        getTangentFromTriangle(ires.surfaceAttributes.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
        
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
         let TBN = mat3x3f(tangent, bitangent, N);

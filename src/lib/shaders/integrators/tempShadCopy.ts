@@ -356,8 +356,10 @@ fn shade(
 
   // !!!! careful !!!!
   // !!!! careful !!!!
-  // sampleBrdf and sampleLight should *always* use the same number of rands in every material
-  // otherwise we can't properly do the RandomReplay
+  // With the existing architecture, sampleLight should *always* use the same number of rands for every material, 
+  // otherwise we can't properly replay the path. 
+  // This restriction doesn't apply to sampleBrdf since we're never skipping those randoms.
+  // A longer and clearer explanation is in: segment/integrators/randoms.md
 
   let brdfSample = sampleBrdf(materialData, ray, surfaceAttributes, normals);
   var lightSample = LightDirectionSample(vec3f(0), 0, 0, vec3f(0), LightSample());

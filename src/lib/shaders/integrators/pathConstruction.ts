@@ -152,20 +152,25 @@ fn neePathConstruction(
     (*psi).reconnectionVertexIndex != -1 && 
     (*psi).reconnectionVertexIndex < debugInfo.bounce
   ) {
+    let isEnvmap = lightPointSample.isEnvmap;
     var mi = lightDirectionSample.mis;
     let lsThroughput = (lightDirectionSample.brdf / lightDirectionSample.pdf) *
       cosTerm(N, lightDirectionSample.dir, materialData[0]);
     let pHat = lightSampleRadiance * lsThroughput * *throughput;
-               
+    
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
-      
+
     var piCopy = *pi;
     piCopy.F = pHat * mi;
     piCopy.bounceCount = u32(debugInfo.bounce + 1);
     // for this type of path ending, we have to multiply the reconnectionRadiance by mi
     piCopy.reconnectionRadiance = lightSampleRadiance * psi.postfixThroughput * lsThroughput * mi;
 
+    var pathFlags = unpackPathFlags(piCopy.flags); // we need to unpack since reconnectionLobes are already stored inside piCopy.flags
+    pathFlags.endsInEnvmap = isEnvmap;
+    piCopy.flags = packPathFlags(pathFlags); // set flags to "path ends by NEE" and "reconnects"
+      
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
     updateReservoir(reservoir, piCopy, wi);
   }

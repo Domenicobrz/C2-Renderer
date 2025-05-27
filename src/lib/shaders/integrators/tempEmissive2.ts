@@ -1,4 +1,20 @@
 export let tempEmissive2 = /* wgsl */ `
+fn getEmissiveMaterialData(offset: u32) -> array<f32, MATERIAL_DATA_ELEMENTS> {
+  var data = array<f32,MATERIAL_DATA_ELEMENTS>();
+  
+  // material type
+  data[0] = materialsBuffer[offset];
+  // color
+  data[1] = materialsBuffer[offset + 1];
+  data[2] = materialsBuffer[offset + 2];
+  data[3] = materialsBuffer[offset + 3];
+  // intensity
+  data[4] = materialsBuffer[offset + 4];
+
+  return data;
+}
+
+
 fn evaluatePdfEmissiveLobe() -> f32 {
   return 1 / (2 * PI);
 }

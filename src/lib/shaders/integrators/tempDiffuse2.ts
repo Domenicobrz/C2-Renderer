@@ -1,4 +1,31 @@
 export let tempDiffuse2 = /* wgsl */ `
+fn getDiffuseMaterialData(offset: u32) -> array<f32, MATERIAL_DATA_ELEMENTS> {
+  var data = array<f32,MATERIAL_DATA_ELEMENTS>();
+  
+  // material type
+  data[0] = materialsBuffer[offset];
+  // color
+  data[1] = materialsBuffer[offset + 1];
+  data[2] = materialsBuffer[offset + 2];
+  data[3] = materialsBuffer[offset + 3];
+  // bumpStrength
+  data[4] = materialsBuffer[offset + 4];
+  // uv repeat x,y
+  data[5] = materialsBuffer[offset + 5];
+  data[6] = materialsBuffer[offset + 6];
+  // map-uv repeat x,y
+  data[7] = materialsBuffer[offset + 7];
+  data[8] = materialsBuffer[offset + 8];
+  // mapLocation    requires bitcast<i32>(...);
+  data[9] = materialsBuffer[offset + 9]; // bitcast<i32>(materialsBuffer[offset + 9]),
+  data[10] = materialsBuffer[offset + 10]; // bitcast<i32>(materialsBuffer[offset + 10]),
+  // bumpMapLocation    requires bitcast<i32>(...);
+  data[11] = materialsBuffer[offset + 11];
+  data[12] = materialsBuffer[offset + 12];
+
+  return data;
+}
+
 fn evaluatePdfDiffuseLobe(
   wi: vec3f,
   surfaceNormals: SurfaceNormals,

@@ -140,7 +140,7 @@ fn neePathConstruction(
     piCopy.flags = packPathFlags(pathFlags); // set flags to "path ends by NEE" and "reconnects"
 
     piCopy.reconnectionRadiance = lightPointSample.radiance; 
-    piCopy.reconnectionDirection = lightDirectionSample.dir;
+    piCopy.radianceDirection = lightDirectionSample.dir;
     piCopy.jacobian = jacobian;
     
     // updateReservoir uses a different set of random numbers, exclusive for ReSTIR
@@ -471,7 +471,7 @@ fn setReconnectionVertex(
       abs(dot(w_km1, ires.triangle.geometricNormal)) / dot(w_vec, w_vec)
     );
     pi.reconnectionRadiance = vec3f(0);
-    pi.reconnectionDirection = brdfDirectionSample.dir;
+    pi.radianceDirection = brdfDirectionSample.dir;
 
     var pathFlags = PathFlags();
     pathFlags.lightSampled = false;

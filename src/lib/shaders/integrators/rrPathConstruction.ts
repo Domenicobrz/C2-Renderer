@@ -156,7 +156,7 @@ fn rrPathConstruction(
       lsGeometricNormal = triangle.geometricNormal;
       isTooShort = isSegmentTooShortForReconnection(w_vec);
     } else {
-      w_km1 = (*pi).reconnectionDirection;
+      w_km1 = (*pi).radianceDirection;
       lsGeometricNormal = -w_km1;
       isTooShort = false;
     }
@@ -319,7 +319,7 @@ fn rrPathConstruction(
     );
 
     var woXk = -w_km1;
-    var wiXk = pi.reconnectionDirection;
+    var wiXk = pi.radianceDirection;
     transformToLocalSpace(&woXk, &wiXk, surfaceAttributesXk, normalsXk);
 
     let brdfXk = evaluateBrdf(
@@ -331,7 +331,7 @@ fn rrPathConstruction(
 
     var mi = 0.0;
     if (case2) {
-      let lightPdfXk = getLightPDF(Ray(visibilityRes.hitPoint + pi.reconnectionDirection * 0.0001, pi.reconnectionDirection));
+      let lightPdfXk = getLightPDF(Ray(visibilityRes.hitPoint + pi.radianceDirection * 0.0001, pi.radianceDirection));
   
       if (pathIsBrdfSampled) {
         p *= brdfPdfXk * probability_of_sampling_lobe;
@@ -377,7 +377,7 @@ fn rrPathConstruction(
   
     let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
                brdf * brdfXk * cosTerm(normals.shading, w_km1, materialData[0]) * 
-               cosTerm(normalsXk.shading, pi.reconnectionDirection, materialDataXk[0]);
+               cosTerm(normalsXk.shading, pi.radianceDirection, materialDataXk[0]);
 
     rrStepResult.valid = 1;
     rrStepResult.shouldTerminate = true;

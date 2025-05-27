@@ -25,7 +25,7 @@ struct PathInfo {
   // to define a point within a triangle, we can't use texture uvs (they could be scaled/repeated)
   reconnectionBarycentrics: vec2f,  
   reconnectionRadiance: vec3f,
-  reconnectionDirection: vec3f,
+  radianceDirection: vec3f,
   reconnectionTriangleIndex: i32,
 }
 

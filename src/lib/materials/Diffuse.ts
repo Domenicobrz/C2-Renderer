@@ -80,22 +80,22 @@ export class Diffuse extends Material {
       fn createDiffuse(offset: u32) -> Diffuse {
         var diffuse: Diffuse;
         diffuse.color = vec3f(
-          materialsData[offset + 1],
-          materialsData[offset + 2],
-          materialsData[offset + 3],
+          materialsBuffer[offset + 1],
+          materialsBuffer[offset + 2],
+          materialsBuffer[offset + 3],
         );
-        diffuse.bumpStrength = materialsData[offset + 4];
-        diffuse.uvRepeat.x = materialsData[offset + 5];
-        diffuse.uvRepeat.y = materialsData[offset + 6];
-        diffuse.mapUvRepeat.x = materialsData[offset + 7];
-        diffuse.mapUvRepeat.y = materialsData[offset + 8];
+        diffuse.bumpStrength = materialsBuffer[offset + 4];
+        diffuse.uvRepeat.x = materialsBuffer[offset + 5];
+        diffuse.uvRepeat.y = materialsBuffer[offset + 6];
+        diffuse.mapUvRepeat.x = materialsBuffer[offset + 7];
+        diffuse.mapUvRepeat.y = materialsBuffer[offset + 8];
         diffuse.mapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 9]),
-          bitcast<i32>(materialsData[offset + 10]),
+          bitcast<i32>(materialsBuffer[offset + 9]),
+          bitcast<i32>(materialsBuffer[offset + 10]),
         );
         diffuse.bumpMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 11]),
-          bitcast<i32>(materialsData[offset + 12]),
+          bitcast<i32>(materialsBuffer[offset + 11]),
+          bitcast<i32>(materialsBuffer[offset + 12]),
         );
         return diffuse;
       } 

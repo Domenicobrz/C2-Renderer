@@ -86,23 +86,23 @@ export class EONDiffuse extends Material {
       fn createEONDiffuse(offset: u32) -> EONDiffuse {
         var eonDiffuse: EONDiffuse;
         eonDiffuse.color = vec3f(
-          materialsData[offset + 1],
-          materialsData[offset + 2],
-          materialsData[offset + 3],
+          materialsBuffer[offset + 1],
+          materialsBuffer[offset + 2],
+          materialsBuffer[offset + 3],
         );
-        eonDiffuse.roughness = materialsData[offset + 4];
-        eonDiffuse.bumpStrength = materialsData[offset + 5];
-        eonDiffuse.uvRepeat.x = materialsData[offset + 6];
-        eonDiffuse.uvRepeat.y = materialsData[offset + 7];
-        eonDiffuse.mapUvRepeat.x = materialsData[offset + 8];
-        eonDiffuse.mapUvRepeat.y = materialsData[offset + 9];
+        eonDiffuse.roughness = materialsBuffer[offset + 4];
+        eonDiffuse.bumpStrength = materialsBuffer[offset + 5];
+        eonDiffuse.uvRepeat.x = materialsBuffer[offset + 6];
+        eonDiffuse.uvRepeat.y = materialsBuffer[offset + 7];
+        eonDiffuse.mapUvRepeat.x = materialsBuffer[offset + 8];
+        eonDiffuse.mapUvRepeat.y = materialsBuffer[offset + 9];
         eonDiffuse.mapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 10]),
-          bitcast<i32>(materialsData[offset + 11]),
+          bitcast<i32>(materialsBuffer[offset + 10]),
+          bitcast<i32>(materialsBuffer[offset + 11]),
         );
         eonDiffuse.bumpMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 12]),
-          bitcast<i32>(materialsData[offset + 13]),
+          bitcast<i32>(materialsBuffer[offset + 12]),
+          bitcast<i32>(materialsBuffer[offset + 13]),
         );
         return eonDiffuse;
       } 

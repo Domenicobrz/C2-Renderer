@@ -8,47 +8,47 @@ fn getDielectricMaterialData(
   var data = array<f32,MATERIAL_DATA_ELEMENTS>();
   
   // material type
-  data[0] = materialsData[offset + 0];
+  data[0] = materialsBuffer[offset + 0];
 
   // absorption 
-  data[1] = materialsData[offset + 1]; 
-  data[2] = materialsData[offset + 2]; 
-  data[3] = materialsData[offset + 3]; 
+  data[1] = materialsBuffer[offset + 1]; 
+  data[2] = materialsBuffer[offset + 2]; 
+  data[3] = materialsBuffer[offset + 3]; 
 
   // ax, ay, assigned later in this function
   data[4] = 0; 
   data[5] = 0;
 
   // roughness, anisotropy
-  var roughness = materialsData[offset + 4]; 
-  let anisotropy = materialsData[offset + 5]; 
+  var roughness = materialsBuffer[offset + 4]; 
+  let anisotropy = materialsBuffer[offset + 5]; 
 
   // eta
-  data[6] = materialsData[offset + 6]; 
+  data[6] = materialsBuffer[offset + 6]; 
 
   // bump strength
-  data[7] = materialsData[offset + 7]; 
+  data[7] = materialsBuffer[offset + 7]; 
 
   let uvRepeat = vec2f(
-    materialsData[offset + 8],
-    materialsData[offset + 9],
+    materialsBuffer[offset + 8],
+    materialsBuffer[offset + 9],
   );
   let mapUvRepeat = vec2f(
-    materialsData[offset + 10],
-    materialsData[offset + 11],
+    materialsBuffer[offset + 10],
+    materialsBuffer[offset + 11],
   );
 
   let absorptionMapLocation = vec2i(
-    bitcast<i32>(materialsData[offset + 12]),
-    bitcast<i32>(materialsData[offset + 13]),
+    bitcast<i32>(materialsBuffer[offset + 12]),
+    bitcast<i32>(materialsBuffer[offset + 13]),
   );
   let roughnessMapLocation = vec2i(
-    bitcast<i32>(materialsData[offset + 14]),
-    bitcast<i32>(materialsData[offset + 15]),
+    bitcast<i32>(materialsBuffer[offset + 14]),
+    bitcast<i32>(materialsBuffer[offset + 15]),
   );
   let bumpMapLocation = vec2i(
-    bitcast<i32>(materialsData[offset + 16]),
-    bitcast<i32>(materialsData[offset + 17]),
+    bitcast<i32>(materialsBuffer[offset + 16]),
+    bitcast<i32>(materialsBuffer[offset + 17]),
   );
 
   if (absorptionMapLocation.x > -1) {

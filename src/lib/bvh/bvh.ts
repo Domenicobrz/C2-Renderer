@@ -454,7 +454,7 @@ export class BVH {
         if (ires.hit) {
           // if we don't hit a primitive, bvhIntersect will set ires.triangle to the first triangle
           // of the scene. Keep in mind that ires.hit will be false
-          let materialType = materialsData[ires.triangle.materialOffset];
+          let materialType = materialsBuffer[ires.triangle.materialOffset];
           var lightSamplePdf = 0.0;
           if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
             let lD = ray.direction;

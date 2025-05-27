@@ -403,13 +403,13 @@ export class ReSTIRPTSegment {
     // you can check it by typing: new Uint8Array(new Float32Array([NaN]).buffer)
     // in the console. I should have become a painter rather than dealing with this madness
     // ********* important **********
-    // let materialsData = new Float32Array(scene.materials.map((mat) => mat.getFloatsArray()).flat());
+    // let materialsBufferData = new Float32Array(scene.materials.map((mat) => mat.getFloatsArray()).flat());
     let combinedArray: number[] = [];
     scene.materials.forEach((mat) => {
       let fa = mat.getFloatsArray();
       fa.forEach((v) => combinedArray.push(v));
     });
-    let materialsData = new Float32Array(combinedArray);
+    let materialsBufferData = new Float32Array(combinedArray);
 
     let envmap = scene.envmap || new Envmap();
     // this will, unfortunately, trigger the updateConfig() function in the next javascript tick
@@ -439,7 +439,7 @@ export class ReSTIRPTSegment {
     });
 
     this.materialsBuffer = this.device.createBuffer({
-      size: materialsData.byteLength /* determined with offset computer */,
+      size: materialsBufferData.byteLength /* determined with offset computer */,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
 
@@ -466,7 +466,7 @@ export class ReSTIRPTSegment {
     this.envmapInfoBuffer = envmap.createEnvmapInfoBuffer(this.device);
 
     this.device.queue.writeBuffer(this.trianglesBuffer, 0, trianglesBufferData);
-    this.device.queue.writeBuffer(this.materialsBuffer, 0, materialsData);
+    this.device.queue.writeBuffer(this.materialsBuffer, 0, materialsBufferData);
     this.device.queue.writeBuffer(this.bvhBuffer, 0, BVHBufferData);
     this.device.queue.writeBuffer(this.lightsCDFBuffer, 0, LightsCDFBufferData);
     this.device.queue.writeBuffer(this.envmapPC2DBuffer, 0, envmapDistributionBuffer);

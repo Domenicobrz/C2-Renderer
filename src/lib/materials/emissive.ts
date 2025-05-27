@@ -1,5 +1,6 @@
 import type { Color } from 'three';
 import { MATERIAL_TYPE, Material } from './material';
+import type { IntegratorType } from '$lib/config';
 
 export class Emissive extends Material {
   public color: Color;
@@ -39,11 +40,11 @@ export class Emissive extends Material {
       fn createEmissive(offset: u32) -> Emissive {
         var emissive: Emissive;
         emissive.color = vec3f(
-          materialsData[offset + 1],
-          materialsData[offset + 2],
-          materialsData[offset + 3],
+          materialsBuffer[offset + 1],
+          materialsBuffer[offset + 2],
+          materialsBuffer[offset + 3],
         );
-        emissive.intensity = materialsData[offset + 4];
+        emissive.intensity = materialsBuffer[offset + 4];
 
         return emissive;
       } 

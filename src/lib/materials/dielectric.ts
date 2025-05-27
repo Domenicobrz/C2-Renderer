@@ -123,31 +123,31 @@ export class Dielectric extends Material {
       fn createDielectric(offset: u32) -> DIELECTRIC {
         var d: DIELECTRIC;
         d.absorption = vec3f(
-          materialsData[offset + 1],
-          materialsData[offset + 2],
-          materialsData[offset + 3],
+          materialsBuffer[offset + 1],
+          materialsBuffer[offset + 2],
+          materialsBuffer[offset + 3],
         );
         d.ax = 0; // we'll map this value in the shader
         d.ay = 0; // we'll map this value in the shader
-        d.roughness = materialsData[offset + 4];
-        d.anisotropy = materialsData[offset + 5];
-        d.eta = materialsData[offset + 6];
-        d.bumpStrength = materialsData[offset + 7];
-        d.uvRepeat.x = materialsData[offset + 8];
-        d.uvRepeat.y = materialsData[offset + 9];
-        d.mapUvRepeat.x = materialsData[offset + 10];
-        d.mapUvRepeat.y = materialsData[offset + 11];
+        d.roughness = materialsBuffer[offset + 4];
+        d.anisotropy = materialsBuffer[offset + 5];
+        d.eta = materialsBuffer[offset + 6];
+        d.bumpStrength = materialsBuffer[offset + 7];
+        d.uvRepeat.x = materialsBuffer[offset + 8];
+        d.uvRepeat.y = materialsBuffer[offset + 9];
+        d.mapUvRepeat.x = materialsBuffer[offset + 10];
+        d.mapUvRepeat.y = materialsBuffer[offset + 11];
         d.absorptionMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 12]),
-          bitcast<i32>(materialsData[offset + 13]),
+          bitcast<i32>(materialsBuffer[offset + 12]),
+          bitcast<i32>(materialsBuffer[offset + 13]),
         );
         d.roughnessMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 14]),
-          bitcast<i32>(materialsData[offset + 15]),
+          bitcast<i32>(materialsBuffer[offset + 14]),
+          bitcast<i32>(materialsBuffer[offset + 15]),
         );
         d.bumpMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 16]),
-          bitcast<i32>(materialsData[offset + 17]),
+          bitcast<i32>(materialsBuffer[offset + 16]),
+          bitcast<i32>(materialsBuffer[offset + 17]),
         );
         return d;
       } 

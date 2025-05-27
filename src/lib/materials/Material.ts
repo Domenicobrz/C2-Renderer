@@ -46,7 +46,7 @@ export class Material {
         i: i32) 
       {
         let materialOffset = ires.triangle.materialOffset;
-        let materialType = materialsData[materialOffset];
+        let materialType = materialsBuffer[materialOffset];
 
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
           shadeDiffuse(ires, ray, reflectance, lastBrdfMisWeight, rad, tid, i);

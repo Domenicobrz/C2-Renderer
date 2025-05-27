@@ -116,30 +116,30 @@ export class TorranceSparrow extends Material {
       fn createTorranceSparrow(offset: u32) -> TORRANCE_SPARROW {
         var ts: TORRANCE_SPARROW;
         ts.color = vec3f(
-          materialsData[offset + 1],
-          materialsData[offset + 2],
-          materialsData[offset + 3],
+          materialsBuffer[offset + 1],
+          materialsBuffer[offset + 2],
+          materialsBuffer[offset + 3],
         );
         ts.ax = 0; // we'll map this value in the shader
         ts.ay = 0; // we'll map this value in the shader
-        ts.roughness = materialsData[offset + 4];
-        ts.anisotropy = materialsData[offset + 5];
-        ts.bumpStrength = materialsData[offset + 6];
-        ts.uvRepeat.x = materialsData[offset + 7];
-        ts.uvRepeat.y = materialsData[offset + 8];
-        ts.mapUvRepeat.x = materialsData[offset + 9];
-        ts.mapUvRepeat.y = materialsData[offset + 10];
+        ts.roughness = materialsBuffer[offset + 4];
+        ts.anisotropy = materialsBuffer[offset + 5];
+        ts.bumpStrength = materialsBuffer[offset + 6];
+        ts.uvRepeat.x = materialsBuffer[offset + 7];
+        ts.uvRepeat.y = materialsBuffer[offset + 8];
+        ts.mapUvRepeat.x = materialsBuffer[offset + 9];
+        ts.mapUvRepeat.y = materialsBuffer[offset + 10];
         ts.mapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 11]),
-          bitcast<i32>(materialsData[offset + 12]),
+          bitcast<i32>(materialsBuffer[offset + 11]),
+          bitcast<i32>(materialsBuffer[offset + 12]),
         );
         ts.roughnessMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 13]),
-          bitcast<i32>(materialsData[offset + 14]),
+          bitcast<i32>(materialsBuffer[offset + 13]),
+          bitcast<i32>(materialsBuffer[offset + 14]),
         );
         ts.bumpMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 15]),
-          bitcast<i32>(materialsData[offset + 16]),
+          bitcast<i32>(materialsBuffer[offset + 15]),
+          bitcast<i32>(materialsBuffer[offset + 16]),
         );
         return ts;
       } 

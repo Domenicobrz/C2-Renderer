@@ -88,7 +88,7 @@ ${Plane.shaderMethods()}
 @group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;
 
 @group(3) @binding(0) var<storage> triangles: array<Triangle>;
-@group(3) @binding(1) var<storage> materialsData: array<f32>;
+@group(3) @binding(1) var<storage> materialsBuffer: array<f32>;
 @group(3) @binding(2) var<storage> bvhData: array<BVHNode>;
 @group(3) @binding(3) var<storage> lightsCDFData: array<LightCDFEntry>;
 // envmapPC2Darray will contain:

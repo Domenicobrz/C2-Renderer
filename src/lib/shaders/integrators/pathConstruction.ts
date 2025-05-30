@@ -13,7 +13,7 @@ fn neePathConstruction(
   lastBrdfMis: ptr<function, f32>, 
   lobeIndex: u32,
   isRough: bool,
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>,
+  materialType: u32,
   N: vec3f,
   tid: vec3u,
 ) {
@@ -26,7 +26,7 @@ fn neePathConstruction(
   if ((*psi).reconnectionVertexIndex == -1) {
     var mi = lightDirectionSample.mis;
     let pHat = lightSampleRadiance * (1.0 / lightDirectionSample.pdf) * *throughput * 
-               lightDirectionSample.brdf * cosTerm(N, lightDirectionSample.dir, materialData[0]);
+               lightDirectionSample.brdf * cosTerm(N, lightDirectionSample.dir, materialType);
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
 
@@ -110,7 +110,7 @@ fn neePathConstruction(
   if (psi.reconnectionVertexIndex == debugInfo.bounce) {
     var mi = lightDirectionSample.mis;
     let pHat = lightSampleRadiance * (1.0 / lightDirectionSample.pdf) * *throughput * 
-               lightDirectionSample.brdf * cosTerm(N, lightDirectionSample.dir, materialData[0]);
+               lightDirectionSample.brdf * cosTerm(N, lightDirectionSample.dir, materialType);
     let Wxi = 1.0;
     let wi = mi * length(pHat) * Wxi;
 
@@ -155,7 +155,7 @@ fn neePathConstruction(
     let isEnvmap = lightPointSample.isEnvmap;
     var mi = lightDirectionSample.mis;
     let lsThroughput = (lightDirectionSample.brdf / lightDirectionSample.pdf) *
-      cosTerm(N, lightDirectionSample.dir, materialData[0]);
+      cosTerm(N, lightDirectionSample.dir, materialType);
     let pHat = lightSampleRadiance * lsThroughput * *throughput;
     
     let Wxi = 1.0;

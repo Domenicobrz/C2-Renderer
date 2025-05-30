@@ -27,7 +27,32 @@ export class Material {
   }
 
   static shaderStruct(): string {
-    return '';
+    return /* wgsl */ `
+      struct EvaluatedMaterial {
+        // "type" is a reserved word in wgsl, had to use "materialType" instead
+        materialType: u32,
+
+        baseColor: vec3f,
+        absorptionCoefficient: vec3f,
+        emissiveIntensity: f32, 
+        
+        ax: f32,
+        ay: f32,
+        roughness: f32, 
+        anisotropy: f32,
+        ior: f32,
+        eta: f32,
+
+        bumpStrength: f32,
+
+        uvRepeat: vec2f,
+        mapUvRepeat: vec2f,
+
+        mapLocation: vec2i,
+        bumpMapLocation: vec2i,
+        roughnessMapLocation: vec2i,
+      } 
+    `;
   }
 
   static shaderCreateStruct(): string {

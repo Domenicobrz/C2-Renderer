@@ -4,85 +4,77 @@ export let tempTorranceSparrow = /* wgsl */ `
 
 fn getTSMaterialData(
   surfaceAttributes: SurfaceAttributes, offset: u32
-) -> array<f32, MATERIAL_DATA_ELEMENTS> {
-  var data = array<f32,MATERIAL_DATA_ELEMENTS>();
+) -> EvaluatedMaterial {
+  var data = EvaluatedMaterial();
   
   // material type
-  data[0] = materialsBuffer[offset + 0];
+  data.materialType = u32(materialsBuffer[offset + 0]);
 
   // color 
-  data[1] = materialsBuffer[offset + 1]; 
-  data[2] = materialsBuffer[offset + 2]; 
-  data[3] = materialsBuffer[offset + 3]; 
-
-  // ax, ay, assigned later in this function
-  data[4] = 0; 
-  data[5] = 0;
+  data.baseColor.x = materialsBuffer[offset + 1]; 
+  data.baseColor.y = materialsBuffer[offset + 2]; 
+  data.baseColor.z = materialsBuffer[offset + 3]; 
 
   // bump strength
-  data[6] = materialsBuffer[offset + 6]; 
-
-  // will be used for roughness, since it's used in the multiscattering func
-  data[7] = 0.0;
+  data.bumpStrength = materialsBuffer[offset + 6]; 
 
   // uvRepeat, used for bumpMapping
-  data[8] = materialsBuffer[offset + 7];
-  data[9] = materialsBuffer[offset + 8];
+  data.uvRepeat.x = materialsBuffer[offset + 7];
+  data.uvRepeat.y = materialsBuffer[offset + 8];
 
   // bumpMapLocation, used for bumpMapping
-  data[10] = materialsBuffer[offset + 15];
-  data[11] = materialsBuffer[offset + 16];
+  data.bumpMapLocation.x = bitcast<i32>(materialsBuffer[offset + 15]);
+  data.bumpMapLocation.y = bitcast<i32>(materialsBuffer[offset + 16]);
 
   // roughness, anisotropy
-  var roughness = materialsBuffer[offset + 4]; 
-  let anisotropy = materialsBuffer[offset + 5]; 
+  data.roughness = materialsBuffer[offset + 4]; 
+  data.anisotropy = materialsBuffer[offset + 5]; 
 
-  let uvRepeat = vec2f(
+  data.uvRepeat = vec2f(
     materialsBuffer[offset + 7],
     materialsBuffer[offset + 8],
   );
-  let mapUvRepeat = vec2f(
+  data.mapUvRepeat = vec2f(
     materialsBuffer[offset + 9],
     materialsBuffer[offset + 10],
   );
 
-  let mapLocation = vec2i(
+  data.mapLocation = vec2i(
     bitcast<i32>(materialsBuffer[offset + 11]),
     bitcast<i32>(materialsBuffer[offset + 12]),
   );
-  let roughnessMapLocation = vec2i(
+  data.roughnessMapLocation = vec2i(
     bitcast<i32>(materialsBuffer[offset + 13]),
     bitcast<i32>(materialsBuffer[offset + 14]),
   );
-  let bumpMapLocation = vec2i(
+  data.bumpMapLocation = vec2i(
     bitcast<i32>(materialsBuffer[offset + 15]),
     bitcast<i32>(materialsBuffer[offset + 16]),
   );
 
-  if (mapLocation.x > -1) {
+  if (data.mapLocation.x > -1) {
     let texelColor = getTexelFromTextureArrays(
-      mapLocation, surfaceAttributes.uv, mapUvRepeat
+      data.mapLocation, surfaceAttributes.uv, data.mapUvRepeat
     ).xyz;
 
     // color
-    data[1] *= texelColor.x;
-    data[2] *= texelColor.y;
-    data[3] *= texelColor.z;
+    data.baseColor *= texelColor.x;
+    data.baseColor *= texelColor.y;
+    data.baseColor *= texelColor.z;
   }
-  if (roughnessMapLocation.x > -1) {
+  if (data.roughnessMapLocation.x > -1) {
     let roughnessTexel = getTexelFromTextureArrays(
-      roughnessMapLocation, surfaceAttributes.uv, uvRepeat
+      data.roughnessMapLocation, surfaceAttributes.uv, data.uvRepeat
     ).xy;
 
     // roughness
-    roughness *= roughnessTexel.x;
-    roughness = max(roughness, ${TorranceSparrow.MIN_INPUT_ROUGHNESS});
+    data.roughness *= roughnessTexel.x;
+    data.roughness = max(data.roughness, ${TorranceSparrow.MIN_INPUT_ROUGHNESS});
   }
 
-  let axay = anisotropyRemap(roughness, anisotropy);
-  data[4] = axay.x;
-  data[5] = axay.y;
-  data[7] = roughness;
+  let axay = anisotropyRemap(data.roughness, data.anisotropy);
+  data.ax = axay.x;
+  data.ay = axay.y;
 
   return data;
 }
@@ -90,10 +82,10 @@ fn getTSMaterialData(
 fn evaluatePdfTSLobe(
   wo: vec3f,
   wi: vec3f,
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
 ) -> f32 {
-  let ax = materialData[4];
-  let ay = materialData[5];
+  let ax = materialData.ax;
+  let ay = materialData.ay;
 
   // we're assuming wo and wi are in local-space 
   var brdfSamplePdf = TS_PDF(wo, wi, ax, ay);
@@ -104,12 +96,12 @@ fn evaluatePdfTSLobe(
 fn evaluateTSBrdf(
   wo: vec3f,
   wi: vec3f,
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
 ) -> vec3f {
-  let color = vec3f(materialData[1], materialData[2], materialData[3]);
-  let ax = materialData[4];
-  let ay = materialData[5];
-  let roughness = materialData[7];
+  let color = materialData.baseColor;
+  let ax = materialData.ax;
+  let ay = materialData.ay;
+  let roughness = materialData.roughness;
 
   // we're assuming wo and wi are in local-space 
   var brdf = TS_f(wo, wi, ax, ay, color);
@@ -119,7 +111,7 @@ fn evaluateTSBrdf(
 }
 
 fn sampleTSBrdf(
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -141,10 +133,10 @@ fn sampleTSBrdf(
   let wo = TBNinverse * -(*ray).direction;
   var wi = vec3f(0.0);
 
-  let color = vec3f(materialData[1], materialData[2], materialData[3]);
-  let ax = materialData[4];
-  let ay = materialData[5];
-  let roughness = materialData[7];
+  let color = materialData.baseColor;
+  let ax = materialData.ax;
+  let ay = materialData.ay;
+  let roughness = materialData.roughness;
 
   var brdfSamplePdf = 0.0;
   var brdf = vec3f(0.0);
@@ -164,7 +156,7 @@ fn sampleTSBrdf(
 }
 
 fn sampleTSLight(
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -181,10 +173,10 @@ fn sampleTSLight(
   // from world-space to tangent-space
   transformToLocalSpace(&wo, &wi, surfaceAttributes, surfaceNormals);
 
-  let color = vec3f(materialData[1], materialData[2], materialData[3]);
-  let ax = materialData[4];
-  let ay = materialData[5];
-  let roughness = materialData[7];
+  let color = materialData.baseColor;
+  let ax = materialData.ax;
+  let ay = materialData.ay;
+  let roughness = materialData.roughness;
 
   var brdfSamplePdf = TS_PDF(wo, wi, ax, ay);
   var brdf = TS_f(wo, wi, ax, ay, color);

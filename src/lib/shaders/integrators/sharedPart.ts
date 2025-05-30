@@ -7,6 +7,7 @@ import type { LUTManager } from '$lib/managers/lutManager';
 import { Dielectric } from '$lib/materials/dielectric';
 import { Diffuse } from '$lib/materials/diffuse';
 import { Emissive } from '$lib/materials/emissive';
+import { Material } from '$lib/materials/material';
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 import { Plane } from '$lib/primitives/plane';
 import { Triangle } from '$lib/primitives/triangle';
@@ -39,6 +40,7 @@ ${shadingNormalsPart}
 ${getReSTIRRandomPart}
 ${lutManager.getShaderPart()}
 ${TileSequence.shaderPart()}
+${Material.shaderStruct()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
 ${'' /* Emissive.shaderShadeEmissive() */}
@@ -56,7 +58,6 @@ ${'' /* Dielectric.shaderStruct() */}
 ${'' /* Dielectric.shaderCreateStruct() */}
 ${Dielectric.shaderBRDF()}
 ${'' /* Dielectric.shaderShadeDielectric() */}
-${'' /* Material.shaderShade() */}
 ${Camera.shaderStruct()}
 ${Camera.shaderMethods()}
 ${Triangle.shaderStruct()}

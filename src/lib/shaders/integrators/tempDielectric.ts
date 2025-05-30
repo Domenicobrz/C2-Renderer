@@ -4,79 +4,58 @@ export let tempDielectric = /* wgsl */ `
 
 fn getDielectricMaterialData(
   surfaceAttributes: SurfaceAttributes, offset: u32
-) -> array<f32, MATERIAL_DATA_ELEMENTS> {
-  var data = array<f32,MATERIAL_DATA_ELEMENTS>();
+) -> EvaluatedMaterial {
+  var data = EvaluatedMaterial();
   
   // material type
-  data[0] = materialsBuffer[offset + 0];
+  data.materialType = u32(materialsBuffer[offset + 0]);
 
   // absorption 
-  data[1] = materialsBuffer[offset + 1]; 
-  data[2] = materialsBuffer[offset + 2]; 
-  data[3] = materialsBuffer[offset + 3]; 
-
-  // ax, ay, assigned later in this function
-  data[4] = 0; 
-  data[5] = 0;
+  data.baseColor.x = materialsBuffer[offset + 1]; 
+  data.baseColor.y = materialsBuffer[offset + 2]; 
+  data.baseColor.z = materialsBuffer[offset + 3]; 
 
   // roughness, anisotropy
-  var roughness = materialsBuffer[offset + 4]; 
-  let anisotropy = materialsBuffer[offset + 5]; 
+  data.roughness = materialsBuffer[offset + 4]; 
+  data.anisotropy = materialsBuffer[offset + 5]; 
 
   // eta
-  data[6] = materialsBuffer[offset + 6]; 
+  data.eta = materialsBuffer[offset + 6]; 
 
   // bump strength
-  data[7] = materialsBuffer[offset + 7]; 
+  data.bumpStrength = materialsBuffer[offset + 7]; 
 
-  let uvRepeat = vec2f(
+  data.uvRepeat = vec2f(
     materialsBuffer[offset + 8],
     materialsBuffer[offset + 9],
   );
-  let mapUvRepeat = vec2f(
+  data.mapUvRepeat = vec2f(
     materialsBuffer[offset + 10],
     materialsBuffer[offset + 11],
   );
 
-  let absorptionMapLocation = vec2i(
-    bitcast<i32>(materialsBuffer[offset + 12]),
-    bitcast<i32>(materialsBuffer[offset + 13]),
-  );
-  let roughnessMapLocation = vec2i(
+  data.roughnessMapLocation = vec2i(
     bitcast<i32>(materialsBuffer[offset + 14]),
     bitcast<i32>(materialsBuffer[offset + 15]),
   );
-  let bumpMapLocation = vec2i(
+  data.bumpMapLocation = vec2i(
     bitcast<i32>(materialsBuffer[offset + 16]),
     bitcast<i32>(materialsBuffer[offset + 17]),
   );
 
-  if (absorptionMapLocation.x > -1) {
-    let texelColor = getTexelFromTextureArrays(
-      absorptionMapLocation, surfaceAttributes.uv, mapUvRepeat
-    ).xyz;
-
-    // absorption
-    data[1] *= texelColor.x;
-    data[2] *= texelColor.y;
-    data[3] *= texelColor.z;
-  }
-  if (roughnessMapLocation.x > -1) {
+  if (data.roughnessMapLocation.x > -1) {
     let roughnessTexel = getTexelFromTextureArrays(
-      roughnessMapLocation, surfaceAttributes.uv, uvRepeat
+      data.roughnessMapLocation, surfaceAttributes.uv, data.uvRepeat
     ).xy;
 
     // roughness
-    roughness *= roughnessTexel.x;
-    roughness = max(roughness, ${Dielectric.MIN_INPUT_ROUGHNESS});
+    data.roughness *= roughnessTexel.x;
+    data.roughness = max(data.roughness, ${Dielectric.MIN_INPUT_ROUGHNESS});
   }
 
-  let axay = anisotropyRemap(roughness, anisotropy);
-  data[4] = axay.x;
-  data[5] = axay.y;
-
-  // we'll assign roughness to data[8]
-  data[8] = roughness;
+  let axay = anisotropyRemap(data.roughness, data.anisotropy);
+  data.ax = axay.x;
+  data.ay = axay.y;
 
   return data;
 }
@@ -84,11 +63,11 @@ fn getDielectricMaterialData(
 fn evaluatePdfDielectricLobe(
   wo: vec3f,
   wi: vec3f,
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
 ) -> f32 {
-  let ax = materialData[4];
-  let ay = materialData[5];
-  let eta = materialData[6];
+  let ax = materialData.ax;
+  let ay = materialData.ay;
+  let eta = materialData.eta;
 
   // we're assuming wo and wi are in local-space 
   var brdfSamplePdf = Dielectric_PDF(wo, wi, eta, ax, ay);
@@ -98,13 +77,13 @@ fn evaluatePdfDielectricLobe(
 fn evaluateDielectricBrdf(
   wo: vec3f,
   wi: vec3f,
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
 ) -> vec3f {
-  let color = vec3f(materialData[1], materialData[2], materialData[3]);
-  let ax = materialData[4];
-  let ay = materialData[5];
-  let eta = materialData[6];
-  let roughness = materialData[8];
+  let color = materialData.baseColor;
+  let ax = materialData.ax;
+  let ay = materialData.ay;
+  let eta = materialData.eta;
+  let roughness = materialData.roughness;
 
   // we're assuming wo and wi are in local-space 
   var brdf = Dielectric_f(wo, wi, eta, ax, ay);
@@ -114,7 +93,7 @@ fn evaluateDielectricBrdf(
 }
 
 fn sampleDielectricBrdf(
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -136,10 +115,10 @@ fn sampleDielectricBrdf(
   let wo = TBNinverse * -(*ray).direction;
   var wi = vec3f(0.0);
 
-  let ax = materialData[4];
-  let ay = materialData[5];
-  let eta = materialData[6];
-  let roughness = materialData[8];
+  let ax = materialData.ax;
+  let ay = materialData.ay;
+  let eta = materialData.eta;
+  let roughness = materialData.roughness;
 
   var brdfSamplePdf = 0.0;
   var brdf = vec3f(0.0);
@@ -160,7 +139,7 @@ fn sampleDielectricBrdf(
 }
 
 fn sampleDielectricLight(
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -176,10 +155,10 @@ fn sampleDielectricLight(
   // from world-space to tangent-space
   transformToLocalSpace(&wo, &wi, surfaceAttributes, surfaceNormals);
 
-  let ax = materialData[4];
-  let ay = materialData[5];
-  let eta = materialData[6];
-  let roughness = materialData[8];
+  let ax = materialData.ax;
+  let ay = materialData.ay;
+  let eta = materialData.eta;
+  let roughness = materialData.roughness;
 
   var brdfSamplePdf = Dielectric_PDF(wo, wi, eta, ax, ay);
 

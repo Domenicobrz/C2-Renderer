@@ -39,7 +39,7 @@ fn rrPathConstruction(
   // brdfDirectionSample: BrdfDirectionSample,
   surfaceAttributes: SurfaceAttributes,
   normals: SurfaceNormals,
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>,
+  materialData: EvaluatedMaterial,
   ires: BVHIntersectionResult, 
   ray: ptr<function, Ray>,
   // reservoir: ptr<function, Reservoir>,
@@ -104,7 +104,7 @@ fn rrPathConstruction(
       if (lightSampleSuccessful) {
         var mi = lightDirectionSample.mis;
         let pHat = lightSampleRadiance * (1.0 / lightDirectionSample.pdf) * *throughput * 
-                   lightDirectionSample.brdf * cosTerm(normals.shading, lightDirectionSample.dir, materialData[0]);
+                   lightDirectionSample.brdf * cosTerm(normals.shading, lightDirectionSample.dir, materialData.materialType);
     
         rrStepResult.valid = 1;
         rrStepResult.shouldTerminate = true;
@@ -243,7 +243,7 @@ fn rrPathConstruction(
     }
 
     let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
-               brdf * cosTerm(normals.shading, w_km1, materialData[0]);
+               brdf * cosTerm(normals.shading, w_km1, materialData.materialType);
 
     rrStepResult.valid = 1;
     rrStepResult.shouldTerminate = true;
@@ -357,14 +357,14 @@ fn rrPathConstruction(
     }
 
     // absorption check for dielectrics
-    if (materialDataXk[0] == ${MATERIAL_TYPE.DIELECTRIC}) {
+    if (materialDataXk.materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
       var isInsideMedium = dot(normalsXk.shading, w_km1) > 0;
       if (isInsideMedium) {
         let t = length(w_vec);
         let absorption = vec3f(
-          exp(-materialDataXk[1] * t), 
-          exp(-materialDataXk[2] * t), 
-          exp(-materialDataXk[3] * t), 
+          exp(-materialDataXk.absorptionCoefficient.x * t), 
+          exp(-materialDataXk.absorptionCoefficient.y * t), 
+          exp(-materialDataXk.absorptionCoefficient.z * t), 
         );
         *throughput *= absorption;
       }
@@ -376,8 +376,8 @@ fn rrPathConstruction(
     );
   
     let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
-               brdf * brdfXk * cosTerm(normals.shading, w_km1, materialData[0]) * 
-               cosTerm(normalsXk.shading, pi.radianceDirection, materialDataXk[0]);
+               brdf * brdfXk * cosTerm(normals.shading, w_km1, materialData.materialType) * 
+               cosTerm(normalsXk.shading, pi.radianceDirection, materialDataXk.materialType);
 
     rrStepResult.valid = 1;
     rrStepResult.shouldTerminate = true;

@@ -1,15 +1,21 @@
 export let tempEmissive2 = /* wgsl */ `
-fn getEmissiveMaterialData(offset: u32) -> array<f32, MATERIAL_DATA_ELEMENTS> {
-  var data = array<f32,MATERIAL_DATA_ELEMENTS>();
+fn getEmissiveMaterialData(offset: u32) -> EvaluatedMaterial {
+  var data = EvaluatedMaterial();
   
   // material type
-  data[0] = materialsBuffer[offset];
+  data.materialType = u32(materialsBuffer[offset]);
+
   // color
-  data[1] = materialsBuffer[offset + 1];
-  data[2] = materialsBuffer[offset + 2];
-  data[3] = materialsBuffer[offset + 3];
+  data.baseColor.x = materialsBuffer[offset + 1];
+  data.baseColor.y = materialsBuffer[offset + 2];
+  data.baseColor.z = materialsBuffer[offset + 3];
+
   // intensity
-  data[4] = materialsBuffer[offset + 4];
+  data.emissiveIntensity = materialsBuffer[offset + 4];
+
+  data.roughnessMapLocation = vec2i(-1, -1);
+  data.bumpMapLocation = vec2i(-1, -1);
+  data.mapLocation = vec2i(-1, -1);
 
   return data;
 }
@@ -24,7 +30,7 @@ fn evaluateEmissiveBrdf() -> vec3f {
 }
 
 fn sampleEmissiveBrdf(
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -63,7 +69,7 @@ fn sampleEmissiveBrdf(
 }
 
 fn sampleEmissiveLight(
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,

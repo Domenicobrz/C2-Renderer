@@ -1,27 +1,35 @@
 export let tempDiffuse2 = /* wgsl */ `
-fn getDiffuseMaterialData(offset: u32) -> array<f32, MATERIAL_DATA_ELEMENTS> {
-  var data = array<f32,MATERIAL_DATA_ELEMENTS>();
+fn getDiffuseMaterialData(offset: u32) -> EvaluatedMaterial {
+  var data = EvaluatedMaterial();
   
   // material type
-  data[0] = materialsBuffer[offset];
+  data.materialType = u32(materialsBuffer[offset]);
+
   // color
-  data[1] = materialsBuffer[offset + 1];
-  data[2] = materialsBuffer[offset + 2];
-  data[3] = materialsBuffer[offset + 3];
+  data.baseColor.x = materialsBuffer[offset + 1];
+  data.baseColor.y = materialsBuffer[offset + 2];
+  data.baseColor.z = materialsBuffer[offset + 3];
+  
   // bumpStrength
-  data[4] = materialsBuffer[offset + 4];
+  data.bumpStrength = materialsBuffer[offset + 4];
+
   // uv repeat x,y
-  data[5] = materialsBuffer[offset + 5];
-  data[6] = materialsBuffer[offset + 6];
+  data.uvRepeat.x = materialsBuffer[offset + 5];
+  data.uvRepeat.y = materialsBuffer[offset + 6];
+
   // map-uv repeat x,y
-  data[7] = materialsBuffer[offset + 7];
-  data[8] = materialsBuffer[offset + 8];
+  data.mapUvRepeat.x = materialsBuffer[offset + 7];
+  data.mapUvRepeat.y = materialsBuffer[offset + 8];
+  
   // mapLocation    requires bitcast<i32>(...);
-  data[9] = materialsBuffer[offset + 9]; // bitcast<i32>(materialsBuffer[offset + 9]),
-  data[10] = materialsBuffer[offset + 10]; // bitcast<i32>(materialsBuffer[offset + 10]),
+  data.mapLocation.x = bitcast<i32>(materialsBuffer[offset + 9]);
+  data.mapLocation.y = bitcast<i32>(materialsBuffer[offset + 10]);
+  
   // bumpMapLocation    requires bitcast<i32>(...);
-  data[11] = materialsBuffer[offset + 11];
-  data[12] = materialsBuffer[offset + 12];
+  data.bumpMapLocation.x = bitcast<i32>(materialsBuffer[offset + 11]);
+  data.bumpMapLocation.y = bitcast<i32>(materialsBuffer[offset + 12]);
+
+  data.roughnessMapLocation = vec2i(-1, -1);
 
   return data;
 }
@@ -37,15 +45,12 @@ fn evaluatePdfDiffuseLobe(
 }
 
 fn evaluateDiffuseBrdf(
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
   surfaceAttributes: SurfaceAttributes,
 ) -> vec3f {
-  var color = vec3f(materialData[1], materialData[2], materialData[3]);
-  let mapLocation = vec2i(
-    bitcast<i32>(materialData[9]),
-    bitcast<i32>(materialData[10]),
-  );
-  let mapUvRepeat = vec2f(materialData[7], materialData[8]);
+  var color = materialData.baseColor;
+  let mapLocation = materialData.mapLocation;
+  let mapUvRepeat = materialData.mapUvRepeat;
   if (mapLocation.x > -1) {
     color *= getTexelFromTextureArrays(mapLocation, surfaceAttributes.uv, mapUvRepeat).xyz;
   }
@@ -55,7 +60,7 @@ fn evaluateDiffuseBrdf(
 }
 
 fn sampleDiffuseBrdf(
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -111,7 +116,7 @@ fn sampleDiffuseBrdf(
 }
 
 fn sampleDiffuseLight(
-  materialData: array<f32, MATERIAL_DATA_ELEMENTS>, 
+  materialData: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,

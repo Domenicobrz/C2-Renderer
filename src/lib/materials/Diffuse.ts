@@ -211,8 +211,10 @@ export class Diffuse extends Material {
         var N = vertexNormal;
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
+
+          let surfAttrWithFlippedNormal = SurfaceAttributes(N, ires.surfaceAttributes.uv, ires.surfaceAttributes.tangent);
           N = getShadingNormal(
-            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, ires.surfaceAttributes, *ray, 
+            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, surfAttrWithFlippedNormal, *ray, 
             ires.triangle, &bumpOffset
           );
         }

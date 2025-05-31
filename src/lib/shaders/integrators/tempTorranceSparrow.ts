@@ -58,9 +58,7 @@ fn getTSMaterialData(
     ).xyz;
 
     // color
-    data.baseColor *= texelColor.x;
-    data.baseColor *= texelColor.y;
-    data.baseColor *= texelColor.z;
+    data.baseColor *= texelColor;
   }
   if (data.roughnessMapLocation.x > -1) {
     let roughnessTexel = getTexelFromTextureArrays(

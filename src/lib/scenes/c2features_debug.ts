@@ -49,7 +49,7 @@ export async function c2FeaturesScene_Debug(): Promise<C2Scene> {
       mapUvRepeat: new Vector2(20, 20)
     })
   );
-  // triangles = [...triangles, ...meshToTriangles(plane, materials.length - 1)];
+  triangles = [...triangles, ...meshToTriangles(plane, materials.length - 1)];
 
   let graffiti = new Mesh(new PlaneGeometry(35, 15));
   graffiti.position.set(20, 7.25, -7.5);
@@ -138,7 +138,8 @@ export async function c2FeaturesScene_Debug(): Promise<C2Scene> {
 
   const camera = new Orbit();
   // camera.set(new Vector3(-6.8, 0.6, 3.0), new Vector3(2.4, -3.3, -0.9));
-  camera.set(new Vector3(-3.4, 4.7, 0.4), new Vector3(7.2, 3.6, -0.4));
+  // camera.set(new Vector3(-3.4, 4.7, 0.4), new Vector3(7.2, 3.6, -0.4));
+  camera.set(new Vector3(-12.3, 5.4, 5.3), new Vector3(-2.8, 2.6, 1.3));
 
   camera.movementSpeed = 0.15;
 

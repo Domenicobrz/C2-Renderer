@@ -40,7 +40,6 @@ export class Material {
         ay: f32,
         roughness: f32, 
         anisotropy: f32,
-        ior: f32,
         eta: f32,
 
         bumpStrength: f32,

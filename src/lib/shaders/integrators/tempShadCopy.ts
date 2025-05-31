@@ -217,8 +217,10 @@ fn getNormalsAtPoint(
     let uvRepeat = materialData.uvRepeat;
 
     if (bumpMapLocation.x > -1) {
+
+      let surfAttrWithFlippedNormal = SurfaceAttributes(vertexNormal, surfaceAttributes.uv, surfaceAttributes.tangent);
       normals.shading = getShadingNormal(
-        bumpMapLocation, bumpStrength, uvRepeat, surfaceAttributes, 
+        bumpMapLocation, bumpStrength, uvRepeat, surfAttrWithFlippedNormal, 
         *ray, triangle, bumpOffset
       );
     }
@@ -230,8 +232,10 @@ fn getNormalsAtPoint(
     let uvRepeat = materialData.uvRepeat;
 
     if (bumpMapLocation.x > -1) {
+
+      let surfAttrWithFlippedNormal = SurfaceAttributes(vertexNormal, surfaceAttributes.uv, surfaceAttributes.tangent);
       normals.shading = getShadingNormal(
-        bumpMapLocation, bumpStrength, uvRepeat, surfaceAttributes, 
+        bumpMapLocation, bumpStrength, uvRepeat, surfAttrWithFlippedNormal, 
         *ray, triangle, bumpOffset
       );
     }

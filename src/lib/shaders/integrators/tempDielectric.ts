@@ -10,10 +10,14 @@ fn getDielectricMaterialData(
   // material type
   data.materialType = u32(materialsBuffer[offset + 0]);
 
+  data.baseColor = vec3f(1.0);
+
   // absorption 
-  data.baseColor.x = materialsBuffer[offset + 1]; 
-  data.baseColor.y = materialsBuffer[offset + 2]; 
-  data.baseColor.z = materialsBuffer[offset + 3]; 
+  data.absorptionCoefficient.x = materialsBuffer[offset + 1]; 
+  data.absorptionCoefficient.y = materialsBuffer[offset + 2]; 
+  data.absorptionCoefficient.z = materialsBuffer[offset + 3]; 
+
+  data.emissiveIntensity = 0.0;
 
   // roughness, anisotropy
   data.roughness = materialsBuffer[offset + 4]; 
@@ -34,6 +38,7 @@ fn getDielectricMaterialData(
     materialsBuffer[offset + 11],
   );
 
+  data.mapLocation = vec2i(-1, -1);
   data.roughnessMapLocation = vec2i(
     bitcast<i32>(materialsBuffer[offset + 14]),
     bitcast<i32>(materialsBuffer[offset + 15]),
@@ -79,7 +84,6 @@ fn evaluateDielectricBrdf(
   wi: vec3f,
   materialData: EvaluatedMaterial, 
 ) -> vec3f {
-  let color = materialData.baseColor;
   let ax = materialData.ax;
   let ay = materialData.ay;
   let eta = materialData.eta;

@@ -154,7 +154,7 @@ fn evaluateMaterialAtSurfacePoint(
   let materialType = u32(materialsBuffer[materialOffset]);
 
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-    return getDiffuseMaterialData(materialOffset);
+    return getDiffuseMaterialData(surfaceAttributes, materialOffset);
   }
 
   if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {

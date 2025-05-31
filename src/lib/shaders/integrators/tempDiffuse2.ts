@@ -1,5 +1,5 @@
 export let tempDiffuse2 = /* wgsl */ `
-fn getDiffuseMaterialData(offset: u32) -> EvaluatedMaterial {
+fn getDiffuseMaterialData(surfaceAttributes: SurfaceAttributes, offset: u32) -> EvaluatedMaterial {
   var data = EvaluatedMaterial();
   
   // material type
@@ -31,6 +31,14 @@ fn getDiffuseMaterialData(offset: u32) -> EvaluatedMaterial {
 
   data.roughnessMapLocation = vec2i(-1, -1);
 
+  if (data.mapLocation.x > -1) {
+    let texelColor = getTexelFromTextureArrays(
+      data.mapLocation, surfaceAttributes.uv, data.mapUvRepeat
+    ).xyz;
+
+    data.baseColor *= texelColor;
+  }
+
   return data;
 }
 
@@ -49,12 +57,6 @@ fn evaluateDiffuseBrdf(
   surfaceAttributes: SurfaceAttributes,
 ) -> vec3f {
   var color = materialData.baseColor;
-  let mapLocation = materialData.mapLocation;
-  let mapUvRepeat = materialData.mapUvRepeat;
-  if (mapLocation.x > -1) {
-    color *= getTexelFromTextureArrays(mapLocation, surfaceAttributes.uv, mapUvRepeat).xyz;
-  }
-
   let brdf = color / PI;
   return brdf;
 }

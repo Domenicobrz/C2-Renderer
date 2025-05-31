@@ -37,13 +37,13 @@ ${pathConstruction}
 ${rrPathConstruction}
 
 fn evaluateLobePdf(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   wo: vec3f,
   wi: vec3f,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
 ) -> f32 {
-  let materialType = materialData.materialType;
+  let materialType = material.materialType;
 
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
     return evaluatePdfDiffuseLobe(wi, surfaceNormals);
@@ -54,27 +54,27 @@ fn evaluateLobePdf(
   }
 
   if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-    return evaluatePdfTSLobe(wo, wi, materialData);
+    return evaluatePdfTSLobe(wo, wi, material);
   }
 
   if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
-    return evaluatePdfDielectricLobe(wo, wi, materialData);
+    return evaluatePdfDielectricLobe(wo, wi, material);
   }
 
   return 0.0;
 }
 
 fn evaluateBrdf(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   wo: vec3f,
   wi: vec3f,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
 ) -> vec3f {
-  let materialType = materialData.materialType;
+  let materialType = material.materialType;
 
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-    return evaluateDiffuseBrdf(materialData, surfaceAttributes);
+    return evaluateDiffuseBrdf(material, surfaceAttributes);
   }
 
   if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
@@ -82,65 +82,65 @@ fn evaluateBrdf(
   }
 
   if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-    return evaluateTSBrdf(wo, wi, materialData);
+    return evaluateTSBrdf(wo, wi, material);
   }
 
   if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
-    return evaluateDielectricBrdf(wo, wi, materialData);
+    return evaluateDielectricBrdf(wo, wi, material);
   }
 
   return vec3f(0);
 }
 
 fn sampleBrdf(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
 ) -> BrdfDirectionSample {
-  let materialType = materialData.materialType;
+  let materialType = material.materialType;
 
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-    return sampleDiffuseBrdf(materialData, ray, surfaceAttributes, surfaceNormals);
+    return sampleDiffuseBrdf(material, ray, surfaceAttributes, surfaceNormals);
   }
 
   if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-    return sampleEmissiveBrdf(materialData, ray, surfaceAttributes, surfaceNormals);
+    return sampleEmissiveBrdf(material, ray, surfaceAttributes, surfaceNormals);
   }
 
   if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-    return sampleTSBrdf(materialData, ray, surfaceAttributes, surfaceNormals);
+    return sampleTSBrdf(material, ray, surfaceAttributes, surfaceNormals);
   }
 
   if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
-    return sampleDielectricBrdf(materialData, ray, surfaceAttributes, surfaceNormals);
+    return sampleDielectricBrdf(material, ray, surfaceAttributes, surfaceNormals);
   }
 
   return BrdfDirectionSample(vec3f(0), 0, 0, vec3f(0));
 }
 
 fn sampleLight(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
 ) -> LightDirectionSample {
-  let materialType = materialData.materialType;
+  let materialType = material.materialType;
 
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-    return sampleDiffuseLight(materialData, ray, surfaceAttributes, surfaceNormals);
+    return sampleDiffuseLight(material, ray, surfaceAttributes, surfaceNormals);
   }
 
   if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-    return sampleEmissiveLight(materialData, ray, surfaceAttributes, surfaceNormals);
+    return sampleEmissiveLight(material, ray, surfaceAttributes, surfaceNormals);
   }
 
   if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-    return sampleTSLight(materialData, ray, surfaceAttributes, surfaceNormals);
+    return sampleTSLight(material, ray, surfaceAttributes, surfaceNormals);
   }
 
   if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
-    return sampleDielectricLight(materialData, ray, surfaceAttributes, surfaceNormals);
+    return sampleDielectricLight(material, ray, surfaceAttributes, surfaceNormals);
   }
 
   return LightDirectionSample(vec3f(0), 0, 0, vec3f(0), LightSample());
@@ -154,19 +154,19 @@ fn evaluateMaterialAtSurfacePoint(
   let materialType = u32(materialsBuffer[materialOffset]);
 
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-    return getDiffuseMaterialData(surfaceAttributes, materialOffset);
+    return getDiffuseMaterial(surfaceAttributes, materialOffset);
   }
 
   if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-    return getEmissiveMaterialData(materialOffset);
+    return getEmissiveMaterial(materialOffset);
   }
 
   if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-    return getTSMaterialData(surfaceAttributes, materialOffset);
+    return getTSMaterial(surfaceAttributes, materialOffset);
   }
 
   if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
-    return getDielectricMaterialData(surfaceAttributes, materialOffset);
+    return getDielectricMaterial(surfaceAttributes, materialOffset);
   }
 
   // undefined material, magenta color
@@ -179,16 +179,16 @@ fn evaluateMaterialAtSurfacePoint(
   return errorMat;
 }
 
-fn getEmissive(materialData: EvaluatedMaterial, isBackFacing: bool) -> vec3f {
-  let materialType = materialData.materialType;
+fn getEmissive(material: EvaluatedMaterial, isBackFacing: bool) -> vec3f {
+  let materialType = material.materialType;
   if (materialType == ${MATERIAL_TYPE.EMISSIVE} && !isBackFacing) {
-    return materialData.baseColor * materialData.emissiveIntensity;
+    return material.baseColor * material.emissiveIntensity;
   }
   return vec3f(0);
 }
 
 fn getNormalsAtPoint(
-  materialData: EvaluatedMaterial,
+  material: EvaluatedMaterial,
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   triangle: Triangle,
@@ -196,7 +196,7 @@ fn getNormalsAtPoint(
   isBackfacing: ptr<function, bool>,
 ) -> SurfaceNormals {
   *isBackfacing = false;
-  let materialType = materialData.materialType;
+  let materialType = material.materialType;
   
   let geometricNormal = triangle.geometricNormal;
   var vertexNormal = surfaceAttributes.normal;
@@ -211,25 +211,13 @@ fn getNormalsAtPoint(
   }
   var normals = SurfaceNormals(geometricNormal, vertexNormal, vertexNormal);
 
-  if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-    let bumpMapLocation = materialData.bumpMapLocation;
-    let bumpStrength = materialData.bumpStrength;
-    let uvRepeat = materialData.uvRepeat;
-
-    if (bumpMapLocation.x > -1) {
-
-      let surfAttrWithFlippedNormal = SurfaceAttributes(vertexNormal, surfaceAttributes.uv, surfaceAttributes.tangent);
-      normals.shading = getShadingNormal(
-        bumpMapLocation, bumpStrength, uvRepeat, surfAttrWithFlippedNormal, 
-        *ray, triangle, bumpOffset
-      );
-    }
-  }
-
-  if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-    let bumpMapLocation = materialData.bumpMapLocation;
-    let bumpStrength = materialData.bumpStrength;
-    let uvRepeat = materialData.uvRepeat;
+  if (
+    materialType == ${MATERIAL_TYPE.DIFFUSE} ||
+    materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW} 
+  ) {
+    let bumpMapLocation = material.bumpMapLocation;
+    let bumpStrength = material.bumpStrength;
+    let uvRepeat = material.uvRepeat;
 
     if (bumpMapLocation.x > -1) {
 
@@ -281,13 +269,13 @@ fn shade(
 
   let surface = SurfaceDescriptor(ires.triangleIndex, ires.barycentrics); 
   let surfaceAttributes = getSurfaceAttributes(triangle, ires.barycentrics);
-  let materialData = evaluateMaterialAtSurfacePoint(surface, surfaceAttributes);
-  let materialType = materialData.materialType;
+  let material = evaluateMaterialAtSurfacePoint(surface, surfaceAttributes);
+  let materialType = material.materialType;
 
   var bumpOffset = 0.0;
   var isBackFacing = false;
   let normals = getNormalsAtPoint(
-    materialData, ray, surfaceAttributes, triangle, &bumpOffset, &isBackFacing,
+    material, ray, surfaceAttributes, triangle, &bumpOffset, &isBackFacing,
   );
 
   var isRough = false;
@@ -302,8 +290,8 @@ fn shade(
     materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW} ||
     materialType == ${MATERIAL_TYPE.DIELECTRIC} 
   ) {
-    let ax = materialData.ax;
-    let ay = materialData.ay;
+    let ax = material.ax;
+    let ay = material.ay;
     isRough = min(ax, ay) > 0.15;
   }
 
@@ -324,7 +312,7 @@ fn shade(
     }
   }
 
-  var emissive = getEmissive(materialData, isBackFacing);
+  var emissive = getEmissive(material, isBackFacing);
 
   // absorption check for dielectrics
   if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
@@ -333,9 +321,9 @@ fn shade(
     // beer-lambert absorption 
     if (isInsideMedium) {
       let absorption = vec3f(
-        exp(-materialData.absorptionCoefficient.x * ires.t), 
-        exp(-materialData.absorptionCoefficient.y * ires.t), 
-        exp(-materialData.absorptionCoefficient.z * ires.t), 
+        exp(-material.absorptionCoefficient.x * ires.t), 
+        exp(-material.absorptionCoefficient.y * ires.t), 
+        exp(-material.absorptionCoefficient.z * ires.t), 
       );
 
       *throughput *= absorption;
@@ -358,7 +346,7 @@ fn shade(
   // This restriction doesn't apply to sampleBrdf since we're never skipping those randoms.
   // A longer and clearer explanation is in: segment/integrators/randoms.md
 
-  let brdfSample = sampleBrdf(materialData, ray, surfaceAttributes, normals);
+  let brdfSample = sampleBrdf(material, ray, surfaceAttributes, normals);
   var lightSample = LightDirectionSample(vec3f(0), 0, 0, vec3f(0), LightSample());
   let pathIsPureRRThatEndsWithLightSampleNow = pathDoesNotReconnect && pathIsLightSampled && u32(debugInfo.bounce + 1) == pi.bounceCount;
   if (
@@ -367,7 +355,7 @@ fn shade(
   ) {
     // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
     if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
-      lightSample = sampleLight(materialData, ray, surfaceAttributes, normals);
+      lightSample = sampleLight(material, ray, surfaceAttributes, normals);
     }
   } else if (isRandomReplay && !pathIsPureRRThatEndsWithLightSampleNow) {
     // skip sampleLight(...) randoms
@@ -412,7 +400,7 @@ fn shade(
       lightSample,
       surfaceAttributes,
       normals,
-      materialData,
+      material,
       ires, 
       ray,
       throughput, 

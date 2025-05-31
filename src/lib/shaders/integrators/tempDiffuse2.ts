@@ -1,5 +1,5 @@
 export let tempDiffuse2 = /* wgsl */ `
-fn getDiffuseMaterialData(surfaceAttributes: SurfaceAttributes, offset: u32) -> EvaluatedMaterial {
+fn getDiffuseMaterial(surfaceAttributes: SurfaceAttributes, offset: u32) -> EvaluatedMaterial {
   var data = EvaluatedMaterial();
   
   // material type
@@ -53,16 +53,16 @@ fn evaluatePdfDiffuseLobe(
 }
 
 fn evaluateDiffuseBrdf(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   surfaceAttributes: SurfaceAttributes,
 ) -> vec3f {
-  var color = materialData.baseColor;
+  var color = material.baseColor;
   let brdf = color / PI;
   return brdf;
 }
 
 fn sampleDiffuseBrdf(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -103,7 +103,7 @@ fn sampleDiffuseBrdf(
   // from tangent space to world space
   let newDirection = normalize(TBN * newDir);
 
-  let brdf = evaluateDiffuseBrdf(materialData, surfaceAttributes);
+  let brdf = evaluateDiffuseBrdf(material, surfaceAttributes);
   var brdfSamplePdf = evaluatePdfDiffuseLobe(newDir, surfaceNormals);
 
   let lightSamplePdf = getLightPDF(Ray((*ray).origin, newDirection));
@@ -118,7 +118,7 @@ fn sampleDiffuseBrdf(
 }
 
 fn sampleDiffuseLight(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -148,7 +148,7 @@ fn sampleDiffuseLight(
     );
   }
 
-  let brdf = evaluateDiffuseBrdf(materialData, surfaceAttributes);
+  let brdf = evaluateDiffuseBrdf(material, surfaceAttributes);
   let simplifiedLocalSpaceDirection = vec3f(0.0, 0.0, dot(newDirection, surfaceNormals.shading));
   let brdfSamplePdf = evaluatePdfDiffuseLobe(simplifiedLocalSpaceDirection, surfaceNormals);
   let mis = getMisWeight(lightSample.pdf, brdfSamplePdf);

@@ -2,7 +2,7 @@ import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 
 export let tempTorranceSparrow = /* wgsl */ `
 
-fn getTSMaterialData(
+fn getTSMaterial(
   surfaceAttributes: SurfaceAttributes, offset: u32
 ) -> EvaluatedMaterial {
   var data = EvaluatedMaterial();
@@ -80,10 +80,10 @@ fn getTSMaterialData(
 fn evaluatePdfTSLobe(
   wo: vec3f,
   wi: vec3f,
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
 ) -> f32 {
-  let ax = materialData.ax;
-  let ay = materialData.ay;
+  let ax = material.ax;
+  let ay = material.ay;
 
   // we're assuming wo and wi are in local-space 
   var brdfSamplePdf = TS_PDF(wo, wi, ax, ay);
@@ -94,12 +94,12 @@ fn evaluatePdfTSLobe(
 fn evaluateTSBrdf(
   wo: vec3f,
   wi: vec3f,
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
 ) -> vec3f {
-  let color = materialData.baseColor;
-  let ax = materialData.ax;
-  let ay = materialData.ay;
-  let roughness = materialData.roughness;
+  let color = material.baseColor;
+  let ax = material.ax;
+  let ay = material.ay;
+  let roughness = material.roughness;
 
   // we're assuming wo and wi are in local-space 
   var brdf = TS_f(wo, wi, ax, ay, color);
@@ -109,7 +109,7 @@ fn evaluateTSBrdf(
 }
 
 fn sampleTSBrdf(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -131,10 +131,10 @@ fn sampleTSBrdf(
   let wo = TBNinverse * -(*ray).direction;
   var wi = vec3f(0.0);
 
-  let color = materialData.baseColor;
-  let ax = materialData.ax;
-  let ay = materialData.ay;
-  let roughness = materialData.roughness;
+  let color = material.baseColor;
+  let ax = material.ax;
+  let ay = material.ay;
+  let roughness = material.roughness;
 
   var brdfSamplePdf = 0.0;
   var brdf = vec3f(0.0);
@@ -154,7 +154,7 @@ fn sampleTSBrdf(
 }
 
 fn sampleTSLight(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -171,10 +171,10 @@ fn sampleTSLight(
   // from world-space to tangent-space
   transformToLocalSpace(&wo, &wi, surfaceAttributes, surfaceNormals);
 
-  let color = materialData.baseColor;
-  let ax = materialData.ax;
-  let ay = materialData.ay;
-  let roughness = materialData.roughness;
+  let color = material.baseColor;
+  let ax = material.ax;
+  let ay = material.ay;
+  let roughness = material.roughness;
 
   var brdfSamplePdf = TS_PDF(wo, wi, ax, ay);
   var brdf = TS_f(wo, wi, ax, ay, color);

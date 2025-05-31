@@ -39,7 +39,7 @@ fn rrPathConstruction(
   // brdfDirectionSample: BrdfDirectionSample,
   surfaceAttributes: SurfaceAttributes,
   normals: SurfaceNormals,
-  materialData: EvaluatedMaterial,
+  material: EvaluatedMaterial,
   ires: BVHIntersectionResult, 
   ray: ptr<function, Ray>,
   // reservoir: ptr<function, Reservoir>,
@@ -97,14 +97,14 @@ fn rrPathConstruction(
       return rrStepResult;
     }
     if (pathIsLightSampled && u32(debugInfo.bounce + 1) == pi.bounceCount) {
-      // let lightDirectionSample = sampleLight(materialData, ray, surfaceAttributes, normals);
+      // let lightDirectionSample = sampleLight(material, ray, surfaceAttributes, normals);
       let lightSampleRadiance = lightDirectionSample.ls.radiance;
       let lightSampleSuccessful = dot(lightSampleRadiance, lightSampleRadiance) > 0.0;
       
       if (lightSampleSuccessful) {
         var mi = lightDirectionSample.mis;
         let pHat = lightSampleRadiance * (1.0 / lightDirectionSample.pdf) * *throughput * 
-                   lightDirectionSample.brdf * cosTerm(normals.shading, lightDirectionSample.dir, materialData.materialType);
+                   lightDirectionSample.brdf * cosTerm(normals.shading, lightDirectionSample.dir, material.materialType);
     
         rrStepResult.valid = 1;
         rrStepResult.shouldTerminate = true;
@@ -205,10 +205,10 @@ fn rrPathConstruction(
     transformToLocalSpace(&wo, &wi, surfaceAttributes, normals);
 
     let brdf = evaluateBrdf(
-      materialData, wo, wi, surfaceAttributes, normals
+      material, wo, wi, surfaceAttributes, normals
     );
     let brdfPdf = evaluateLobePdf(
-      materialData, wo, wi, surfaceAttributes, normals
+      material, wo, wi, surfaceAttributes, normals
     );
     let lightPdf = getLightPDF(Ray(ires.hitPoint + w_km1 * 0.0001, w_km1));
 
@@ -243,7 +243,7 @@ fn rrPathConstruction(
     }
 
     let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
-               brdf * cosTerm(normals.shading, w_km1, materialData.materialType);
+               brdf * cosTerm(normals.shading, w_km1, material.materialType);
 
     rrStepResult.valid = 1;
     rrStepResult.shouldTerminate = true;
@@ -302,20 +302,20 @@ fn rrPathConstruction(
     transformToLocalSpace(&wo, &wi, surfaceAttributes, normals);
 
     let brdf = evaluateBrdf(
-      materialData, wo, wi, surfaceAttributes, normals
+      material, wo, wi, surfaceAttributes, normals
     );
     let brdfPdf = evaluateLobePdf(
-      materialData, wo, wi, surfaceAttributes, normals
+      material, wo, wi, surfaceAttributes, normals
     );
     var p = probability_of_sampling_lobe * brdfPdf;
 
     // pick surface information of vertex Xk
     let surfaceXk = SurfaceDescriptor(visibilityRes.triangleIndex, visibilityRes.barycentrics); 
     let surfaceAttributesXk = getSurfaceAttributes(triangle, visibilityRes.barycentrics);
-    let materialDataXk = evaluateMaterialAtSurfacePoint(surfaceXk, surfaceAttributesXk);
+    let materialXk = evaluateMaterialAtSurfacePoint(surfaceXk, surfaceAttributesXk);
     var bumpOffset: f32; var isBackFacing: bool;
     let normalsXk = getNormalsAtPoint(
-      materialDataXk, &visibilityRay, surfaceAttributesXk, triangle, &bumpOffset, &isBackFacing,
+      materialXk, &visibilityRay, surfaceAttributesXk, triangle, &bumpOffset, &isBackFacing,
     );
 
     var woXk = -w_km1;
@@ -323,10 +323,10 @@ fn rrPathConstruction(
     transformToLocalSpace(&woXk, &wiXk, surfaceAttributesXk, normalsXk);
 
     let brdfXk = evaluateBrdf(
-      materialDataXk, woXk, wiXk, surfaceAttributesXk, normalsXk
+      materialXk, woXk, wiXk, surfaceAttributesXk, normalsXk
     );
     let brdfPdfXk = evaluateLobePdf(
-      materialDataXk, woXk, wiXk, surfaceAttributesXk, normalsXk
+      materialXk, woXk, wiXk, surfaceAttributesXk, normalsXk
     );
 
     var mi = 0.0;
@@ -357,14 +357,14 @@ fn rrPathConstruction(
     }
 
     // absorption check for dielectrics
-    if (materialDataXk.materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
+    if (materialXk.materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
       var isInsideMedium = dot(normalsXk.shading, w_km1) > 0;
       if (isInsideMedium) {
         let t = length(w_vec);
         let absorption = vec3f(
-          exp(-materialDataXk.absorptionCoefficient.x * t), 
-          exp(-materialDataXk.absorptionCoefficient.y * t), 
-          exp(-materialDataXk.absorptionCoefficient.z * t), 
+          exp(-materialXk.absorptionCoefficient.x * t), 
+          exp(-materialXk.absorptionCoefficient.y * t), 
+          exp(-materialXk.absorptionCoefficient.z * t), 
         );
         *throughput *= absorption;
       }
@@ -376,8 +376,8 @@ fn rrPathConstruction(
     );
   
     let pHat = pi.reconnectionRadiance * (1.0 / p) * *throughput * 
-               brdf * brdfXk * cosTerm(normals.shading, w_km1, materialData.materialType) * 
-               cosTerm(normalsXk.shading, pi.radianceDirection, materialDataXk.materialType);
+               brdf * brdfXk * cosTerm(normals.shading, w_km1, material.materialType) * 
+               cosTerm(normalsXk.shading, pi.radianceDirection, materialXk.materialType);
 
     rrStepResult.valid = 1;
     rrStepResult.shouldTerminate = true;

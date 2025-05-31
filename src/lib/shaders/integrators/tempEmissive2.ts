@@ -1,5 +1,5 @@
 export let tempEmissive2 = /* wgsl */ `
-fn getEmissiveMaterialData(offset: u32) -> EvaluatedMaterial {
+fn getEmissiveMaterial(offset: u32) -> EvaluatedMaterial {
   var data = EvaluatedMaterial();
   
   // material type
@@ -30,7 +30,7 @@ fn evaluateEmissiveBrdf() -> vec3f {
 }
 
 fn sampleEmissiveBrdf(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -69,7 +69,7 @@ fn sampleEmissiveBrdf(
 }
 
 fn sampleEmissiveLight(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,

@@ -2,7 +2,7 @@ import { Dielectric } from '$lib/materials/dielectric';
 
 export let tempDielectric = /* wgsl */ `
 
-fn getDielectricMaterialData(
+fn getDielectricMaterial(
   surfaceAttributes: SurfaceAttributes, offset: u32
 ) -> EvaluatedMaterial {
   var data = EvaluatedMaterial();
@@ -68,11 +68,11 @@ fn getDielectricMaterialData(
 fn evaluatePdfDielectricLobe(
   wo: vec3f,
   wi: vec3f,
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
 ) -> f32 {
-  let ax = materialData.ax;
-  let ay = materialData.ay;
-  let eta = materialData.eta;
+  let ax = material.ax;
+  let ay = material.ay;
+  let eta = material.eta;
 
   // we're assuming wo and wi are in local-space 
   var brdfSamplePdf = Dielectric_PDF(wo, wi, eta, ax, ay);
@@ -82,12 +82,12 @@ fn evaluatePdfDielectricLobe(
 fn evaluateDielectricBrdf(
   wo: vec3f,
   wi: vec3f,
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
 ) -> vec3f {
-  let ax = materialData.ax;
-  let ay = materialData.ay;
-  let eta = materialData.eta;
-  let roughness = materialData.roughness;
+  let ax = material.ax;
+  let ay = material.ay;
+  let eta = material.eta;
+  let roughness = material.roughness;
 
   // we're assuming wo and wi are in local-space 
   var brdf = Dielectric_f(wo, wi, eta, ax, ay);
@@ -97,7 +97,7 @@ fn evaluateDielectricBrdf(
 }
 
 fn sampleDielectricBrdf(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -119,10 +119,10 @@ fn sampleDielectricBrdf(
   let wo = TBNinverse * -(*ray).direction;
   var wi = vec3f(0.0);
 
-  let ax = materialData.ax;
-  let ay = materialData.ay;
-  let eta = materialData.eta;
-  let roughness = materialData.roughness;
+  let ax = material.ax;
+  let ay = material.ay;
+  let eta = material.eta;
+  let roughness = material.roughness;
 
   var brdfSamplePdf = 0.0;
   var brdf = vec3f(0.0);
@@ -143,7 +143,7 @@ fn sampleDielectricBrdf(
 }
 
 fn sampleDielectricLight(
-  materialData: EvaluatedMaterial, 
+  material: EvaluatedMaterial, 
   ray: ptr<function, Ray>,
   surfaceAttributes: SurfaceAttributes,
   surfaceNormals: SurfaceNormals,
@@ -159,10 +159,10 @@ fn sampleDielectricLight(
   // from world-space to tangent-space
   transformToLocalSpace(&wo, &wi, surfaceAttributes, surfaceNormals);
 
-  let ax = materialData.ax;
-  let ay = materialData.ay;
-  let eta = materialData.eta;
-  let roughness = materialData.roughness;
+  let ax = material.ax;
+  let ay = material.ay;
+  let eta = material.eta;
+  let roughness = material.roughness;
 
   var brdfSamplePdf = Dielectric_PDF(wo, wi, eta, ax, ay);
 

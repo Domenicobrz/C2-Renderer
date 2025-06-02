@@ -6,6 +6,10 @@ fn squaredLength(v: vec3f) -> f32 {
   return dot(v, v);
 }
 
+fn getLuminance(emission: vec3f) -> f32 {
+  return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
+}
+
 // this function did not really work, it caused issues at the abs(x) > abs(y) boundaries
 // when trying to create a TBN matrix to use for diffuse directions
 // the issue was visible in a cornell-sphere scene with only 3 bounces.

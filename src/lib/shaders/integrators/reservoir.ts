@@ -1,5 +1,4 @@
 export const reservoirShaderPart = /* wgsl */ `
-
 // this struct will be saved in the reservoir
 struct PathInfo {
   F: vec3f,
@@ -38,5 +37,34 @@ struct Reservoir {
   isNull: f32,
   rad: vec3f,
   packedDomain: u32,
+}
+
+// this struct does not have to be saved in the reservoir,
+// hence why we're creating a separate struct
+struct PathSampleInfo {
+  // some of these might be unnecessary now that I'm always reconnecting at xkm1
+  wasPrevVertexRough: bool,
+  prevVertexPosition: vec3f,
+  prevVertexBrdf: vec3f,
+  brdfPdfPrevVertex: f32,
+  lobePdfPrevVertex: f32,
+  reconnectionVertexIndex: i32, // -1 signals no reconnection
+  postfixThroughput: vec3f,
+  prevLobeIndex: i32,
+}
+
+struct RandomReplayResult {
+  valid: u32,
+  pHat: vec3f,
+  shouldTerminate: bool,
+  jacobian: vec2f,
+}
+
+struct PathFlags {
+  lightSampled: bool,
+  brdfSampled: bool,
+  endsInEnvmap: bool,
+  reconnects: bool,
+  reconnectionLobes: vec2u,
 }
 `;

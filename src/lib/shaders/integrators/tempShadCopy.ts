@@ -7,8 +7,6 @@ import { tempEmissive2 } from './tempEmissive2';
 import { tempTorranceSparrow } from './tempTorranceSparrow';
 
 export const tempShadCopy = /*wgsl*/ `
-const MATERIAL_DATA_ELEMENTS = 20;
-
 struct SurfaceDescriptor {
   triangleIndex: i32,
   barycentrics: vec2f,
@@ -172,7 +170,8 @@ fn evaluateMaterialAtSurfacePoint(
   // undefined material, magenta color
   var errorMat = EvaluatedMaterial();
   errorMat.baseColor = vec3f(1.0, 0.0, 1.0);
-  errorMat.materialType = 0;
+  errorMat.materialType = ${MATERIAL_TYPE.EMISSIVE};
+  errorMat.emissiveIntensity = 1.0;
   errorMat.mapLocation = vec2i(-1, -1);
   errorMat.bumpMapLocation = vec2i(-1, -1);
   errorMat.roughnessMapLocation = vec2i(-1, -1);
@@ -336,7 +335,7 @@ fn shade(
   }
 
   let unpackedFlags = unpackPathFlags((*pi).flags);
-  let pathDoesNotReconnect = !unpackedFlags.reconnects;;
+  let pathDoesNotReconnect = !unpackedFlags.reconnects;
   let pathIsLightSampled = unpackedFlags.lightSampled;
 
   // !!!! careful !!!!

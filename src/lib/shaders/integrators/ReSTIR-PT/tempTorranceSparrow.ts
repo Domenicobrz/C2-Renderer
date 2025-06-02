@@ -1,7 +1,6 @@
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 
 export let tempTorranceSparrow = /* wgsl */ `
-
 fn getTSMaterial(
   surfaceAttributes: SurfaceAttributes, offset: u32
 ) -> EvaluatedMaterial {

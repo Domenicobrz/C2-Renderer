@@ -2,7 +2,7 @@ import type { ReSTIRConfigManager } from '$lib/config';
 import type { LUTManager } from '$lib/managers/lutManager';
 import { getReSTIRPTShaderImports } from './shaderImports';
 
-export function getReSTIRPTShader2(lutManager: LUTManager, configManager: ReSTIRConfigManager) {
+export function getReSTIRPTShader(lutManager: LUTManager, configManager: ReSTIRConfigManager) {
   return /* wgsl */ `
 
 ${getReSTIRPTShaderImports(lutManager, configManager)}

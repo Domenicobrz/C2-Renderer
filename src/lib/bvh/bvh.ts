@@ -364,6 +364,11 @@ export class BVH {
         barycentrics: vec2f,
         geometricNormal: vec3f,
       }
+
+      struct SurfaceDescriptor {
+        triangleIndex: i32,
+        barycentrics: vec2f,
+      };
     `;
   }
 

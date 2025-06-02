@@ -1,4 +1,4 @@
-import { reservoirShaderPart } from './integrators/reservoir';
+import { reservoirShaderPart } from './integrators/ReSTIR-PT/reservoir';
 
 export const reservoirToRadShader = /* wgsl */ `
 @group(0) @binding(0) var<storage> reservoirBuffer1: array<Reservoir>;

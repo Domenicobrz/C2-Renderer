@@ -14,17 +14,23 @@ import { Triangle } from '$lib/primitives/triangle';
 import { PC1D } from '$lib/samplers/PiecewiseConstant1D';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import { TileSequence } from '$lib/tile';
-import { mathUtilsPart } from '../parts/mathUtils';
-import { misPart } from '../parts/mis';
-import { pbrtMathUtilsPart } from '../parts/pbrtMathUtils';
-import { randomPart } from '../parts/random';
-import { shadingNormalsPart } from '../parts/shadingNormal';
-import { texturePart } from '../parts/texture';
+import { mathUtilsPart } from '../../parts/mathUtils';
+import { misPart } from '../../parts/mis';
+import { pbrtMathUtilsPart } from '../../parts/pbrtMathUtils';
+import { randomPart } from '../../parts/random';
+import { shadingNormalsPart } from '../../parts/shadingNormal';
+import { texturePart } from '../../parts/texture';
+import { pathConstruction } from './pathConstruction';
 import { resampleLogic } from './resampleLogic';
 import { reservoirShaderPart } from './reservoir';
 import { reservoirFunctionsShaderPart } from './reservoirFunctions';
 import { getReSTIRRandomPart } from './restirRandomPart';
-import { tempShadCopy } from './tempShadCopy';
+import { rrPathConstruction } from './rrPathConstruction';
+import { shade } from './shade';
+import { tempDielectric } from './tempDielectric';
+import { tempDiffuse2 } from './tempDiffuse2';
+import { tempEmissive2 } from './tempEmissive2';
+import { tempTorranceSparrow } from './tempTorranceSparrow';
 
 export function getReSTIRPTShaderImports(
   lutManager: LUTManager,
@@ -79,7 +85,13 @@ ${Envmap.shaderMethods()}
 ${Plane.shaderMethods()}
 ${reservoirShaderPart}
 ${reservoirFunctionsShaderPart}
-${tempShadCopy}
+${tempDiffuse2}
+${tempEmissive2}
+${tempTorranceSparrow}
+${tempDielectric}
+${pathConstruction}
+${rrPathConstruction}
+${shade}
 ${resampleLogic(configManager)}
 
 struct DebugInfo {

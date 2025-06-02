@@ -20,7 +20,7 @@ import { HaltonSampler } from '$lib/samplers/Halton';
 import { UniformSampler } from '$lib/samplers/Uniform';
 import { BlueNoiseSampler } from '$lib/samplers/BlueNoise';
 import { ReservoirToRadianceSegment } from '../reservoirToRadSegment';
-import { getReSTIRPTShader2 } from '$lib/shaders/integrators/ReSTIRPTShader2';
+import { getReSTIRPTShader } from '$lib/shaders/integrators/ReSTIR-PT/ReSTIRPTShader';
 import { TileSequence, type Tile } from '$lib/tile';
 
 export class ReSTIRPTSegment {
@@ -706,7 +706,7 @@ export class ReSTIRPTSegment {
 
     const computeModule = this.device.createShaderModule({
       label: 'ReSTIR PT module',
-      code: getReSTIRPTShader2(globals.common.lutManager, this.configManager)
+      code: getReSTIRPTShader(globals.common.lutManager, this.configManager)
     });
 
     this.pipeline = await this.device.createComputePipelineAsync({

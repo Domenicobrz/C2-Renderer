@@ -27,10 +27,6 @@ import { reservoirFunctionsShaderPart } from './reservoirFunctions';
 import { getReSTIRRandomPart } from './restirRandomPart';
 import { rrPathConstruction } from './rrPathConstruction';
 import { shade } from './shade';
-import { tempDielectric } from './tempDielectric';
-import { tempDiffuse2 } from './tempDiffuse2';
-import { tempEmissive2 } from './tempEmissive2';
-import { tempTorranceSparrow } from './tempTorranceSparrow';
 
 export function getReSTIRPTShaderImports(
   lutManager: LUTManager,
@@ -53,21 +49,12 @@ ${TileSequence.shaderPart()}
 ${Material.shaderStruct()}
 ${Emissive.shaderStruct()}
 ${Emissive.shaderCreateStruct()}
-${'' /* Emissive.shaderShadeEmissive() */}
-${'' /* Diffuse.shaderStruct() */}
-${'' /* Diffuse.shaderCreateStruct() */}
-${'' /* Diffuse.shaderShadeDiffuse() */}
-${'' /* EONDiffuse.shaderStruct() */}
-${'' /* EONDiffuse.shaderCreateStruct() */}
-${'' /* EONDiffuse.shaderShadeEONDiffuse() */}
-${'' /* TorranceSparrow.shaderStruct() */}
-${'' /* TorranceSparrow.shaderCreateStruct() */}
+${Emissive.shaderEmissiveLobe()}
+${Diffuse.shaderDiffuseLobe()}
 ${TorranceSparrow.shaderBRDF()}
-${'' /* TorranceSparrow.shaderShadeTorranceSparrow() */}
-${'' /* Dielectric.shaderStruct() */}
-${'' /* Dielectric.shaderCreateStruct() */}
+${TorranceSparrow.shaderTorranceSparrowLobe()}
 ${Dielectric.shaderBRDF()}
-${'' /* Dielectric.shaderShadeDielectric() */}
+${Dielectric.shaderDielectricLobe()}
 ${Camera.shaderStruct()}
 ${Camera.shaderMethods()}
 ${Triangle.shaderStruct()}
@@ -85,10 +72,6 @@ ${Envmap.shaderMethods()}
 ${Plane.shaderMethods()}
 ${reservoirShaderPart}
 ${reservoirFunctionsShaderPart}
-${tempDiffuse2}
-${tempEmissive2}
-${tempTorranceSparrow}
-${tempDielectric}
 ${pathConstruction}
 ${rrPathConstruction}
 ${shade}

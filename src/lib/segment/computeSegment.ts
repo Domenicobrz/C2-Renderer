@@ -1,5 +1,5 @@
 import { BVH } from '$lib/bvh/bvh';
-import { getComputeShader } from '$lib/shaders/computeShader';
+import { getComputeShader } from '$lib/shaders/integrators/Simple-path-race/computeShader';
 import { Matrix4, Vector2, Vector3 } from 'three';
 import {
   cameraMovementInfoStore,

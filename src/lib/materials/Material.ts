@@ -245,14 +245,15 @@ export class Material {
       
         if (
           materialType == ${MATERIAL_TYPE.DIFFUSE} ||
-          materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW} 
+          materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW} || 
+          // remember that dielectric materials won't flip vertexNormal
+          materialType == ${MATERIAL_TYPE.DIELECTRIC}
         ) {
           let bumpMapLocation = material.bumpMapLocation;
           let bumpStrength = material.bumpStrength;
           let uvRepeat = material.uvRepeat;
         
           if (bumpMapLocation.x > -1) {
-          
             let surfAttrWithFlippedNormal = SurfaceAttributes(vertexNormal, surfaceAttributes.uv, surfaceAttributes.tangent);
             normals.shading = getShadingNormal(
               bumpMapLocation, bumpStrength, uvRepeat, surfAttrWithFlippedNormal, 

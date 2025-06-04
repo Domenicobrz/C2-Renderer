@@ -47,8 +47,6 @@ ${getReSTIRRandomPart}
 ${lutManager.getShaderPart()}
 ${TileSequence.shaderPart()}
 ${Material.shaderStruct()}
-${Emissive.shaderStruct()}
-${Emissive.shaderCreateStruct()}
 ${Emissive.shaderEmissiveLobe()}
 ${Diffuse.shaderDiffuseLobe()}
 ${TorranceSparrow.shaderBRDF()}

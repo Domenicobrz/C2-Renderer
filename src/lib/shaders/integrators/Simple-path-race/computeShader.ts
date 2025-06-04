@@ -40,8 +40,6 @@ ${getRandomPart}
 ${lutManager.getShaderPart()}
 ${shade}
 ${TileSequence.shaderPart()}
-${Emissive.shaderStruct()}
-${Emissive.shaderCreateStruct()}
 ${Emissive.shaderEmissiveLobe()}
 ${Diffuse.shaderDiffuseLobe()}
 ${TorranceSparrow.shaderBRDF()}

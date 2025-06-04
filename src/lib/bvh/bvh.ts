@@ -414,8 +414,10 @@ export class BVH {
           if (!ires.hit || cdfEntry.triangleIndex != ires.triangleIndex) {
             return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1, vec2f(0), vec3f(0));
           }
-          let material: Emissive = createEmissive(ires.triangle.materialOffset);
-          let emissive = material.color * material.intensity;
+          let surface = SurfaceDescriptor(ires.triangleIndex, ires.barycentrics); 
+          let surfaceAttributes = getSurfaceAttributes(triangle, ires.barycentrics);
+          let material = evaluateMaterialAtSurfacePoint(surface, surfaceAttributes);
+          let emissive = material.baseColor * material.emissiveIntensity;
           let radiance = emissive;
 
           return LightSample(

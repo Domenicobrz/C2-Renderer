@@ -25,11 +25,11 @@ export async function createScene(): Promise<C2Scene> {
   // return furnaceTestScene();
   // return c2Features2Scene();
   // return envmapSphereScene();
-  return cornellSphereScene();
+  // return cornellSphereScene();
   // return ReSTIRTestScene();
   // return ReSTIREnvmapScene();
   // return ReSTIRTest2Scene();
-  // return ReSTIRTest3Scene();
+  return ReSTIRTest3Scene();
   // return c2FeaturesScene();
   // return c2FeaturesScene_Debug();
   // return envmapHorseScene();

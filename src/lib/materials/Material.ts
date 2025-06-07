@@ -66,18 +66,26 @@ export class Material {
         dir: vec3f,
         ls: LightSample,
       }
+
+      struct GeometryContext {
+        barycentrics: vec2f,
+        isBackFacing: bool,
+        ray: Ray,
+        interpolatedAttributes: InterpolatedAttributes,
+        normals: SurfaceNormals,
+        bumpOffset: f32,
+      }
       
       fn evaluateLobePdf(
         material: EvaluatedMaterial, 
         wo: vec3f,
         wi: vec3f,
-        surfaceAttributes: SurfaceAttributes,
-        surfaceNormals: SurfaceNormals,
+        geometryContext: GeometryContext
       ) -> f32 {
         let materialType = material.materialType;
       
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-          return evaluatePdfDiffuseLobe(wi, surfaceNormals);
+          return evaluatePdfDiffuseLobe(wi, geometryContext.normals);
         }
       
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
@@ -99,13 +107,12 @@ export class Material {
         material: EvaluatedMaterial, 
         wo: vec3f,
         wi: vec3f,
-        surfaceAttributes: SurfaceAttributes,
-        surfaceNormals: SurfaceNormals,
+        geometryContext: GeometryContext
       ) -> vec3f {
         let materialType = material.materialType;
       
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-          return evaluateDiffuseBrdf(material, surfaceAttributes);
+          return evaluateDiffuseBrdf(material);
         }
       
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
@@ -125,26 +132,24 @@ export class Material {
 
       fn sampleBrdf(
         material: EvaluatedMaterial, 
-        ray: ptr<function, Ray>,
-        surfaceAttributes: SurfaceAttributes,
-        surfaceNormals: SurfaceNormals,
+        geometryContext: GeometryContext
       ) -> BrdfDirectionSample {
         let materialType = material.materialType;
       
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-          return sampleDiffuseBrdf(material, ray, surfaceAttributes, surfaceNormals);
+          return sampleDiffuseBrdf(material, geometryContext);
         }
       
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-          return sampleEmissiveBrdf(material, ray, surfaceAttributes, surfaceNormals);
+          return sampleEmissiveBrdf(material, geometryContext);
         }
       
         if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-          return sampleTSBrdf(material, ray, surfaceAttributes, surfaceNormals);
+          return sampleTSBrdf(material, geometryContext);
         }
       
         if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
-          return sampleDielectricBrdf(material, ray, surfaceAttributes, surfaceNormals);
+          return sampleDielectricBrdf(material, geometryContext);
         }
       
         return BrdfDirectionSample(vec3f(0), 0, 0, vec3f(0));
@@ -152,40 +157,37 @@ export class Material {
 
       fn sampleLight(
         material: EvaluatedMaterial, 
-        ray: ptr<function, Ray>,
-        surfaceAttributes: SurfaceAttributes,
-        surfaceNormals: SurfaceNormals,
+        geometryContext: GeometryContext
       ) -> LightDirectionSample {
         let materialType = material.materialType;
       
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-          return sampleDiffuseLight(material, ray, surfaceAttributes, surfaceNormals);
+          return sampleDiffuseLight(material, geometryContext);
         }
       
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
-          return sampleEmissiveLight(material, ray, surfaceAttributes, surfaceNormals);
+          return sampleEmissiveLight(material, geometryContext);
         }
       
         if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-          return sampleTSLight(material, ray, surfaceAttributes, surfaceNormals);
+          return sampleTSLight(material, geometryContext);
         }
       
         if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
-          return sampleDielectricLight(material, ray, surfaceAttributes, surfaceNormals);
+          return sampleDielectricLight(material, geometryContext);
         }
       
         return LightDirectionSample(vec3f(0), 0, 0, vec3f(0), LightSample());
       }
 
       fn evaluateMaterialAtSurfacePoint(
-        surface: SurfaceDescriptor,
-        surfaceAttributes: SurfaceAttributes
+        materialOffset: u32,
+        interpolatedAttributes: InterpolatedAttributes
       ) -> EvaluatedMaterial {
-        let materialOffset = triangles[surface.triangleIndex].materialOffset;
         let materialType = u32(materialsBuffer[materialOffset]);
       
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-          return getDiffuseMaterial(surfaceAttributes, materialOffset);
+          return getDiffuseMaterial(interpolatedAttributes, materialOffset);
         }
       
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
@@ -193,11 +195,11 @@ export class Material {
         }
       
         if (materialType == ${MATERIAL_TYPE.TORRANCE_SPARROW}) {
-          return getTSMaterial(surfaceAttributes, materialOffset);
+          return getTSMaterial(interpolatedAttributes, materialOffset);
         }
       
         if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
-          return getDielectricMaterial(surfaceAttributes, materialOffset);
+          return getDielectricMaterial(interpolatedAttributes, materialOffset);
         }
       
         // undefined material, magenta color
@@ -221,8 +223,8 @@ export class Material {
 
       fn getNormalsAtPoint(
         material: EvaluatedMaterial,
-        ray: ptr<function, Ray>,
-        surfaceAttributes: SurfaceAttributes,
+        ray: Ray,
+        interpolatedAttributes: InterpolatedAttributes,
         triangle: Triangle,
         bumpOffset: ptr<function, f32>,
         isBackfacing: ptr<function, bool>,
@@ -231,10 +233,10 @@ export class Material {
         let materialType = material.materialType;
 
         let geometricNormal = triangle.geometricNormal;
-        var vertexNormal = surfaceAttributes.normal;
+        var vertexNormal = interpolatedAttributes.normal;
         // the normal flip is calculated using the geometric normal to avoid
         // black edges on meshes displaying strong smooth-shading via vertex normals
-        if (dot(geometricNormal, (*ray).direction) > 0) {
+        if (dot(geometricNormal, ray.direction) > 0) {
           *isBackfacing = true;
         
           if (materialType != ${MATERIAL_TYPE.DIELECTRIC}) {
@@ -254,10 +256,10 @@ export class Material {
           let uvRepeat = material.uvRepeat;
         
           if (bumpMapLocation.x > -1) {
-            let surfAttrWithFlippedNormal = SurfaceAttributes(vertexNormal, surfaceAttributes.uv, surfaceAttributes.tangent);
+            let surfAttrWithFlippedNormal = InterpolatedAttributes(vertexNormal, interpolatedAttributes.uv, interpolatedAttributes.tangent);
             normals.shading = getShadingNormal(
               bumpMapLocation, bumpStrength, uvRepeat, surfAttrWithFlippedNormal, 
-              *ray, triangle, bumpOffset
+              ray, triangle, bumpOffset
             );
           }
         }
@@ -266,7 +268,7 @@ export class Material {
           *isBackfacing = false;
         
           var N = geometricNormal;
-          if (dot(N, (*ray).direction) > 0) {
+          if (dot(N, ray.direction) > 0) {
             *isBackfacing = true;
             N = -N;
           }
@@ -277,6 +279,39 @@ export class Material {
         }
       
         return normals;
+      }
+
+      fn evaluateMaterialAndGeometryContext(
+        ires: BVHIntersectionResult,
+        ray: Ray,
+        evaluatedMaterial: ptr<function, EvaluatedMaterial>,
+        geometryContext: ptr<function, GeometryContext>,
+        // some times it's useful to skip the calculation of 
+        // shading normals since it might require a texture fetch 
+        skipNormalCalculations: bool
+      ) {
+        let triangle = ires.triangle;
+        let interpolatedAttributes = getInterpolatedAttributes(triangle, ires.barycentrics);
+        let material = evaluateMaterialAtSurfacePoint(triangle.materialOffset, interpolatedAttributes);
+      
+        var bumpOffset = 0.0;
+        var isBackFacing = false;
+        var normals = SurfaceNormals();
+        if (!skipNormalCalculations) {
+          normals = getNormalsAtPoint(
+            material, ray, interpolatedAttributes, triangle, &bumpOffset, &isBackFacing,
+          );
+        }
+      
+        *evaluatedMaterial = material;
+        *geometryContext = GeometryContext(
+          ires.barycentrics,
+          isBackFacing,
+          ray,
+          interpolatedAttributes,
+          normals,
+          bumpOffset
+        );
       }
 
       fn cosTerm(norm: vec3f, dir: vec3f, materialType: u32) -> f32 {

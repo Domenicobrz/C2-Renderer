@@ -1,11 +1,11 @@
 export const shadingNormalsPart = /* wgsl */ `
   fn getShadingNormal(
-    mapLocation: vec2i, strength: f32, uvRepeat: vec2f, surfaceAttributes: SurfaceAttributes, ray: Ray, 
+    mapLocation: vec2i, strength: f32, uvRepeat: vec2f, interpolatedAttributes: InterpolatedAttributes, ray: Ray, 
     triangle: Triangle, rayOffset: ptr<function, f32>
   ) -> vec3f {
-    let uv = surfaceAttributes.uv; 
-    let vertexNormal = surfaceAttributes.normal;
-    let vertexTangent = surfaceAttributes.tangent;
+    let uv = interpolatedAttributes.uv; 
+    let vertexNormal = interpolatedAttributes.normal;
+    let vertexTangent = interpolatedAttributes.tangent;
     
     var uv1: vec2f;
     var uv2: vec2f;
@@ -62,7 +62,16 @@ export const shadingNormalsPart = /* wgsl */ `
     // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
     var tangent = vec3f(0.0);
     var bitangent = vec3f(0.0);
-    getTangentFromTriangle(vertexTangent, triangle.geometricNormal, vertexNormal, &tangent, &bitangent);
+    getTangentFromTriangle(
+      // temp geo context
+      GeometryContext(
+        vec2f(0.0), false, ray, interpolatedAttributes, 
+        SurfaceNormals(triangle.geometricNormal, vertexNormal, vertexNormal),
+        0.0
+      ), 
+      &tangent, 
+      &bitangent
+    );
     
     // negated bitangent to switch handedness
     // I think bump / normal maps are authored with a right-handed system in mind

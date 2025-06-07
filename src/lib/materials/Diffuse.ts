@@ -64,7 +64,7 @@ export class Diffuse extends Material {
 
   static shaderDiffuseLobe(): string {
     return /* wgsl */ `
-fn getDiffuseMaterial(surfaceAttributes: SurfaceAttributes, offset: u32) -> EvaluatedMaterial {
+fn getDiffuseMaterial(interpolatedAttributes: InterpolatedAttributes, offset: u32) -> EvaluatedMaterial {
   var data = EvaluatedMaterial();
   
   // material type
@@ -98,7 +98,7 @@ fn getDiffuseMaterial(surfaceAttributes: SurfaceAttributes, offset: u32) -> Eval
 
   if (data.mapLocation.x > -1) {
     let texelColor = getTexelFromTextureArrays(
-      data.mapLocation, surfaceAttributes.uv, data.mapUvRepeat
+      data.mapLocation, interpolatedAttributes.uv, data.mapUvRepeat
     ).xyz;
 
     data.baseColor *= texelColor;
@@ -119,7 +119,6 @@ fn evaluatePdfDiffuseLobe(
 
 fn evaluateDiffuseBrdf(
   material: EvaluatedMaterial, 
-  surfaceAttributes: SurfaceAttributes,
 ) -> vec3f {
   var color = material.baseColor;
   let brdf = color / PI;
@@ -128,10 +127,11 @@ fn evaluateDiffuseBrdf(
 
 fn sampleDiffuseBrdf(
   material: EvaluatedMaterial, 
-  ray: ptr<function, Ray>,
-  surfaceAttributes: SurfaceAttributes,
-  surfaceNormals: SurfaceNormals,
+  geometryContext: GeometryContext
 ) -> BrdfDirectionSample {
+  let ray = geometryContext.ray;
+  let surfaceNormals = geometryContext.normals;
+
   // uniform hemisphere sampling:
   // let rand_1 = rands.x;
   // let rand_2 = rands.y;
@@ -157,21 +157,18 @@ fn sampleDiffuseBrdf(
   let newDir = vec3f(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
   var tangent = vec3f(0.0);
   var bitangent = vec3f(0.0);
-  getTangentFromTriangle(
-    surfaceAttributes.tangent, surfaceNormals.geometric, surfaceNormals.shading, 
-    &tangent, &bitangent
-  );
-  
+  getTangentFromTriangle(geometryContext, &tangent, &bitangent);
+
   // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
   let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
 
   // from tangent space to world space
   let newDirection = normalize(TBN * newDir);
 
-  let brdf = evaluateDiffuseBrdf(material, surfaceAttributes);
+  let brdf = evaluateDiffuseBrdf(material);
   var brdfSamplePdf = evaluatePdfDiffuseLobe(newDir, surfaceNormals);
 
-  let lightSamplePdf = getLightPDF(Ray((*ray).origin, newDirection));
+  let lightSamplePdf = getLightPDF(Ray(ray.origin, newDirection));
   let misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
 
   return BrdfDirectionSample(
@@ -184,10 +181,12 @@ fn sampleDiffuseBrdf(
 
 fn sampleDiffuseLight(
   material: EvaluatedMaterial, 
-  ray: ptr<function, Ray>,
-  surfaceAttributes: SurfaceAttributes,
-  surfaceNormals: SurfaceNormals,
+  geometryContext: GeometryContext
 ) -> LightDirectionSample {
+  let ray = geometryContext.ray;
+  let interpolatedAttributes = geometryContext.interpolatedAttributes;
+  let surfaceNormals = geometryContext.normals;
+
   let rands = vec4f(getRand2D(), getRand2D());
   let lightSample = getLightSample(ray.origin, rands);
   let pdf = lightSample.pdf;
@@ -213,7 +212,7 @@ fn sampleDiffuseLight(
     );
   }
 
-  let brdf = evaluateDiffuseBrdf(material, surfaceAttributes);
+  let brdf = evaluateDiffuseBrdf(material);
   let simplifiedLocalSpaceDirection = vec3f(0.0, 0.0, dot(newDirection, surfaceNormals.shading));
   let brdfSamplePdf = evaluatePdfDiffuseLobe(simplifiedLocalSpaceDirection, surfaceNormals);
   let mis = getMisWeight(lightSample.pdf, brdfSamplePdf);

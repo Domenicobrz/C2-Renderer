@@ -15,19 +15,14 @@ fn shade(
 ) -> RandomReplayResult {
   let triangle = triangles[ires.triangleIndex];
 
-  let surface = SurfaceDescriptor(ires.triangleIndex, ires.barycentrics); 
-  let surfaceAttributes = getSurfaceAttributes(triangle, ires.barycentrics);
-  let material = evaluateMaterialAtSurfacePoint(surface, surfaceAttributes);
+  var material = EvaluatedMaterial();
+  var geometryContext = GeometryContext();
+  evaluateMaterialAndGeometryContext(ires, *ray, &material, &geometryContext, false);
+
   let materialType = material.materialType;
-
-  var bumpOffset = 0.0;
-  var isBackFacing = false;
-  let normals = getNormalsAtPoint(
-    material, ray, surfaceAttributes, triangle, &bumpOffset, &isBackFacing,
-  );
-
   var isRough = false;
   var lobeIndex = i32(materialType);
+  
   if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
     isRough = true;
   }
@@ -43,6 +38,7 @@ fn shade(
     isRough = min(ax, ay) > 0.15;
   }
 
+  let normals = geometryContext.normals;
   let gBufferDepth = length((*ray).origin - ires.hitPoint);
 
   // TODO:
@@ -51,16 +47,17 @@ fn shade(
   // v v v v v  this whole thing stinks and I don't understand it anymore, refactor it v v v v v
   // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
   (*ray).origin = ires.hitPoint;
-
   // in practice however, only for Dielectrics we need the exact origin, 
   // for TorranceSparrow/Diffuse we can apply the bump offset if necessary
   if (materialType != ${MATERIAL_TYPE.DIELECTRIC}) {
-    if (bumpOffset > 0.0) {
-      (*ray).origin += normals.vertex * bumpOffset;
+    if (geometryContext.bumpOffset > 0.0) {
+      (*ray).origin += normals.vertex * geometryContext.bumpOffset;
     }
   }
+  geometryContext.ray = *ray;
 
-  var emissive = getEmissive(material, isBackFacing);
+
+  var emissive = getEmissive(material, geometryContext.isBackFacing);
 
   // absorption check for dielectrics
   if (materialType == ${MATERIAL_TYPE.DIELECTRIC}) {
@@ -94,7 +91,7 @@ fn shade(
   // This restriction doesn't apply to sampleBrdf since we're never skipping those randoms.
   // A longer and clearer explanation is in: segment/integrators/randoms.md
 
-  let brdfSample = sampleBrdf(material, ray, surfaceAttributes, normals);
+  let brdfSample = sampleBrdf(material, geometryContext);
   var lightSample = LightDirectionSample(vec3f(0), 0, 0, vec3f(0), LightSample());
   let pathIsPureRRThatEndsWithLightSampleNow = pathDoesNotReconnect && pathIsLightSampled && u32(debugInfo.bounce + 1) == pi.bounceCount;
   if (
@@ -103,7 +100,7 @@ fn shade(
   ) {
     // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
     if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
-      lightSample = sampleLight(material, ray, surfaceAttributes, normals);
+      lightSample = sampleLight(material, geometryContext);
     }
   } else if (isRandomReplay && !pathIsPureRRThatEndsWithLightSampleNow) {
     // skip sampleLight(...) randoms
@@ -128,7 +125,7 @@ fn shade(
       
       if (lightSampleSuccessful) {
         neePathConstruction( 
-          lightSample, brdfSample, ires,  ray, reservoir, throughput, 
+          lightSample, brdfSample, ires, reservoir, throughput, 
           pi, psi, lastBrdfMis, u32(lobeIndex), isRough, materialType, normals.shading, tid
         );
       }
@@ -137,7 +134,7 @@ fn shade(
     // if there's emission
     if (dot(emissive, emissive) > 0.0) {
       emissiveSurfacePathConstruction( 
-        brdfSample, ires,  ray, reservoir, throughput, 
+        brdfSample, ires, reservoir, throughput, 
         pi, psi, lastBrdfMis, u32(lobeIndex), normals.shading, emissive, tid
       );
     }
@@ -146,16 +143,13 @@ fn shade(
   if (isRandomReplay) {
     let rrResult = rrPathConstruction(
       lightSample,
-      surfaceAttributes,
-      normals,
+      geometryContext,
       material,
       ires, 
-      ray,
       throughput, 
       isRough,
       pi,
       psi,
-      isBackFacing,
       emissive,
       lastBrdfMis,
       u32(lobeIndex),

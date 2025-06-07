@@ -10,16 +10,12 @@ fn shade(
 ) {
   let triangle = triangles[ires.triangleIndex];
 
-  let surface = SurfaceDescriptor(ires.triangleIndex, ires.barycentrics); 
-  let surfaceAttributes = getSurfaceAttributes(triangle, ires.barycentrics);
-  let material = evaluateMaterialAtSurfacePoint(surface, surfaceAttributes);
+  var material = EvaluatedMaterial();
+  var geometryContext = GeometryContext();
+  evaluateMaterialAndGeometryContext(ires, *ray, &material, &geometryContext, false);
   let materialType = material.materialType;
 
-  var bumpOffset = 0.0;
-  var isBackFacing = false;
-  let normals = getNormalsAtPoint(
-    material, ray, surfaceAttributes, triangle, &bumpOffset, &isBackFacing,
-  );
+  let normals = geometryContext.normals;
 
   // TODO:
   // v v v v v  this whole thing stinks and I don't understand it anymore, refactor it v v v v v
@@ -27,16 +23,16 @@ fn shade(
   // v v v v v  this whole thing stinks and I don't understand it anymore, refactor it v v v v v
   // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
   (*ray).origin = ires.hitPoint;
-
   // in practice however, only for Dielectrics we need the exact origin, 
   // for TorranceSparrow/Diffuse we can apply the bump offset if necessary
   if (materialType != ${MATERIAL_TYPE.DIELECTRIC}) {
-    if (bumpOffset > 0.0) {
-      (*ray).origin += normals.vertex * bumpOffset;
+    if (geometryContext.bumpOffset > 0.0) {
+      (*ray).origin += normals.vertex * geometryContext.bumpOffset;
     }
   }
+  geometryContext.ray = *ray;
 
-  var emissive = getEmissive(material, isBackFacing);
+  var emissive = getEmissive(material, geometryContext.isBackFacing);
   *rad += emissive * *lastBrdfMis * *throughput;
 
   // absorption check for dielectrics
@@ -55,11 +51,11 @@ fn shade(
     }
   }
 
-  let brdfSample = sampleBrdf(material, ray, surfaceAttributes, normals);
+  let brdfSample = sampleBrdf(material, geometryContext);
   var lightSample = LightDirectionSample(vec3f(0), 0, 0, vec3f(0), LightSample());
   // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
   if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
-    lightSample = sampleLight(material, ray, surfaceAttributes, normals);
+    lightSample = sampleLight(material, geometryContext);
 
     let lightRadiance = lightSample.ls.radiance;
     let lightSampleSuccessful = dot(lightRadiance, lightRadiance) > 0.0;

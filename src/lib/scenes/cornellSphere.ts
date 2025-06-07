@@ -81,16 +81,17 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   // });
   let wallBump = (await new TextureLoader().loadAsync('scene-assets/textures/bump-test.png')).source
     .data;
-  let mat = new Dielectric({
-    absorption: new Color(0, 0, 0),
-    roughness: 0.23,
-    anisotropy: 0,
-    eta: 1.5,
-    bumpMap: wallBump,
-    bumpStrength: 3
-  });
-  materials.push(mat);
-  triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
+  // let mat = new Dielectric({
+  //   absorption: new Color(0, 0, 0),
+  //   roughness: 0.23,
+  //   anisotropy: 0,
+  //   eta: 1.5,
+  //   bumpMap: wallBump,
+  //   bumpStrength: 3
+  // });
+  // materials.push(mat);
+  // triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
+  triangles = [...triangles, ...meshToTriangles(mesh, 0)];
 
   // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue-uv.glb');
   // let group = gltf.scene.children[0];

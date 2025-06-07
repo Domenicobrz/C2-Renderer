@@ -391,10 +391,10 @@ export class EONDiffuse extends Material {
         var material: EONDiffuse = createEONDiffuse(ires.triangle.materialOffset);
 
         if (material.mapLocation.x > -1) {
-          material.color *= getTexelFromTextureArrays(material.mapLocation, ires.surfaceAttributes.uv, material.mapUvRepeat).xyz;
+          material.color *= getTexelFromTextureArrays(material.mapLocation, ires.interpolatedAttributes.uv, material.mapUvRepeat).xyz;
         }
 
-        var vertexNormal = ires.surfaceAttributes.normal;
+        var vertexNormal = ires.interpolatedAttributes.normal;
         // the normal flip is calculated using the geometric normal to avoid
         // black edges on meshes displaying strong smooth-shading via vertex normals
         if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
@@ -404,7 +404,7 @@ export class EONDiffuse extends Material {
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
 
-          let surfAttrWithFlippedNormal = SurfaceAttributes(N, ires.surfaceAttributes.uv, ires.surfaceAttributes.tangent);
+          let surfAttrWithFlippedNormal = InterpolatedAttributes(N, ires.interpolatedAttributes.uv, ires.interpolatedAttributes.tangent);
           N = getShadingNormal(
             material.bumpMapLocation, material.bumpStrength, material.uvRepeat, surfAttrWithFlippedNormal, *ray, 
             ires.triangle, &bumpOffset
@@ -428,7 +428,7 @@ export class EONDiffuse extends Material {
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires.surfaceAttributes.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
+        getTangentFromTriangle(ires.interpolatedAttributes.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
 
         // normal could be flipped at some point, should we also flip TB?
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
@@ -437,7 +437,7 @@ export class EONDiffuse extends Material {
         // the inverse of the TBN
         let TBNinverse = transpose(TBN);
         var wi = vec3f(0,0,0); 
-        let wo = TBNinverse * -(*ray).direction;
+        let wo = TBNinverse * -ray.direction;
 
 
         // to my understanding, this model includes the 

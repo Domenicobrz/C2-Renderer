@@ -225,13 +225,10 @@ export class Triangle {
         hit: bool,
         t: f32,
         hitPoint: vec3f,
-        uv: vec2f,
-        normal: vec3f,
-        tangent: vec3f,
         barycentrics: vec2f,
       }
 
-      struct SurfaceAttributes {
+      struct InterpolatedAttributes {
         normal: vec3f,
         uv: vec2f,
         tangent: vec3f,
@@ -291,7 +288,7 @@ export class Triangle {
         );
       }
 
-      fn getSurfaceAttributes(triangle: Triangle, barycentrics: vec2f) -> SurfaceAttributes {
+      fn getInterpolatedAttributes(triangle: Triangle, barycentrics: vec2f) -> InterpolatedAttributes {
         let u = barycentrics.x;
         let v = barycentrics.y;
         let w = 1.0 - u - v;
@@ -310,7 +307,7 @@ export class Triangle {
         let tang2 = triangle.tang2;
         let hitTangent = normalize(tang0 * w + tang1 * u + tang2 * v);
 
-        return SurfaceAttributes(hitNormal, hitUV, hitTangent);
+        return InterpolatedAttributes(hitNormal, hitUV, hitTangent);
       }
 
       // https://github.com/johnnovak/raytriangle-test
@@ -327,9 +324,7 @@ export class Triangle {
         let det = dot(v0v1, pvec);
       
         const CULLING = false;
-        const noIntersection = IntersectionResult(
-          false, 0, vec3f(0), vec2f(0), vec3f(0), vec3f(0), vec2f(0)
-        );
+        const noIntersection = IntersectionResult(false, 0, vec3f(0), vec2f(0));
       
         if (CULLING) {
           if (det < 0.000001) {
@@ -363,12 +358,10 @@ export class Triangle {
         }
 
         let hitPoint = ray.origin + t * ray.direction;
-        
         let barycentrics = vec2f(u, v);
-        let sa = getSurfaceAttributes(triangle, barycentrics);
 
         return IntersectionResult(
-          true, t, hitPoint, sa.uv, sa.normal, sa.tangent, barycentrics
+          true, t, hitPoint, barycentrics
         );
       }
     `;

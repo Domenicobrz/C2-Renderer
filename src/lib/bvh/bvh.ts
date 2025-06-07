@@ -340,7 +340,6 @@ export class BVH {
         hit: bool,
         t: f32,
         hitPoint: vec3f,
-        surfaceAttributes: SurfaceAttributes,
         triangle: Triangle,
         triangleIndex: i32,
         barycentrics: vec2f,
@@ -364,11 +363,6 @@ export class BVH {
         barycentrics: vec2f,
         geometricNormal: vec3f,
       }
-
-      struct SurfaceDescriptor {
-        triangleIndex: i32,
-        barycentrics: vec2f,
-      };
     `;
   }
 
@@ -410,13 +404,16 @@ export class BVH {
             return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1, vec2f(0), vec3f(0));
           }
           
-          let ires = bvhIntersect(Ray(rayOrigin + sampleDirection * 0.001, sampleDirection));
+          let iray = Ray(rayOrigin + sampleDirection * 0.001, sampleDirection);
+          let ires = bvhIntersect(iray);
           if (!ires.hit || cdfEntry.triangleIndex != ires.triangleIndex) {
             return LightSample(false, false, 0, vec3f(0), vec3f(0), vec3f(0.0), -1, vec2f(0), vec3f(0));
           }
-          let surface = SurfaceDescriptor(ires.triangleIndex, ires.barycentrics); 
-          let surfaceAttributes = getSurfaceAttributes(triangle, ires.barycentrics);
-          let material = evaluateMaterialAtSurfacePoint(surface, surfaceAttributes);
+
+          var material = EvaluatedMaterial();
+          var geometryContext = GeometryContext();
+          evaluateMaterialAndGeometryContext(ires, iray, &material, &geometryContext, true);
+
           let emissive = material.baseColor * material.emissiveIntensity;
           let radiance = emissive;
 
@@ -527,14 +524,14 @@ export class BVH {
 
         if (!aabbIntersect(ray.origin, ray.direction, rootNode.aabb).hit) {
           return BVHIntersectionResult(
-            false, 0, vec3f(0), SurfaceAttributes(), triangles[0], 0, vec2f(0)
+            false, 0, vec3f(0), triangles[0], 0, vec2f(0)
           );
         }
 
         // from: https://github.com/gpuweb/gpuweb/issues/3431#issuecomment-1453667278
         let highestFloat = 0x1.fffffep+127f;
         var closestIntersection = IntersectionResult(
-          false, highestFloat, vec3f(0), vec2f(0), vec3f(0), vec3f(0), vec2f(0.0)
+          false, highestFloat, vec3f(0), vec2f(0)
         );
         var closestPrimitiveIndex = -1;
 
@@ -608,11 +605,6 @@ export class BVH {
           closestIntersection.hit, 
           closestIntersection.t, 
           closestIntersection.hitPoint, 
-          SurfaceAttributes(
-            closestIntersection.normal,
-            closestIntersection.uv,
-            closestIntersection.tangent
-          ),
           triangles[closestPrimitiveIndex],
           closestPrimitiveIndex,
           closestIntersection.barycentrics

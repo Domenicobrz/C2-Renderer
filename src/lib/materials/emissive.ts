@@ -60,10 +60,10 @@ fn evaluateEmissiveBrdf() -> vec3f {
 
 fn sampleEmissiveBrdf(
   material: EvaluatedMaterial, 
-  ray: ptr<function, Ray>,
-  surfaceAttributes: SurfaceAttributes,
-  surfaceNormals: SurfaceNormals,
+  geometryContext: GeometryContext
 ) -> BrdfDirectionSample {
+  let surfaceNormals = geometryContext.normals;
+
   let rands = vec4f(getRand2D(), getRand2D());
 
   let r0 = 2.0 * PI * rands.x;
@@ -76,10 +76,7 @@ fn sampleEmissiveBrdf(
 
   var tangent = vec3f(0.0);
   var bitangent = vec3f(0.0);
-  getTangentFromTriangle(
-    surfaceAttributes.tangent, surfaceNormals.geometric, surfaceNormals.shading, 
-    &tangent, &bitangent
-  );
+  getTangentFromTriangle(geometryContext, &tangent, &bitangent);
 
   // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
   let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
@@ -99,10 +96,12 @@ fn sampleEmissiveBrdf(
 
 fn sampleEmissiveLight(
   material: EvaluatedMaterial, 
-  ray: ptr<function, Ray>,
-  surfaceAttributes: SurfaceAttributes,
-  surfaceNormals: SurfaceNormals,
+  geometryContext: GeometryContext
 ) -> LightDirectionSample {
+  let ray = geometryContext.ray;
+  let interpolatedAttributes = geometryContext.interpolatedAttributes;
+  let surfaceNormals = geometryContext.normals;
+  
   // necessary to use the same number of rands between this function and sampleDiffuseLight
   let rands = vec4f(getRand2D(), getRand2D());
   

@@ -373,7 +373,7 @@ export class Dielectric extends Material {
   static shaderDielectricLobe(): string {
     return /* wgsl */ `
 fn getDielectricMaterial(
-  surfaceAttributes: SurfaceAttributes, offset: u32
+  interpolatedAttributes: InterpolatedAttributes, offset: u32
 ) -> EvaluatedMaterial {
   var data = EvaluatedMaterial();
   
@@ -420,7 +420,7 @@ fn getDielectricMaterial(
 
   if (data.roughnessMapLocation.x > -1) {
     let roughnessTexel = getTexelFromTextureArrays(
-      data.roughnessMapLocation, surfaceAttributes.uv, data.uvRepeat
+      data.roughnessMapLocation, interpolatedAttributes.uv, data.uvRepeat
     ).xy;
 
     // roughness
@@ -468,25 +468,23 @@ fn evaluateDielectricBrdf(
 
 fn sampleDielectricBrdf(
   material: EvaluatedMaterial, 
-  ray: ptr<function, Ray>,
-  surfaceAttributes: SurfaceAttributes,
-  surfaceNormals: SurfaceNormals,
+  geometryContext: GeometryContext
 ) -> BrdfDirectionSample {
+  let ray = geometryContext.ray;
+  let surfaceNormals = geometryContext.normals;
+
   let rands = vec4f(getRand2D(), getRand2D());
 
   var tangent = vec3f(0.0);
   var bitangent = vec3f(0.0);
-  getTangentFromTriangle(
-    surfaceAttributes.tangent, surfaceNormals.geometric, surfaceNormals.shading, 
-    &tangent, &bitangent
-  );
+  getTangentFromTriangle(geometryContext, &tangent, &bitangent);
   
   // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
   let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
   // to transform vectors from world space to tangent space, we multiply by
   // the inverse of the TBN
   let TBNinverse = transpose(TBN);
-  let wo = TBNinverse * -(*ray).direction;
+  let wo = TBNinverse * -ray.direction;
   var wi = vec3f(0.0);
 
   let ax = material.ax;
@@ -500,7 +498,7 @@ fn sampleDielectricBrdf(
   let msCompensation = dielectricMultiScatteringFactor(wo, roughness, eta);
   brdf /= msCompensation;
   
-  let lightSamplePdf = getLightPDF(Ray((*ray).origin, normalize(TBN * wi)));
+  let lightSamplePdf = getLightPDF(Ray(ray.origin, normalize(TBN * wi)));
   let misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
   let newDirection = normalize(TBN * wi);
 
@@ -514,20 +512,19 @@ fn sampleDielectricBrdf(
 
 fn sampleDielectricLight(
   material: EvaluatedMaterial, 
-  ray: ptr<function, Ray>,
-  surfaceAttributes: SurfaceAttributes,
-  surfaceNormals: SurfaceNormals,
+  geometryContext: GeometryContext
 ) -> LightDirectionSample {
+  let ray = geometryContext.ray;
   let rands = vec4f(getRand2D(), getRand2D());
 
   let lightSample = getLightSample(ray.origin, rands);
   let pdf = lightSample.pdf;
 
-  var wo = -(*ray).direction;
+  var wo = -ray.direction;
   var wi = lightSample.direction;
 
   // from world-space to tangent-space
-  transformToLocalSpace(&wo, &wi, surfaceAttributes, surfaceNormals);
+  transformToLocalSpace(&wo, &wi, geometryContext);
 
   let ax = material.ax;
   let ay = material.ay;

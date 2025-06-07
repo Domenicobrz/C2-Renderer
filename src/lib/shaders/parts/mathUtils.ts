@@ -68,9 +68,13 @@ fn isFloatNaN(value: f32) -> bool {
 
 // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
 fn getTangentFromTriangle(
-  vertexTangent: vec3f, geometricNormal: vec3f, shadingNormal: vec3f, 
+  geometryContext: GeometryContext,
   tangent: ptr<function, vec3f>, bitangent: ptr<function, vec3f>
 ) {
+  let vertexTangent = geometryContext.interpolatedAttributes.tangent;
+  let geometricNormal = geometryContext.normals.geometric;
+  let shadingNormal = geometryContext.normals.shading;
+
   *tangent = vertexTangent;
   *bitangent = normalize(cross(*tangent, geometricNormal));
 
@@ -117,17 +121,13 @@ fn mod3f(a: vec3f, b: vec3f) -> vec3f {
 fn transformToLocalSpace(
   wo: ptr<function, vec3f>, 
   wi: ptr<function, vec3f>, 
-  surfaceAttributes: SurfaceAttributes, 
-  surfaceNormals: SurfaceNormals,
+  geometryContext: GeometryContext
 ) {
   var tangent = vec3f(0.0);
   var bitangent = vec3f(0.0);
-  getTangentFromTriangle(
-    surfaceAttributes.tangent, surfaceNormals.geometric, surfaceNormals.shading, 
-    &tangent, &bitangent
-  );
+  getTangentFromTriangle(geometryContext, &tangent, &bitangent);
   // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
-  let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
+  let TBN = mat3x3f(tangent, bitangent, geometryContext.normals.shading);
   // to transform vectors from world space to tangent space, we multiply by
   // the inverse of the TBN
   let TBNinverse = transpose(TBN);

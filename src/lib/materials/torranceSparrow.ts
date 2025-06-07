@@ -259,7 +259,7 @@ export class TorranceSparrow extends Material {
   static shaderTorranceSparrowLobe(): string {
     return /* wgsl */ `
 fn getTSMaterial(
-  surfaceAttributes: SurfaceAttributes, offset: u32
+  interpolatedAttributes: InterpolatedAttributes, offset: u32
 ) -> EvaluatedMaterial {
   var data = EvaluatedMaterial();
   
@@ -310,7 +310,7 @@ fn getTSMaterial(
 
   if (data.mapLocation.x > -1) {
     let texelColor = getTexelFromTextureArrays(
-      data.mapLocation, surfaceAttributes.uv, data.mapUvRepeat
+      data.mapLocation, interpolatedAttributes.uv, data.mapUvRepeat
     ).xyz;
 
     // color
@@ -318,7 +318,7 @@ fn getTSMaterial(
   }
   if (data.roughnessMapLocation.x > -1) {
     let roughnessTexel = getTexelFromTextureArrays(
-      data.roughnessMapLocation, surfaceAttributes.uv, data.uvRepeat
+      data.roughnessMapLocation, interpolatedAttributes.uv, data.uvRepeat
     ).xy;
 
     // roughness
@@ -366,25 +366,23 @@ fn evaluateTSBrdf(
 
 fn sampleTSBrdf(
   material: EvaluatedMaterial, 
-  ray: ptr<function, Ray>,
-  surfaceAttributes: SurfaceAttributes,
-  surfaceNormals: SurfaceNormals,
+  geometryContext: GeometryContext
 ) -> BrdfDirectionSample {
+  let ray = geometryContext.ray;
+  let surfaceNormals = geometryContext.normals;
+
   let rands = vec4f(getRand2D(), getRand2D());
 
   var tangent = vec3f(0.0);
   var bitangent = vec3f(0.0);
-  getTangentFromTriangle(
-    surfaceAttributes.tangent, surfaceNormals.geometric, surfaceNormals.shading, 
-    &tangent, &bitangent
-  );
+  getTangentFromTriangle(geometryContext, &tangent, &bitangent);
   
   // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
   let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
   // to transform vectors from world space to tangent space, we multiply by
   // the inverse of the TBN
   let TBNinverse = transpose(TBN);
-  let wo = TBNinverse * -(*ray).direction;
+  let wo = TBNinverse * -ray.direction;
   var wi = vec3f(0.0);
 
   let color = material.baseColor;
@@ -397,7 +395,7 @@ fn sampleTSBrdf(
   TS_Sample_f(wo, rands.xy, ax, ay, color, &wi, &brdfSamplePdf, &brdf);
   brdf *= multiScatterCompensationTorranceSparrow(color, wo, roughness);
   
-  let lightSamplePdf = getLightPDF(Ray((*ray).origin, normalize(TBN * wi)));
+  let lightSamplePdf = getLightPDF(Ray(ray.origin, normalize(TBN * wi)));
   let misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
   let newDirection = normalize(TBN * wi);
 
@@ -411,21 +409,20 @@ fn sampleTSBrdf(
 
 fn sampleTSLight(
   material: EvaluatedMaterial, 
-  ray: ptr<function, Ray>,
-  surfaceAttributes: SurfaceAttributes,
-  surfaceNormals: SurfaceNormals,
+  geometryContext: GeometryContext
 ) -> LightDirectionSample {
+  let ray = geometryContext.ray;
   let rands = vec4f(getRand2D(), getRand2D());
 
   let lightSample = getLightSample(ray.origin, rands);
   let pdf = lightSample.pdf;
   let backSideHit = lightSample.backSideHit;
 
-  var wo = -(*ray).direction;
+  var wo = -ray.direction;
   var wi = lightSample.direction;
 
   // from world-space to tangent-space
-  transformToLocalSpace(&wo, &wi, surfaceAttributes, surfaceNormals);
+  transformToLocalSpace(&wo, &wi, geometryContext);
 
   let color = material.baseColor;
   let ax = material.ax;

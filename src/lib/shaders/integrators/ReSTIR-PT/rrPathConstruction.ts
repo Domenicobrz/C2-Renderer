@@ -36,24 +36,22 @@ fn rrEnvmapPathConstruction(
 
 fn rrPathConstruction(
   lightDirectionSample: LightDirectionSample,
-  // brdfDirectionSample: BrdfDirectionSample,
-  surfaceAttributes: SurfaceAttributes,
-  normals: SurfaceNormals,
+  geometryContext: GeometryContext,
   material: EvaluatedMaterial,
   ires: BVHIntersectionResult, 
-  ray: ptr<function, Ray>,
-  // reservoir: ptr<function, Reservoir>,
   throughput: ptr<function, vec3f>, 
   isRough: bool,
   pi: ptr<function, PathInfo>,
   psi: ptr<function, PathSampleInfo>,
-  isBackFacing: bool,
   emissive: vec3f,
   lastBrdfMis: ptr<function, f32>, 
   lobeIndex: u32,
-  // N: vec3f,
-  // tid: vec3u,
 ) -> RandomReplayResult {
+  let ray = geometryContext.ray;
+  let interpolatedAttributes = geometryContext.interpolatedAttributes;
+  let normals = geometryContext.normals;
+  let isBackFacing = geometryContext.isBackFacing;
+
   var rrStepResult = RandomReplayResult(0, vec3f(0.0), false, vec2f(0.0));
   const failedShiftResult = RandomReplayResult(0, vec3f(0.0), true, vec2f(0.0));
 
@@ -97,7 +95,7 @@ fn rrPathConstruction(
       return rrStepResult;
     }
     if (pathIsLightSampled && u32(debugInfo.bounce + 1) == pi.bounceCount) {
-      // let lightDirectionSample = sampleLight(material, ray, surfaceAttributes, normals);
+      // let lightDirectionSample = sampleLight(material, ray, interpolatedAttributes, normals);
       let lightSampleRadiance = lightDirectionSample.ls.radiance;
       let lightSampleSuccessful = dot(lightSampleRadiance, lightSampleRadiance) > 0.0;
       
@@ -200,15 +198,15 @@ fn rrPathConstruction(
     // reconnection is successful
     let probability_of_sampling_lobe = 1.0;
 
-    var wo = -(*ray).direction;
+    var wo = -ray.direction;
     var wi = w_km1;
-    transformToLocalSpace(&wo, &wi, surfaceAttributes, normals);
+    transformToLocalSpace(&wo, &wi, geometryContext);
 
     let brdf = evaluateBrdf(
-      material, wo, wi, surfaceAttributes, normals
+      material, wo, wi, geometryContext
     );
     let brdfPdf = evaluateLobePdf(
-      material, wo, wi, surfaceAttributes, normals
+      material, wo, wi, geometryContext
     );
     let lightPdf = getLightPDF(Ray(ires.hitPoint + w_km1 * 0.0001, w_km1));
 
@@ -297,36 +295,33 @@ fn rrPathConstruction(
     let w_km1 = normalize(w_vec);
     let probability_of_sampling_lobe = 1.0;
     
-    var wo = -(*ray).direction;
+    var wo = -ray.direction;
     var wi = w_km1;
-    transformToLocalSpace(&wo, &wi, surfaceAttributes, normals);
+    transformToLocalSpace(&wo, &wi, geometryContext);
 
     let brdf = evaluateBrdf(
-      material, wo, wi, surfaceAttributes, normals
+      material, wo, wi, geometryContext
     );
     let brdfPdf = evaluateLobePdf(
-      material, wo, wi, surfaceAttributes, normals
+      material, wo, wi, geometryContext
     );
     var p = probability_of_sampling_lobe * brdfPdf;
 
     // pick surface information of vertex Xk
-    let surfaceXk = SurfaceDescriptor(visibilityRes.triangleIndex, visibilityRes.barycentrics); 
-    let surfaceAttributesXk = getSurfaceAttributes(triangle, visibilityRes.barycentrics);
-    let materialXk = evaluateMaterialAtSurfacePoint(surfaceXk, surfaceAttributesXk);
-    var bumpOffset: f32; var isBackFacing: bool;
-    let normalsXk = getNormalsAtPoint(
-      materialXk, &visibilityRay, surfaceAttributesXk, triangle, &bumpOffset, &isBackFacing,
-    );
+    var materialXk = EvaluatedMaterial();
+    var geometryContextXk = GeometryContext();
+    evaluateMaterialAndGeometryContext(visibilityRes, visibilityRay, &materialXk, &geometryContextXk, false);
+    let normalsXk = geometryContextXk.normals;
 
     var woXk = -w_km1;
     var wiXk = pi.radianceDirection;
-    transformToLocalSpace(&woXk, &wiXk, surfaceAttributesXk, normalsXk);
+    transformToLocalSpace(&woXk, &wiXk, geometryContextXk);
 
     let brdfXk = evaluateBrdf(
-      materialXk, woXk, wiXk, surfaceAttributesXk, normalsXk
+      materialXk, woXk, wiXk, geometryContextXk
     );
     let brdfPdfXk = evaluateLobePdf(
-      materialXk, woXk, wiXk, surfaceAttributesXk, normalsXk
+      materialXk, woXk, wiXk, geometryContextXk
     );
 
     var mi = 0.0;

@@ -5,7 +5,6 @@ fn neePathConstruction(
   lightDirectionSample: LightDirectionSample,
   brdfDirectionSample: BrdfDirectionSample,
   ires: BVHIntersectionResult, 
-  ray: ptr<function, Ray>,
   reservoir: ptr<function, Reservoir>,
   throughput: ptr<function, vec3f>, 
   pi: ptr<function, PathInfo>,
@@ -179,7 +178,6 @@ fn neePathConstruction(
 fn emissiveSurfacePathConstruction(
   brdfDirectionSample: BrdfDirectionSample,
   ires: BVHIntersectionResult, 
-  ray: ptr<function, Ray>,
   reservoir: ptr<function, Reservoir>,
   throughput: ptr<function, vec3f>, 
   pi: ptr<function, PathInfo>,

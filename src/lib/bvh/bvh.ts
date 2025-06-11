@@ -296,7 +296,7 @@ export class BVH {
       let lightPickProbability = el[1];
       let triangleIndex = el[2];
 
-      if (triangleIndex > 0) {
+      if (triangleIndex >= 0) {
         triangles[triangleIndex].setLightSourcePickProb(lightPickProbability);
       } else if (triangleIndex === -2 && this.scene.envmap) {
         this.scene.envmap.setLightSourcePickProb(lightPickProbability);

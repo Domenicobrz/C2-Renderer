@@ -6,6 +6,7 @@ import { c2FeaturesScene } from './scenes/c2features';
 import { c2Features2Scene } from './scenes/c2features2';
 import { c2FeaturesScene_Debug } from './scenes/c2features_debug';
 import { cornellSphereScene } from './scenes/cornellSphere';
+import { dofQuadTest } from './scenes/dofQuadTest';
 import { envmapHorseScene } from './scenes/envmapHorse';
 import { envmapSphereScene } from './scenes/envmapSphere';
 import { furnaceTestScene } from './scenes/furnaceTest';
@@ -32,5 +33,6 @@ export async function createScene(): Promise<C2Scene> {
   // return ReSTIRTest3Scene();
   // return c2FeaturesScene();
   // return c2FeaturesScene_Debug();
-  return envmapHorseScene();
+  // return envmapHorseScene();
+  return dofQuadTest();
 }

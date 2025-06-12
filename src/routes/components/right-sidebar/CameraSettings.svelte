@@ -103,6 +103,11 @@
     bind:value={$cameraInfoStore.aperture}
   /></span
 >
+{#if isUsingReSTIR && $cameraInfoStore.aperture > 0}
+  <Spacer vertical={7} />
+  <p class="warning">Non-zero aperture in ReSTIR-PT will result in bias</p>
+{/if}
+
 <Spacer vertical={5} />
 <div class="fd-flex-row">
   <span>Focus distance:</span>

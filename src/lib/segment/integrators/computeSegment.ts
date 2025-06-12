@@ -5,8 +5,8 @@ import {
   cameraMovementInfoStore,
   centralStatusMessage,
   samplesInfo
-} from '../../routes/stores/main';
-import { ResetSegment } from './resetSegment';
+} from '../../../routes/stores/main';
+import { ResetSegment } from './../resetSegment';
 import { TileSequence, type Tile } from '$lib/tile';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 import { SAMPLER_TYPE, SPTConfigManager } from '$lib/config';
@@ -14,7 +14,7 @@ import type { C2Scene } from '$lib/createScene';
 import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
 import { globals } from '$lib/C2';
-import { TextureArraysSegment } from './textureArraysSegment';
+import { TextureArraysSegment } from './../textureArraysSegment';
 import { Orbit } from '$lib/controls/Orbit';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { HaltonSampler } from '$lib/samplers/Halton';

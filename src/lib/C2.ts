@@ -1,5 +1,5 @@
 import { Vector2 } from 'three';
-import { ComputeSegment } from './segment/computeSegment';
+import { ComputeSegment } from './segment/integrators/computeSegment';
 import { RenderSegment } from './segment/renderSegment';
 import { vec2 } from './utils/math';
 import { onKey } from './utils/keys';

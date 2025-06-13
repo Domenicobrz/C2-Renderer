@@ -44,6 +44,7 @@ export const globals: {
     samplesCountBuffer: GPUBuffer;
   };
   animationFrameHandle: number | null;
+  assetsPath: string;
 } = {
   // not sure how to tell typescript that these values will exist when I'll try to access them
   device: null as any,
@@ -59,7 +60,8 @@ export const globals: {
     radianceBuffer: null as any,
     samplesCountBuffer: null as any
   },
-  animationFrameHandle: null
+  animationFrameHandle: null,
+  assetsPath: 'https://domenicobrz.github.io/scene-assets/'
 };
 
 export type RendererInterface = {

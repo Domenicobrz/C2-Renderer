@@ -133,8 +133,8 @@ export const configOptions = createConfigStore({
   ENVMAP_ROTY: 0,
   ENVMAP_USE_COMPENSATED_DISTRIBUTION: false,
 
-  // integrator: 'Simple-path-trace',
-  integrator: 'ReSTIR',
+  integrator: 'Simple-path-trace',
+  // integrator: 'ReSTIR',
 
   SimplePathTrace: {
     MIS_TYPE: 1,

@@ -13,6 +13,7 @@ import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
 import { Envmap } from '$lib/envmap/envmap';
+import { globals } from '$lib/C2';
 
 export async function envmapSphereScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -66,7 +67,7 @@ export async function envmapSphereScene(): Promise<C2Scene> {
   materials.push(mat);
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
 
-  // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue-uv.glb');
+  // let gltf = await new GLTFLoader().loadAsync(globals.assetsPath + 'models/horse-statue-uv.glb');
   // let group = gltf.scene.children[0];
   // group.scale.set(-2.85, 2.85, 2.85);
   // group.position.set(0.1, -4, 1.5);
@@ -74,10 +75,9 @@ export async function envmapSphereScene(): Promise<C2Scene> {
   // triangles = [...triangles, ...meshToTriangles(group, materials.length - 1)];
 
   let envmap = new Envmap();
-  // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
-  // await envmap.fromEquirect('scene-assets/envmaps/lebombo_1k.hdr');
-  await envmap.fromEquirect('scene-assets/envmaps/large_corridor_1k.hdr', 300);
-  // await envmap.fromEquirect('scene-assets/envmaps/furnace_test.hdr', 100);
+  // await envmap.fromEquirect(globals.assetsPath + 'envmaps/lebombo_1k.hdr');
+  await envmap.fromEquirect(globals.assetsPath + 'envmaps/large_corridor_1k.hdr', 300);
+  // await envmap.fromEquirect(globals.assetsPath + 'envmaps/furnace_test.hdr', 100);
   envmap.scale = 0.5;
   envmap.rotX = 5.2;
   envmap.rotY = 0.5;

@@ -11,6 +11,7 @@ import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 import random, { RNG } from 'random';
 import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 import { Dielectric } from '$lib/materials/dielectric';
+import { globals } from '$lib/C2';
 
 random.use('test-string' as unknown as RNG);
 // random.use(Math.random() as unknown as RNG);
@@ -111,7 +112,7 @@ export async function ReSTIRTest3Scene(): Promise<C2Scene> {
   lightC.translate(0, 2.9, 0);
   triangles = [...triangles, ...geometryToTriangles(lightC, 0)];
 
-  let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue.glb');
+  let gltf = await new GLTFLoader().loadAsync(globals.assetsPath + 'models/horse-statue.glb');
   let group = gltf.scene.children[0];
   group.scale.set(-2.7, 2.7, 2.7);
   group.position.set(0.3, -1.25 - 2, 1.5);

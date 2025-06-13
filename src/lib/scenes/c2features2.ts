@@ -19,6 +19,7 @@ import { Orbit } from '$lib/controls/Orbit';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { Envmap } from '$lib/envmap/envmap';
 import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
+import { globals } from '$lib/C2';
 
 export async function c2Features2Scene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -27,12 +28,14 @@ export async function c2Features2Scene(): Promise<C2Scene> {
   let plane = new Mesh(new PlaneGeometry(100, 100));
   plane.position.set(0, 0, 0);
   plane.rotation.x = -Math.PI * 0.5;
-  let gcDiff = (await new TextureLoader().loadAsync('scene-assets/textures/grey-cartago/diff.png'))
-    .source.data;
-  let gcBump = (await new TextureLoader().loadAsync('scene-assets/textures/grey-cartago/disp.png'))
-    .source.data;
+  let gcDiff = (
+    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/grey-cartago/diff.png')
+  ).source.data;
+  let gcBump = (
+    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/grey-cartago/disp.png')
+  ).source.data;
   let gcRough = (
-    await new TextureLoader().loadAsync('scene-assets/textures/grey-cartago/rough.png')
+    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/grey-cartago/rough.png')
   ).source.data;
   materials.push(
     new TorranceSparrow({
@@ -51,14 +54,16 @@ export async function c2Features2Scene(): Promise<C2Scene> {
   );
   // triangles = [...triangles, ...meshToTriangles(plane, materials.length - 1)];
 
-  let gltfCyclo = await new GLTFLoader().loadAsync('scene-assets/models/3d-cyclorama.glb');
+  let gltfCyclo = await new GLTFLoader().loadAsync(globals.assetsPath + 'models/3d-cyclorama.glb');
   let cyclorama = gltfCyclo.scene.children[0];
   cyclorama.scale.set(38, 38, 38);
   cyclorama.position.set(40, 0, -33);
   cyclorama.rotation.y = 4.35;
   triangles = [...triangles, ...meshToTriangles(cyclorama, materials.length - 1)];
 
-  let gltf = await new GLTFLoader().loadAsync('scene-assets/models/ducati_monster_1200.glb');
+  let gltf = await new GLTFLoader().loadAsync(
+    globals.assetsPath + 'models/ducati_monster_1200.glb'
+  );
   let ducati = gltf.scene.children[0];
   ducati.scale.set(-3, 3, 3);
   ducati.position.set(-1, 0, -1);
@@ -150,9 +155,8 @@ export async function c2Features2Scene(): Promise<C2Scene> {
   camera.exposure = 1.85;
 
   let envmap = new Envmap();
-  // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr', 400);
-  await envmap.fromEquirect('scene-assets/envmaps/lebombo_1k.hdr');
-  // await envmap.fromEquirect('scene-assets/envmaps/large_corridor_1k.hdr');
+  await envmap.fromEquirect(globals.assetsPath + 'envmaps/lebombo_1k.hdr');
+  // await envmap.fromEquirect(globals.assetsPath + 'envmaps/large_corridor_1k.hdr');
   envmap.scale = 1;
   envmap.rotX = 0.7;
   // envmap.rotY = 0;

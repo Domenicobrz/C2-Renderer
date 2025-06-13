@@ -20,6 +20,7 @@ import type { C2Scene } from '$lib/createScene';
 import { Orbit } from '$lib/controls/Orbit';
 import { Envmap } from '$lib/envmap/envmap';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
+import { globals } from '$lib/C2';
 
 export async function furnaceTestScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -35,7 +36,7 @@ export async function furnaceTestScene(): Promise<C2Scene> {
   planeMesh.rotation.y = Math.PI;
 
   let roughnessMap = (
-    await new TextureLoader().loadAsync('scene-assets/textures/roughness-test.png')
+    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/roughness-test.png')
   ).source.data;
 
   // let mat = new Diffuse({
@@ -75,7 +76,7 @@ export async function furnaceTestScene(): Promise<C2Scene> {
   camera.exposure = 1.85;
 
   let envmap = new Envmap();
-  await envmap.fromEquirect('scene-assets/envmaps/furnace_test.hdr', 100);
+  await envmap.fromEquirect(globals.assetsPath + 'envmaps/furnace_test.hdr', 100);
 
   return { triangles, materials, camera, envmap };
 }

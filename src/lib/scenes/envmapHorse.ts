@@ -23,6 +23,7 @@ import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
 import { createNoise2D } from 'simplex-noise';
 import alea from 'alea';
 import { Orbit } from '$lib/controls/Orbit';
+import { globals } from '$lib/C2';
 
 const prng = alea('seed');
 const noise2D = createNoise2D(prng);
@@ -96,7 +97,7 @@ export async function envmapHorseScene(): Promise<C2Scene> {
     }
   }
 
-  let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue.glb');
+  let gltf = await new GLTFLoader().loadAsync(globals.assetsPath + 'models/horse-statue.glb');
   let group = gltf.scene.children[0];
   group.scale.set(-2.7, 2.7, 2.7);
   group.position.set(0.3, -1.25 + gty, 1.5);
@@ -104,10 +105,9 @@ export async function envmapHorseScene(): Promise<C2Scene> {
   triangles = [...triangles, ...meshToTriangles(group, 5)];
 
   let envmap = new Envmap();
-  // await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
-  // await envmap.fromEquirect('scene-assets/envmaps/lebombo_1k.hdr');
-  await envmap.fromEquirect('scene-assets/envmaps/large_corridor_1k.hdr', 300);
-  // await envmap.fromEquirect('scene-assets/envmaps/furnace_test.hdr', 100);
+  // await envmap.fromEquirect(globals.assetsPath + 'envmaps/lebombo_1k.hdr');
+  await envmap.fromEquirect(globals.assetsPath + 'envmaps/large_corridor_1k.hdr', 300);
+  // await envmap.fromEquirect(globals.assetsPath + 'envmaps/furnace_test.hdr', 100);
   envmap.scale = 0.9;
   envmap.rotX = 5.2;
   envmap.rotY = 0.5;

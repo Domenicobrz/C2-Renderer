@@ -94,7 +94,7 @@ export async function dofQuadTest(): Promise<C2Scene> {
   // triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
   triangles = [...triangles, ...meshToTriangles(mesh, 0)];
 
-  // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue-uv.glb');
+  // let gltf = await new GLTFLoader().loadAsync(globals.assetsPath + 'models/horse-statue-uv.glb');
   // let group = gltf.scene.children[0];
   // group.scale.set(-2.85, 2.85, 2.85);
   // group.position.set(0.1, -4, 1.5);

@@ -13,4 +13,5 @@ src/lib/learnings.md
 .VSCodeCounter/
 renders/
 static/scene-assets/
+static/scene-assets-TO-REMOVE/
 static/blue-noise-textures/all

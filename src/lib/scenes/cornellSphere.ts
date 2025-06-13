@@ -12,6 +12,7 @@ import { Orbit } from '$lib/controls/Orbit';
 import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
+import { globals } from '$lib/C2';
 
 export async function cornellSphereScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -79,8 +80,9 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   //   roughness: 0.9,
   //   anisotropy: 1
   // });
-  let wallBump = (await new TextureLoader().loadAsync('scene-assets/textures/bump-test.png')).source
-    .data;
+  let wallBump = (
+    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/bump-test.png')
+  ).source.data;
   // let mat = new Dielectric({
   //   absorption: new Color(0, 0, 0),
   //   roughness: 0.23,
@@ -93,7 +95,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   // triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
   triangles = [...triangles, ...meshToTriangles(mesh, 0)];
 
-  // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue-uv.glb');
+  // let gltf = await new GLTFLoader().loadAsync(globals.assetsPath + 'models/horse-statue-uv.glb');
   // let group = gltf.scene.children[0];
   // group.scale.set(-2.85, 2.85, 2.85);
   // group.position.set(0.1, -4, 1.5);

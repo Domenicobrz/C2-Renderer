@@ -74,10 +74,11 @@
     display: flex;
     flex-flow: row nowrap;
     align-items: center;
-    background: #2f2f2f;
+    background: #272727;
     cursor: pointer;
     font-weight: 700;
     font-size: 15px;
+    border-radius: 5px;
   }
   header.expanded {
     border-bottom: 1px solid #4f4f4f;

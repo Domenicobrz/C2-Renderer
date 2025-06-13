@@ -19,6 +19,7 @@ import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 import { Dielectric } from '$lib/materials/dielectric';
 import { Envmap } from '$lib/envmap/envmap';
+import { globals } from '$lib/C2';
 
 export async function ReSTIREnvmapScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -107,10 +108,7 @@ export async function ReSTIREnvmapScene(): Promise<C2Scene> {
   camera.exposure = 1.85;
 
   let envmap = new Envmap();
-  await envmap.fromEquirect('scene-assets/envmaps/envmap.hdr');
-  // await envmap.fromEquirect('scene-assets/envmaps/lebombo_1k.hdr');
-  // await envmap.fromEquirect('scene-assets/envmaps/large_corridor_1k.hdr', 300);
-  // await envmap.fromEquirect('scene-assets/envmaps/furnace_test.hdr', 100);
+  await envmap.fromEquirect(globals.assetsPath + 'envmaps/lebombo_1k.hdr');
   envmap.scale = 0.5;
   envmap.rotX = 5.2;
   envmap.rotY = 0.5;

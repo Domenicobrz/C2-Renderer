@@ -1,9 +1,5 @@
 <script lang="ts">
   import { configOptions, samplesInfo } from '../../stores/main';
-  import Folder from '../Folder.svelte';
-  import Decorrelation from './Simple-path-trace/Decorrelation.svelte';
-  import MisOptions from './Simple-path-trace/MisOptions.svelte';
-  import Sampler from './Simple-path-trace/Sampler.svelte';
 
   function onSampleLimitInputChange(e: Event) {
     const newSampleLimit = parseInt((e.target as HTMLInputElement).value);

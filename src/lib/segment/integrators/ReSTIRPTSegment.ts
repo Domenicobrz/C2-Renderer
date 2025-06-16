@@ -1,7 +1,5 @@
-import { BVH } from '$lib/bvh/bvh';
-import { Matrix4, Vector2, Vector3 } from 'three';
+import { Vector2 } from 'three';
 import {
-  cameraMovementInfoStore,
   centralErrorStatusMessage,
   centralStatusMessage,
   samplesInfo
@@ -9,12 +7,7 @@ import {
 import { ResetSegment } from '../resetSegment';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 import { ReSTIR_SAMPLER_TYPE, ReSTIRConfigManager } from '$lib/config';
-import type { C2Scene } from '$lib/createScene';
-import { Envmap } from '$lib/envmap/envmap';
-import { Camera } from '$lib/controls/Camera';
 import { globals } from '$lib/C2';
-import { TextureArraysSegment } from '../textureArraysSegment';
-import { Orbit } from '$lib/controls/Orbit';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import { UniformSampler } from '$lib/samplers/Uniform';
@@ -22,6 +15,7 @@ import { BlueNoiseSampler } from '$lib/samplers/BlueNoise';
 import { ReservoirToRadianceSegment } from '../reservoirToRadSegment';
 import { getReSTIRPTShader } from '$lib/shaders/integrators/ReSTIR-PT/ReSTIRPTShader';
 import { TileSequence, type Tile } from '$lib/tile';
+import type { SceneDataManager } from '$lib/sceneManager';
 
 export class ReSTIRPTSegment {
   public passPerformance: ComputePassPerformance;
@@ -34,8 +28,6 @@ export class ReSTIRPTSegment {
   private configManager = new ReSTIRConfigManager();
 
   private reservoirToRadSegment = new ReservoirToRadianceSegment();
-
-  private textureArraySegment: TextureArraysSegment = new TextureArraysSegment();
 
   private bindGroup0: GPUBindGroup[] = [];
   private bindGroup1: GPUBindGroup | null = null;
@@ -68,21 +60,12 @@ export class ReSTIRPTSegment {
   private workBuffer!: GPUBuffer;
   private samplesCountBuffer!: GPUBuffer;
 
-  private trianglesBuffer: GPUBuffer | undefined;
-  private materialsBuffer: GPUBuffer | undefined;
-  private bvhBuffer: GPUBuffer | undefined;
-  private lightsCDFBuffer: GPUBuffer | undefined;
-  private envmapPC2DBuffer: GPUBuffer | undefined;
-  private envmapInfoBuffer: GPUBuffer | undefined;
-
   private resetSegment: ResetSegment;
   private requestedReset: boolean = false;
 
   private requestShaderCompilation = false;
 
-  private scene: C2Scene | undefined;
-  private camera!: Camera;
-  private bvh: BVH | undefined;
+  private sceneDataManager: SceneDataManager | undefined;
 
   private haltonSampler = new HaltonSampler();
   private uniformSampler = new UniformSampler();
@@ -90,8 +73,18 @@ export class ReSTIRPTSegment {
   private uniformSampler2 = new UniformSampler('seed-string-8'); // was -3
   private blueNoiseSampler = new BlueNoiseSampler();
 
-  private computeTile = new TileSequence();
-  private spatialResampleTile = new TileSequence();
+  private computeTile = new TileSequence({
+    avgPerfToDecrease: 80,
+    avgPerfToIncrease: 120,
+    changeTileSizeOnNewLineOnly: true,
+    performanceHistoryCount: 3
+  });
+  private spatialResampleTile = new TileSequence({
+    avgPerfToDecrease: 80,
+    avgPerfToIncrease: 120,
+    changeTileSizeOnNewLineOnly: true,
+    performanceHistoryCount: 3
+  });
 
   private renderState: {
     state: 'compute-start' | 'compute' | 'sr' | 'sr-start';
@@ -145,85 +138,64 @@ export class ReSTIRPTSegment {
 
     // create a typedarray to hold the values for the uniforms in JavaScript
     this.canvasSizeUniformBuffer = device.createBuffer({
+      label: 'canvas size uniform restirPT',
       size: 2 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
     this.tileUniformBuffer = device.createBuffer({
+      label: 'tile uniform restirPT',
       size: 4 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
     // create a typedarray to hold the values for the uniforms in JavaScript
     this.sequenceUniformBuffer = device.createBuffer({
+      label: 'sequence uniform restirPT',
       size: this.RANDOMS_BUFFER_COUNT * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
     this.restirRandomsUniformBuffer = device.createBuffer({
+      label: 'restir randoms uniform restirPT',
       size: this.RANDOMS_BUFFER_COUNT * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
     this.passInfoUniformBuffer = device.createBuffer({
+      label: 'pass info uniform restirPT',
       size: 4 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
     this.configUniformBuffer = device.createBuffer({
+      label: 'config uniform restirPT',
       size: this.configManager.bufferSize,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
     this.debugBufferSize = 100;
     this.debugBuffer = this.device.createBuffer({
+      label: 'debug restirPT',
       size: 4 * this.debugBufferSize,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC
     });
     this.debugPixelTargetBuffer = this.device.createBuffer({
+      label: 'debug pixel target restirPT',
       size: 4 * 2,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     this.debugReadBuffer = this.device.createBuffer({
+      label: 'debug read restirPT',
       size: 4 * this.debugBufferSize,
       usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST
     });
     this.setDebugPixelTarget(0, 0);
 
-    this.configManager.e.addEventListener('config-update', () => {
-      this.updateConfig();
-    });
+    this.configManager.e.addEventListener('config-update', this.updateConfig);
+    this.updateConfig();
 
     this.requestShaderCompilation = true;
-  }
-
-  dispose() {
-    this.textureArraySegment.dispose();
-    this.resetSegment.dispose();
-
-    this.canvasSizeUniformBuffer.destroy();
-    this.passInfoUniformBuffer.destroy();
-    this.sequenceUniformBuffer.destroy();
-    this.restirRandomsUniformBuffer.destroy();
-    this.configUniformBuffer.destroy();
-    this.tileUniformBuffer.destroy();
-    this.debugBuffer.destroy();
-    this.debugPixelTargetBuffer.destroy();
-    this.debugReadBuffer.destroy();
-
-    this.restirPassBuffer1.destroy();
-    this.restirPassBuffer2.destroy();
-
-    // these two are external !! they haven't been created here
-    // this.workBuffer
-    // this.samplesCountBuffer
-
-    this.trianglesBuffer?.destroy();
-    this.materialsBuffer?.destroy();
-    this.bvhBuffer?.destroy();
-    this.lightsCDFBuffer?.destroy();
-    this.envmapPC2DBuffer?.destroy();
-    this.envmapInfoBuffer?.destroy();
   }
 
   setDebugPixelTarget(x: number, y: number) {
@@ -262,24 +234,14 @@ export class ReSTIRPTSegment {
     */
     await this.debugReadBuffer.mapAsync(GPUMapMode.READ);
     const f32 = new Float32Array(this.debugReadBuffer.getMappedRange());
-    console.log(f32);
     this.debugReadBuffer.unmap();
   }
 
-  onUpdateCamera() {
-    if (!this.camera) return;
+  onUpdateCamera = () => {
     this.requestReset();
+  };
 
-    cameraMovementInfoStore.update((v) => {
-      v.position = this.camera.position.clone();
-      if (this.camera instanceof Orbit) {
-        v.target = this.camera.target.clone();
-      }
-      return v;
-    });
-  }
-
-  updateConfig() {
+  updateConfig = () => {
     this.requestReset();
 
     this.device.queue.writeBuffer(
@@ -287,54 +249,6 @@ export class ReSTIRPTSegment {
       0,
       this.configManager.getOptionsBuffer()
     );
-
-    // if envmap scale changed, we'll need to recompute lightsCDFBuffer
-    let envmap = this.scene?.envmap;
-    let updateEnvInfoBuffer = false;
-
-    if (envmap && this.configManager.options.ENVMAP_SCALE != envmap.scale) {
-      envmap.scale = this.configManager.options.ENVMAP_SCALE;
-
-      this.bvh!.computeLightPickProbabilities();
-      let {
-        trianglesBufferData,
-        trianglesBufferDataByteSize,
-        BVHBufferData,
-        BVHBufferDataByteSize
-      } = this.bvh!.getBufferData();
-      let { LightsCDFBufferData, LightsCDFBufferDataByteSize } = this.bvh!.getLightsCDFBufferData();
-
-      this.device.queue.writeBuffer(this.lightsCDFBuffer!, 0, LightsCDFBufferData);
-      this.device.queue.writeBuffer(this.trianglesBuffer!, 0, trianglesBufferData);
-      this.device.queue.writeBuffer(this.bvhBuffer!, 0, BVHBufferData);
-      // both .scale and .lightSourcePickProb of the envmap struct changed
-      updateEnvInfoBuffer = true;
-    }
-
-    if (
-      envmap &&
-      (this.configManager.options.ENVMAP_ROTX != envmap.rotX ||
-        this.configManager.options.ENVMAP_ROTY != envmap.rotY)
-    ) {
-      envmap.rotX = this.configManager.options.ENVMAP_ROTX;
-      envmap.rotY = this.configManager.options.ENVMAP_ROTY;
-      updateEnvInfoBuffer = true;
-    }
-
-    if (envmap && updateEnvInfoBuffer) {
-      envmap.updateEnvmapInfoBuffer(this.device, this.envmapInfoBuffer!);
-    }
-
-    if (
-      envmap &&
-      this.configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION !=
-        this.configManager.prevOptions.ENVMAP_USE_COMPENSATED_DISTRIBUTION
-    ) {
-      let envmapDistributionBuffer = this.configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
-        ? envmap.compensatedDistribution.getBufferData()
-        : envmap.distribution.getBufferData();
-      this.device.queue.writeBuffer(this.envmapPC2DBuffer!, 0, envmapDistributionBuffer);
-    }
 
     if (this.SPATIAL_REUSE_PASSES != this.configManager.options.ReSTIR.RESTIR_SR_PASS_COUNT) {
       this.SPATIAL_REUSE_PASSES = this.configManager.options.ReSTIR.RESTIR_SR_PASS_COUNT;
@@ -347,155 +261,55 @@ export class ReSTIRPTSegment {
     ) {
       this.requestShaderCompilation = true;
     }
-  }
+  };
 
-  getFocusDistanceFromScreenPoint(point: Vector2): number {
-    if (!this.canvasSize || !this.bvh) {
-      return -1;
-    }
-
-    let ray = this.camera.screenPointToRay(point, this.canvasSize);
-    let ires = this.bvh.intersectRay(ray.ro, ray.rd);
-
-    if (ires.hit) {
-      return this.camera.getFocusDistanceFromIntersectionPoint(ires.hitPoint);
-    }
-
-    return -1;
-  }
-
-  async updateScene(scene: C2Scene) {
+  updateScene(sceneDataManager: SceneDataManager) {
     this.requestReset();
 
     // if we have a new envmap, we might have to require a shader re-compilation
     this.requestShaderCompilation = true;
-    this.scene = scene;
+    this.sceneDataManager = sceneDataManager;
 
-    // TODO: this function might take really long to complete,
-    // we may want to async this and do it over a set of frames
-    // rather than all at once
-    this.textureArraySegment.update(scene.materials);
-
-    if (this.camera) {
-      this.camera.dispose();
-    }
-    this.camera = scene.camera;
-    this.camera.e.addEventListener('change', this.onUpdateCamera.bind(this));
+    let camera = sceneDataManager.camera;
+    camera.e.addEventListener('change', this.onUpdateCamera);
     this.onUpdateCamera();
 
-    const bvh = new BVH(scene);
-    this.bvh = bvh;
-    this.bvh.computeLightPickProbabilities();
-
-    let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
-      bvh.getBufferData();
-
-    let { LightsCDFBufferData, LightsCDFBufferDataByteSize } = bvh.getLightsCDFBufferData();
-
-    // ********* important **********
-    // we can't, unfortunately, use .flat() like in the commented line below.
-    // When materials want to save a -1 integer as a float value,
-    // they're making a bit-cast that results in bit values: 255 255 255 255
-    // which is interpreted as a NaN when reading it as float.
-    // .flat(), apparently, when copying NaN floats **sometimes** doesn't copy the floats
-    // with the bit representation that I choose, but instead uses the standard/javascript
-    // bit representation of NaN values which is: 0, 0, 192, 127
-    // you can check it by typing: new Uint8Array(new Float32Array([NaN]).buffer)
-    // in the console. I should have become a painter rather than dealing with this madness
-    // ********* important **********
-    // let materialsBufferData = new Float32Array(scene.materials.map((mat) => mat.getFloatsArray()).flat());
-    let combinedArray: number[] = [];
-    scene.materials.forEach((mat) => {
-      let fa = mat.getFloatsArray();
-      fa.forEach((v) => combinedArray.push(v));
-    });
-    let materialsBufferData = new Float32Array(combinedArray);
-
-    let envmap = scene.envmap || new Envmap();
-    // this will, unfortunately, trigger the updateConfig() function in the next javascript tick
-    // we should hopefully be able to fix this completely in svelte 5
-    this.configManager.setStoreProperty({
-      ENVMAP_SCALE: envmap.scale,
-      ENVMAP_ROTX: envmap.rotX,
-      ENVMAP_ROTY: envmap.rotY,
-      shaderConfig: {
-        ...this.configManager.options.shaderConfig,
-        HAS_ENVMAP: scene.envmap ? true : false
-      }
-    });
-    let envmapDistributionBuffer = this.configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
-      ? envmap.compensatedDistribution.getBufferData()
-      : envmap.distribution.getBufferData();
-
-    let envmapDistributionArrayBuffer = this.configManager.options
-      .ENVMAP_USE_COMPENSATED_DISTRIBUTION
-      ? envmap.compensatedDistribution.getArrayData()
-      : envmap.distribution.getArrayData();
-    let { texture: envmapTexture } = envmap.getTexture(this.device);
-
-    this.trianglesBuffer = this.device.createBuffer({
-      size: trianglesBufferDataByteSize,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-    });
-
-    this.materialsBuffer = this.device.createBuffer({
-      size: materialsBufferData.byteLength /* determined with offset computer */,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-    });
-
-    this.bvhBuffer = this.device.createBuffer({
-      size: BVHBufferDataByteSize /* determined with offset computer */,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-    });
-
-    this.lightsCDFBuffer = this.device.createBuffer({
-      size: LightsCDFBufferDataByteSize /* determined with offset computer */,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-    });
-
-    this.envmapPC2DBuffer = this.device.createBuffer({
-      size: envmapDistributionBuffer.byteLength,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-
-    let envmapPC2DArrayBuffer = this.device.createBuffer({
-      size: envmapDistributionArrayBuffer.byteLength,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-    });
-
-    this.envmapInfoBuffer = envmap.createEnvmapInfoBuffer(this.device);
-
-    this.device.queue.writeBuffer(this.trianglesBuffer, 0, trianglesBufferData);
-    this.device.queue.writeBuffer(this.materialsBuffer, 0, materialsBufferData);
-    this.device.queue.writeBuffer(this.bvhBuffer, 0, BVHBufferData);
-    this.device.queue.writeBuffer(this.lightsCDFBuffer, 0, LightsCDFBufferData);
-    this.device.queue.writeBuffer(this.envmapPC2DBuffer, 0, envmapDistributionBuffer);
-    this.device.queue.writeBuffer(envmapPC2DArrayBuffer, 0, envmapDistributionArrayBuffer);
+    let {
+      trianglesBuffer,
+      materialsBuffer,
+      bvhBuffer,
+      lightsCDFBuffer,
+      envmapPC2DArrayBuffer,
+      envmapPC2DBuffer,
+      envmapTexture,
+      envmapInfoBuffer,
+      textureArraySegment
+    } = this.sceneDataManager;
 
     // we need to re-create the bindgroup
     this.bindGroup3 = this.device.createBindGroup({
       label: 'compute bindgroup - scene data',
       layout: this.bindGroupLayouts[3],
       entries: [
-        { binding: 0, resource: { buffer: this.trianglesBuffer! } },
-        { binding: 1, resource: { buffer: this.materialsBuffer! } },
-        { binding: 2, resource: { buffer: this.bvhBuffer! } },
-        { binding: 3, resource: { buffer: this.lightsCDFBuffer! } },
+        { binding: 0, resource: { buffer: trianglesBuffer! } },
+        { binding: 1, resource: { buffer: materialsBuffer! } },
+        { binding: 2, resource: { buffer: bvhBuffer! } },
+        { binding: 3, resource: { buffer: lightsCDFBuffer! } },
         { binding: 4, resource: { buffer: envmapPC2DArrayBuffer } },
-        { binding: 5, resource: { buffer: this.envmapPC2DBuffer! } },
+        { binding: 5, resource: { buffer: envmapPC2DBuffer! } },
         { binding: 6, resource: envmapTexture.createView() },
-        { binding: 7, resource: { buffer: this.envmapInfoBuffer } },
+        { binding: 7, resource: { buffer: envmapInfoBuffer } },
         {
           binding: 8,
-          resource: this.textureArraySegment.textures128.createView({ dimension: '2d-array' })
+          resource: textureArraySegment.textures128.createView({ dimension: '2d-array' })
         },
         {
           binding: 9,
-          resource: this.textureArraySegment.textures512.createView({ dimension: '2d-array' })
+          resource: textureArraySegment.textures512.createView({ dimension: '2d-array' })
         },
         {
           binding: 10,
-          resource: this.textureArraySegment.textures1024.createView({ dimension: '2d-array' })
+          resource: textureArraySegment.textures1024.createView({ dimension: '2d-array' })
         },
         {
           binding: 11,
@@ -527,11 +341,13 @@ export class ReSTIRPTSegment {
   }
 
   createBindGroup1() {
+    if (!this.sceneDataManager) return;
+
     this.bindGroup1 = this.device.createBindGroup({
       label: 'compute bindgroup - camera struct',
       layout: this.bindGroupLayouts[1],
       entries: [
-        { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
+        { binding: 0, resource: { buffer: this.sceneDataManager.camera.cameraUniformBuffer } },
         { binding: 1, resource: { buffer: this.sequenceUniformBuffer } },
         { binding: 2, resource: { buffer: this.restirRandomsUniformBuffer } },
         { binding: 3, resource: { buffer: this.configUniformBuffer } },
@@ -576,12 +392,12 @@ export class ReSTIRPTSegment {
     if (this.restirPassBuffer1) this.restirPassBuffer1.destroy();
     if (this.restirPassBuffer2) this.restirPassBuffer2.destroy();
     this.restirPassBuffer1 = this.device.createBuffer({
-      label: 'restir pass data buffer',
+      label: 'restir pass data 1',
       size: restirPassInputByteLength,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
     this.restirPassBuffer2 = this.device.createBuffer({
-      label: 'restir pass data buffer',
+      label: 'restir pass data 2',
       size: restirPassInputByteLength,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
     });
@@ -592,6 +408,10 @@ export class ReSTIRPTSegment {
   }
 
   updateBindGroup0() {
+    // since we're calling updateConfig() in the constructor, it'll also trigger this call,
+    // reason why we have to make the existence check... we need to refactor this logic
+    if (!this.restirPassBuffer1) return;
+
     this.bindGroup0 = [];
     this.bindGroup0.push(
       this.device.createBindGroup({
@@ -721,31 +541,6 @@ export class ReSTIRPTSegment {
     centralStatusMessage.set('');
   }
 
-  checkTilePerformance(tileSeq: TileSequence) {
-    tileSeq.performanceHistoryCount = 3;
-
-    let avgPerf = tileSeq.getAveragePerformance();
-
-    // let arrS = tileSeq.performanceHistory.map((v) => v.toFixed(2)).join(', ');
-    // console.log(arrS);
-
-    if (avgPerf === 0) return;
-    if (!tileSeq.isNewLine()) return;
-
-    if (avgPerf < 80 && tileSeq.canTileSizeBeIncreased()) {
-      if (tileSeq.canTileSizeBeIncreased()) {
-        // console.log('increase', avgPerf);
-        tileSeq.increaseTileSize(true);
-      }
-    }
-    if (avgPerf > 150 && tileSeq.canTileSizeBeDecreased()) {
-      if (tileSeq.canTileSizeBeDecreased()) {
-        // console.log('decrease', avgPerf);
-        tileSeq.decreaseTileSize();
-      }
-    }
-  }
-
   saveTilePerformance(
     tileSeq: TileSequence,
     passPerformance: ComputePassPerformance,
@@ -815,7 +610,6 @@ export class ReSTIRPTSegment {
 
     if (this.renderState.state == 'compute') {
       let tile = this.computeTile.getNextTile(() => {});
-      this.checkTilePerformance(this.computeTile);
       this.updateTile(tile);
 
       // work group size in the shader is set to 8,8
@@ -858,7 +652,7 @@ export class ReSTIRPTSegment {
 
       this.saveTilePerformance(this.computeTile, this.passPerformance, endTime - startTime);
 
-      if (this.computeTile.isTileFinished()) {
+      if (this.computeTile.isLastTileBeforeRestart()) {
         let wasLastInitialCandidate =
           this.renderState.icIndex ==
           this.configManager.options.ReSTIR.RESTIR_INITIAL_CANDIDATES - 1;
@@ -883,7 +677,7 @@ export class ReSTIRPTSegment {
     if (this.renderState.state == 'sr') {
       let isLastSRPass = this.renderState.srIndex == this.SPATIAL_REUSE_PASSES - 1;
       let tile = this.spatialResampleTile.getNextTile(() => {});
-      this.checkTilePerformance(this.spatialResampleTile);
+      let isLastTileBeforeRestart = this.spatialResampleTile.isLastTileBeforeRestart();
       this.updateTile(tile);
 
       // work group size in the shader is set to 8,8
@@ -908,7 +702,7 @@ export class ReSTIRPTSegment {
       srPass.end();
       this.passPerformance.resolve(encoder);
 
-      if (this.spatialResampleTile.isTileFinished() && isLastSRPass) {
+      if (isLastTileBeforeRestart && isLastSRPass) {
         // this segment also copies the content of one reservoir buffer to the other reservoir buffer
         // this is necessary because the next iteration of RestirPTShader will always use restirPassBuffer1
         this.reservoirToRadSegment.setBuffers(
@@ -919,9 +713,6 @@ export class ReSTIRPTSegment {
           this.canvasSizeUniformBuffer
         );
         this.reservoirToRadSegment.addPass(encoder, this.canvasSize);
-
-        this.renderState.state = 'compute-start';
-        samplesInfo.increment();
       }
 
       encoder.copyBufferToBuffer(
@@ -943,11 +734,46 @@ export class ReSTIRPTSegment {
 
       this.saveTilePerformance(this.spatialResampleTile, this.passPerformance, endTime - startTime);
 
-      if (this.spatialResampleTile.isTileFinished() && !isLastSRPass) {
-        this.renderState.srIndex++;
-        this.updateReSTIRRandoms();
-        this.updatePassInfoBuffer();
+      if (isLastTileBeforeRestart) {
+        // Re-evaluate this condition after the await, just in case a config change occurred
+        // for spatial_reuse_passes count or in general to prevent potential race conditions
+        // caused by having to await on the this.device.queue.onSumbitted... call
+        // const isLastSRPass_reEvaluated = this.renderState.srIndex === this.SPATIAL_REUSE_PASSES - 1;
+
+        // if (isLastSRPass_reEvaluated) {
+        if (isLastSRPass) {
+          this.renderState.state = 'compute-start';
+          samplesInfo.increment();
+        } else {
+          this.renderState.srIndex++;
+          this.updateReSTIRRandoms();
+          this.updatePassInfoBuffer();
+        }
       }
     }
+  }
+
+  dispose() {
+    this.resetSegment.dispose();
+
+    this.canvasSizeUniformBuffer.destroy();
+    this.passInfoUniformBuffer.destroy();
+    this.sequenceUniformBuffer.destroy();
+    this.restirRandomsUniformBuffer.destroy();
+    this.configUniformBuffer.destroy();
+    this.tileUniformBuffer.destroy();
+    this.debugBuffer.destroy();
+    this.debugPixelTargetBuffer.destroy();
+    this.debugReadBuffer.destroy();
+
+    this.restirPassBuffer1.destroy();
+    this.restirPassBuffer2.destroy();
+
+    this.configManager.e.removeEventListener('config-update', this.updateConfig);
+    this.sceneDataManager?.camera.e.removeEventListener('change', this.onUpdateCamera);
+
+    // these two are external !! they haven't been created here
+    // this.workBuffer
+    // this.samplesCountBuffer
   }
 }

@@ -1,6 +1,7 @@
 import { get } from 'svelte/store';
 import { configOptions } from '../routes/stores/main';
 import { EventHandler } from './eventHandler';
+import { getChangedKeys } from './utils/getChangedKeys';
 
 export enum MIS_TYPE {
   BRDF_ONLY = 0,
@@ -79,6 +80,10 @@ export class ConfigManager {
     configOptions.subscribe((value) => {
       this.options = value;
       this.prevOptions = configOptions.getOldValue();
+
+      // used for debugging
+      // console.log(getChangedKeys(this.options, this.prevOptions));
+
       this.e.fireEvent('config-update', this.options);
     });
   }

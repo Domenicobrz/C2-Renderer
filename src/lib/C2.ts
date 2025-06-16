@@ -16,10 +16,11 @@ import { get } from 'svelte/store';
 import { tick } from './utils/tick';
 import { getDeviceAndContext } from './webgpu-utils/getDeviceAndContext';
 import { ReSTIRPTSegment } from './segment/integrators/ReSTIRPTSegment';
-import { ConfigManager, type IntegratorType } from './config';
+import { type IntegratorType } from './config';
 import type { LUTManager } from './managers/lutManager';
 import { loadCommonAssets } from './loadCommonAssets';
 import { once } from './utils/once';
+import { SceneDataManager } from './sceneManager';
 
 export type Integrator = ComputeSegment | ReSTIRPTSegment;
 
@@ -27,6 +28,7 @@ let computeSegment: Integrator;
 let renderSegment: RenderSegment;
 let previewSegment: PreviewSegment;
 let scene: C2Scene;
+let sceneDataManager: SceneDataManager;
 let canvasSize = new Vector2(-1, -1);
 
 export const globals: {
@@ -91,9 +93,14 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   await loadCommonAssets();
 
   centralStatusMessage.set('creating scene');
-  // passed down to both compute and render segment
+  await tick(); // will give us the chance of showing the message above
   scene = await createScene();
   scene.camera.setCanvasContainer(canvas.parentElement as HTMLDivElement);
+  centralStatusMessage.set('processing bvh and materials');
+  await tick(); // will give us the chance of showing the message above
+  sceneDataManager = new SceneDataManager(globals.device);
+  sceneDataManager.update(scene);
+  centralStatusMessage.set('');
 
   renderSegment = new RenderSegment(context, presentationFormat);
   renderSegment.updateScene(scene);
@@ -121,7 +128,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
 
   return {
     getFocusDistanceFromScreenPoint: (point: Vector2) => {
-      return computeSegment.getFocusDistanceFromScreenPoint(point);
+      return sceneDataManager.getFocusDistanceFromScreenPoint(point, canvasSize);
     },
     restart: () => {
       if (computeSegment instanceof ReSTIRPTSegment) {
@@ -153,14 +160,14 @@ function onCanvasResize(
 
   const input = new Float32Array(canvasSize.x * canvasSize.y * 4);
   globals.buffers.radianceBuffer = device.createBuffer({
-    label: 'work buffer',
+    label: 'radiance',
     size: input.byteLength,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
   });
   device.queue.writeBuffer(globals.buffers.radianceBuffer, 0, input);
 
   globals.buffers.samplesCountBuffer = device.createBuffer({
-    label: 'work buffer',
+    label: 'samples count',
     size: input.byteLength,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
   });
@@ -262,12 +269,18 @@ async function switchIntegrator(integratorType: IntegratorType) {
     cancelAnimationFrame(globals.animationFrameHandle);
   }
 
+  if (computeSegment) {
+    computeSegment.dispose();
+  }
+
   if (integratorType == 'ReSTIR') {
     computeSegment = new ReSTIRPTSegment();
   }
   if (integratorType == 'Simple-path-trace') {
     computeSegment = new ComputeSegment();
   }
+
+  computeSegment.updateScene(sceneDataManager);
 
   onCanvasResize(
     globals.canvas,
@@ -277,11 +290,6 @@ async function switchIntegrator(integratorType: IntegratorType) {
     renderSegment,
     previewSegment
   );
-
-  centralStatusMessage.set('processing bvh and materials');
-  await tick(); // will give us the chance of showing the message above
-  await computeSegment.updateScene(scene); // I don't like this...
-  centralStatusMessage.set('');
 
   computeSegment.setDebugPixelTarget(368, 313);
 

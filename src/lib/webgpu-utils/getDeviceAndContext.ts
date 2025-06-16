@@ -69,14 +69,6 @@ export async function getDeviceAndContext(canvas: HTMLCanvasElement) {
       throw new Error(errorMessage); // Should not happen if device is fine, but good practice
     }
 
-    console.log('Device obtained with limits:');
-    console.log(
-      ` - Max Storage Buffer Binding Size: ${
-        device.limits.maxStorageBufferBindingSize / (1024 * 1024)
-      } MB`
-    );
-    console.log(` - Max Buffer Size: ${device.limits.maxBufferSize / (1024 * 1024)} MB`);
-
     return { device, context, adapter };
   } catch (err) {
     let finalErrorMessage = errorMessage;

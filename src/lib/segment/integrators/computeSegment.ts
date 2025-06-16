@@ -1,26 +1,17 @@
-import { BVH } from '$lib/bvh/bvh';
 import { getComputeShader } from '$lib/shaders/integrators/Simple-path-race/computeShader';
-import { Matrix4, Vector2, Vector3 } from 'three';
-import {
-  cameraMovementInfoStore,
-  centralStatusMessage,
-  samplesInfo
-} from '../../../routes/stores/main';
+import { Vector2 } from 'three';
+import { centralStatusMessage, samplesInfo } from '../../../routes/stores/main';
 import { ResetSegment } from './../resetSegment';
 import { TileSequence, type Tile } from '$lib/tile';
 import { ComputePassPerformance } from '$lib/webgpu-utils/passPerformance';
 import { SAMPLER_TYPE, SPTConfigManager } from '$lib/config';
-import type { C2Scene } from '$lib/createScene';
-import { Envmap } from '$lib/envmap/envmap';
-import { Camera } from '$lib/controls/Camera';
 import { globals } from '$lib/C2';
-import { TextureArraysSegment } from './../textureArraysSegment';
-import { Orbit } from '$lib/controls/Orbit';
 import { getComputeBindGroupLayout } from '$lib/webgpu-utils/getBindGroupLayout';
 import { HaltonSampler } from '$lib/samplers/Halton';
 import { UniformSampler } from '$lib/samplers/Uniform';
 import { BlueNoiseSampler } from '$lib/samplers/BlueNoise';
 import { CustomR2Sampler } from '$lib/samplers/CustomR2';
+import type { SceneDataManager } from '$lib/sceneManager';
 
 export class ComputeSegment {
   public passPerformance: ComputePassPerformance;
@@ -31,8 +22,6 @@ export class ComputeSegment {
   private bindGroupLayouts: GPUBindGroupLayout[];
   private layout: GPUPipelineLayout;
   private configManager = new SPTConfigManager();
-
-  private textureArraySegment: TextureArraysSegment = new TextureArraysSegment();
 
   private bindGroup0: GPUBindGroup | null = null;
   private bindGroup1: GPUBindGroup | null = null;
@@ -52,20 +41,11 @@ export class ComputeSegment {
   private debugPixelTargetBuffer: GPUBuffer;
   private debugReadBuffer: GPUBuffer;
 
-  private trianglesBuffer: GPUBuffer | undefined;
-  private materialsBuffer: GPUBuffer | undefined;
-  private bvhBuffer: GPUBuffer | undefined;
-  private lightsCDFBuffer: GPUBuffer | undefined;
-  private envmapPC2DBuffer: GPUBuffer | undefined;
-  private envmapInfoBuffer: GPUBuffer | undefined;
-
   private resetSegment: ResetSegment;
 
   private requestShaderCompilation = false;
 
-  private scene: C2Scene | undefined;
-  private camera!: Camera;
-  private bvh: BVH | undefined;
+  private sceneDataManager: SceneDataManager | undefined;
 
   private haltonSampler = new HaltonSampler();
   private uniformSampler = new UniformSampler();
@@ -108,65 +88,53 @@ export class ComputeSegment {
 
     // create a typedarray to hold the values for the uniforms in JavaScript
     this.canvasSizeUniformBuffer = device.createBuffer({
+      label: 'canvas size uniform cs',
       size: 2 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
     // create a typedarray to hold the values for the uniforms in JavaScript
     this.randomsUniformBuffer = device.createBuffer({
+      label: 'randoms uniform cs',
       size: this.RANDOMS_BUFFER_COUNT * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
     this.configUniformBuffer = device.createBuffer({
+      label: 'config uniform cs',
       size: this.configManager.bufferSize,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
     this.tileUniformBuffer = device.createBuffer({
+      label: 'tile uniform cs',
       size: 4 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
     this.debugBufferSize = 100;
     this.debugBuffer = this.device.createBuffer({
+      label: 'debug cs',
       size: 4 * this.debugBufferSize,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC
     });
     this.debugPixelTargetBuffer = this.device.createBuffer({
+      label: 'debug pixel target cs',
       size: 4 * 2,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     this.debugReadBuffer = this.device.createBuffer({
+      label: 'debug red cs',
       size: 4 * this.debugBufferSize,
       usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST
     });
     this.setDebugPixelTarget(0, 0);
 
-    this.configManager.e.addEventListener('config-update', () => {
-      this.updateConfig();
-    });
+    this.configManager.e.addEventListener('config-update', this.updateConfig);
+    // initial config set
+    this.updateConfig();
 
     this.requestShaderCompilation = true;
-  }
-
-  dispose() {
-    this.textureArraySegment.dispose();
-    this.resetSegment.dispose();
-
-    this.canvasSizeUniformBuffer.destroy();
-    this.randomsUniformBuffer.destroy();
-    this.configUniformBuffer.destroy();
-    this.tileUniformBuffer.destroy();
-    this.debugBuffer.destroy();
-    this.debugPixelTargetBuffer.destroy();
-    this.debugReadBuffer.destroy();
-    this.trianglesBuffer?.destroy();
-    this.materialsBuffer?.destroy();
-    this.bvhBuffer?.destroy();
-    this.lightsCDFBuffer?.destroy();
-    this.envmapPC2DBuffer?.destroy();
-    this.envmapInfoBuffer?.destroy();
   }
 
   setDebugPixelTarget(x: number, y: number) {
@@ -209,20 +177,12 @@ export class ComputeSegment {
     this.debugReadBuffer.unmap();
   }
 
-  onUpdateCamera() {
-    if (!this.camera) return;
+  onUpdateCamera = () => {
     this.resetSamplesAndTile();
+  };
 
-    cameraMovementInfoStore.update((v) => {
-      v.position = this.camera.position.clone();
-      if (this.camera instanceof Orbit) {
-        v.target = this.camera.target.clone();
-      }
-      return v;
-    });
-  }
-
-  updateConfig() {
+  // arrow function to avoid this. binding for event listeners
+  updateConfig = () => {
     this.resetSamplesAndTile();
 
     this.device.queue.writeBuffer(
@@ -230,55 +190,7 @@ export class ComputeSegment {
       0,
       this.configManager.getOptionsBuffer()
     );
-
-    // if envmap scale changed, we'll need to recompute lightsCDFBuffer
-    let envmap = this.scene?.envmap;
-    let updateEnvInfoBuffer = false;
-
-    if (envmap && this.configManager.options.ENVMAP_SCALE != envmap.scale) {
-      envmap.scale = this.configManager.options.ENVMAP_SCALE;
-
-      this.bvh!.computeLightPickProbabilities();
-      let {
-        trianglesBufferData,
-        trianglesBufferDataByteSize,
-        BVHBufferData,
-        BVHBufferDataByteSize
-      } = this.bvh!.getBufferData();
-      let { LightsCDFBufferData, LightsCDFBufferDataByteSize } = this.bvh!.getLightsCDFBufferData();
-
-      this.device.queue.writeBuffer(this.lightsCDFBuffer!, 0, LightsCDFBufferData);
-      this.device.queue.writeBuffer(this.trianglesBuffer!, 0, trianglesBufferData);
-      this.device.queue.writeBuffer(this.bvhBuffer!, 0, BVHBufferData);
-      // both .scale and .lightSourcePickProb of the envmap struct changed
-      updateEnvInfoBuffer = true;
-    }
-
-    if (
-      envmap &&
-      (this.configManager.options.ENVMAP_ROTX != envmap.rotX ||
-        this.configManager.options.ENVMAP_ROTY != envmap.rotY)
-    ) {
-      envmap.rotX = this.configManager.options.ENVMAP_ROTX;
-      envmap.rotY = this.configManager.options.ENVMAP_ROTY;
-      updateEnvInfoBuffer = true;
-    }
-
-    if (envmap && updateEnvInfoBuffer) {
-      envmap.updateEnvmapInfoBuffer(this.device, this.envmapInfoBuffer!);
-    }
-
-    if (
-      envmap &&
-      this.configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION !=
-        this.configManager.prevOptions.ENVMAP_USE_COMPENSATED_DISTRIBUTION
-    ) {
-      let envmapDistributionBuffer = this.configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
-        ? envmap.compensatedDistribution.getBufferData()
-        : envmap.distribution.getBufferData();
-      this.device.queue.writeBuffer(this.envmapPC2DBuffer!, 0, envmapDistributionBuffer);
-    }
-  }
+  };
 
   updateTile(tile: Tile) {
     this.device.queue.writeBuffer(
@@ -288,163 +200,65 @@ export class ComputeSegment {
     );
   }
 
-  getFocusDistanceFromScreenPoint(point: Vector2): number {
-    if (!this.canvasSize || !this.bvh) {
-      return -1;
-    }
-
-    let ray = this.camera.screenPointToRay(point, this.canvasSize);
-    let ires = this.bvh.intersectRay(ray.ro, ray.rd);
-
-    if (ires.hit) {
-      return this.camera.getFocusDistanceFromIntersectionPoint(ires.hitPoint);
-    }
-
-    return -1;
-  }
-
-  async updateScene(scene: C2Scene) {
+  updateScene(sceneDataManager: SceneDataManager) {
     this.resetSamplesAndTile();
+
+    this.sceneDataManager = sceneDataManager;
+
     // if we have a new envmap, we might have to require a shader re-compilation
     this.requestShaderCompilation = true;
-    this.scene = scene;
 
-    // TODO: this function might take really long to complete,
-    // we may want to async this and do it over a set of frames
-    // rather than all at once
-    this.textureArraySegment.update(scene.materials);
-
-    if (this.camera) {
-      this.camera.dispose();
-    }
-    this.camera = scene.camera;
-    this.camera.e.addEventListener('change', this.onUpdateCamera.bind(this));
+    let camera = sceneDataManager.camera;
+    camera.e.addEventListener('change', this.onUpdateCamera);
     this.onUpdateCamera();
 
     this.bindGroup1 = this.device.createBindGroup({
       label: 'compute bindgroup - camera struct',
       layout: this.bindGroupLayouts[1],
       entries: [
-        { binding: 0, resource: { buffer: this.camera.cameraUniformBuffer } },
+        { binding: 0, resource: { buffer: camera.cameraUniformBuffer } },
         { binding: 1, resource: { buffer: this.randomsUniformBuffer } },
         { binding: 2, resource: { buffer: this.configUniformBuffer } },
         { binding: 3, resource: { buffer: this.tileUniformBuffer } }
       ]
     });
 
-    const bvh = new BVH(scene);
-    this.bvh = bvh;
-    this.bvh.computeLightPickProbabilities();
-
-    let { trianglesBufferData, trianglesBufferDataByteSize, BVHBufferData, BVHBufferDataByteSize } =
-      bvh.getBufferData();
-
-    let { LightsCDFBufferData, LightsCDFBufferDataByteSize } = bvh.getLightsCDFBufferData();
-
-    // ********* important **********
-    // we can't, unfortunately, use .flat() like in the commented line below.
-    // When materials want to save a -1 integer as a float value,
-    // they're making a bit-cast that results in bit values: 255 255 255 255
-    // which is interpreted as a NaN when reading it as float.
-    // .flat(), apparently, when copying NaN floats **sometimes** doesn't copy the floats
-    // with the bit representation that I choose, but instead uses the standard/javascript
-    // bit representation of NaN values which is: 0, 0, 192, 127
-    // you can check it by typing: new Uint8Array(new Float32Array([NaN]).buffer)
-    // in the console. I should have become a painter rather than dealing with this madness
-    // ********* important **********
-    // let materialsBufferData = new Float32Array(scene.materials.map((mat) => mat.getFloatsArray()).flat());
-    let combinedArray: number[] = [];
-    scene.materials.forEach((mat) => {
-      let fa = mat.getFloatsArray();
-      fa.forEach((v) => combinedArray.push(v));
-    });
-    let materialsBufferData = new Float32Array(combinedArray);
-
-    let envmap = scene.envmap || new Envmap();
-    // this will, unfortunately, trigger the updateConfig() function in the next javascript tick
-    // we should hopefully be able to fix this completely in svelte 5
-    this.configManager.setStoreProperty({
-      ENVMAP_SCALE: envmap.scale,
-      ENVMAP_ROTX: envmap.rotX,
-      ENVMAP_ROTY: envmap.rotY,
-      shaderConfig: {
-        ...this.configManager.options.shaderConfig,
-        HAS_ENVMAP: scene.envmap ? true : false
-      }
-    });
-    let envmapDistributionBuffer = this.configManager.options.ENVMAP_USE_COMPENSATED_DISTRIBUTION
-      ? envmap.compensatedDistribution.getBufferData()
-      : envmap.distribution.getBufferData();
-
-    let envmapDistributionArrayBuffer = this.configManager.options
-      .ENVMAP_USE_COMPENSATED_DISTRIBUTION
-      ? envmap.compensatedDistribution.getArrayData()
-      : envmap.distribution.getArrayData();
-    let { texture: envmapTexture } = envmap.getTexture(this.device);
-
-    this.trianglesBuffer = this.device.createBuffer({
-      size: trianglesBufferDataByteSize,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-    });
-
-    this.materialsBuffer = this.device.createBuffer({
-      size: materialsBufferData.byteLength /* determined with offset computer */,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-    });
-
-    this.bvhBuffer = this.device.createBuffer({
-      size: BVHBufferDataByteSize /* determined with offset computer */,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-    });
-
-    this.lightsCDFBuffer = this.device.createBuffer({
-      size: LightsCDFBufferDataByteSize /* determined with offset computer */,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-    });
-
-    this.envmapPC2DBuffer = this.device.createBuffer({
-      size: envmapDistributionBuffer.byteLength,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-
-    let envmapPC2DArrayBuffer = this.device.createBuffer({
-      size: envmapDistributionArrayBuffer.byteLength,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
-    });
-
-    this.envmapInfoBuffer = envmap.createEnvmapInfoBuffer(this.device);
-
-    this.device.queue.writeBuffer(this.trianglesBuffer, 0, trianglesBufferData);
-    this.device.queue.writeBuffer(this.materialsBuffer, 0, materialsBufferData);
-    this.device.queue.writeBuffer(this.bvhBuffer, 0, BVHBufferData);
-    this.device.queue.writeBuffer(this.lightsCDFBuffer, 0, LightsCDFBufferData);
-    this.device.queue.writeBuffer(this.envmapPC2DBuffer, 0, envmapDistributionBuffer);
-    this.device.queue.writeBuffer(envmapPC2DArrayBuffer, 0, envmapDistributionArrayBuffer);
+    let {
+      trianglesBuffer,
+      materialsBuffer,
+      bvhBuffer,
+      lightsCDFBuffer,
+      envmapPC2DArrayBuffer,
+      envmapPC2DBuffer,
+      envmapTexture,
+      envmapInfoBuffer,
+      textureArraySegment
+    } = this.sceneDataManager;
 
     // we need to re-create the bindgroup
     this.bindGroup3 = this.device.createBindGroup({
       label: 'compute bindgroup - scene data',
       layout: this.bindGroupLayouts[3],
       entries: [
-        { binding: 0, resource: { buffer: this.trianglesBuffer! } },
-        { binding: 1, resource: { buffer: this.materialsBuffer! } },
-        { binding: 2, resource: { buffer: this.bvhBuffer! } },
-        { binding: 3, resource: { buffer: this.lightsCDFBuffer! } },
+        { binding: 0, resource: { buffer: trianglesBuffer! } },
+        { binding: 1, resource: { buffer: materialsBuffer! } },
+        { binding: 2, resource: { buffer: bvhBuffer! } },
+        { binding: 3, resource: { buffer: lightsCDFBuffer! } },
         { binding: 4, resource: { buffer: envmapPC2DArrayBuffer } },
-        { binding: 5, resource: { buffer: this.envmapPC2DBuffer! } },
+        { binding: 5, resource: { buffer: envmapPC2DBuffer! } },
         { binding: 6, resource: envmapTexture.createView() },
-        { binding: 7, resource: { buffer: this.envmapInfoBuffer } },
+        { binding: 7, resource: { buffer: envmapInfoBuffer } },
         {
           binding: 8,
-          resource: this.textureArraySegment.textures128.createView({ dimension: '2d-array' })
+          resource: textureArraySegment.textures128.createView({ dimension: '2d-array' })
         },
         {
           binding: 9,
-          resource: this.textureArraySegment.textures512.createView({ dimension: '2d-array' })
+          resource: textureArraySegment.textures512.createView({ dimension: '2d-array' })
         },
         {
           binding: 10,
-          resource: this.textureArraySegment.textures1024.createView({ dimension: '2d-array' })
+          resource: textureArraySegment.textures1024.createView({ dimension: '2d-array' })
         },
         {
           binding: 11,
@@ -619,5 +433,20 @@ export class ComputeSegment {
     // Finish encoding and submit the commands
     const computeCommandBuffer = encoder.finish();
     this.device.queue.submit([computeCommandBuffer]);
+  }
+
+  dispose() {
+    this.resetSegment.dispose();
+
+    this.canvasSizeUniformBuffer.destroy();
+    this.randomsUniformBuffer.destroy();
+    this.configUniformBuffer.destroy();
+    this.tileUniformBuffer.destroy();
+    this.debugBuffer.destroy();
+    this.debugPixelTargetBuffer.destroy();
+    this.debugReadBuffer.destroy();
+
+    this.configManager.e.removeEventListener('config-update', this.updateConfig);
+    this.sceneDataManager?.camera.e.removeEventListener('change', this.onUpdateCamera);
   }
 }

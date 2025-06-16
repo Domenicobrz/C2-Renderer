@@ -43,11 +43,13 @@ export class RenderTextureSegment {
     });
 
     this.useTextureArrayUniform = device.createBuffer({
+      label: 'use texture array uniform',
       size: 1 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
     this.textureArrayIndexUniform = device.createBuffer({
+      label: 'texture texture index uniform',
       size: 1 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });

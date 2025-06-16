@@ -10,21 +10,35 @@ export type Tile = {
   h: number;
 };
 
+type TilePeformanceRequirements = {
+  changeTileSizeOnNewLineOnly: boolean;
+  performanceHistoryCount: number;
+  // number of milliseconds after which we'll decrease the tile size
+  avgPerfToDecrease: number;
+  // number of milliseconds under which we'll increase the tile size
+  avgPerfToIncrease: number;
+};
+
 export class TileSequence {
   private canvasSize: Vector2 = new Vector2(0, 0);
   private tile: Tile = { x: 0, y: 0, w: 0, h: 0 };
   // used for both increments and decrements
   private tileIncrementCount = 0;
   private forceMaxTileSize: boolean = false;
+  private requestedRestart: boolean = true;
 
   public performanceHistoryCount = 15;
   public performanceHistory: number[] = [];
 
-  constructor() {
+  constructor(private performanceRequirements?: TilePeformanceRequirements) {
     let configManager = new ConfigManager();
     configManager.e.addEventListener('config-update', (options: ConfigOptions) => {
       this.forceMaxTileSize = options.forceMaxTileSize;
     });
+
+    if (performanceRequirements?.performanceHistoryCount) {
+      this.performanceHistoryCount = performanceRequirements?.performanceHistoryCount;
+    }
   }
 
   saveComputationPerformance(value: number) {
@@ -153,11 +167,57 @@ export class TileSequence {
     samplesInfo.setTileSize(`${sizex} x ${sizey}`);
     // we decided tilesize will be a multiple of 8
     this.tile = { x: this.canvasSize.x, y: this.canvasSize.y, w: sizex, h: sizey };
+    // ^^^^^^^^^^^^^^^^^^ this line should be useless now ^^^^^^^^^^^^^^
+    // ^^^^^^^^^^^^^^^^^^ this line should be useless now ^^^^^^^^^^^^^^
+    // ^^^^^^^^^^^^^^^^^^ this line should be useless now ^^^^^^^^^^^^^^
+    this.requestedRestart = true;
 
     this.performanceHistory = [];
   }
 
+  performanceBasedUpdates() {
+    let { performanceRequirements } = this;
+    if (!performanceRequirements) return;
+    let { avgPerfToDecrease, avgPerfToIncrease, changeTileSizeOnNewLineOnly } =
+      performanceRequirements;
+
+    let avgPerf = this.getAveragePerformance();
+
+    if (avgPerf === 0) return;
+    if (changeTileSizeOnNewLineOnly && !this.isNewLine()) return;
+
+    if (avgPerf < avgPerfToIncrease && this.canTileSizeBeIncreased()) {
+      if (this.canTileSizeBeIncreased()) {
+        this.increaseTileSize(true);
+      }
+    }
+    if (avgPerf > avgPerfToDecrease && this.canTileSizeBeDecreased()) {
+      if (this.canTileSizeBeDecreased()) {
+        this.decreaseTileSize();
+      }
+    }
+  }
+
   getNextTile(onTileStart: () => void) {
+    if (this.requestedRestart) {
+      this.requestedRestart = false;
+      this.tile.x = 0;
+      this.tile.y = 0;
+      onTileStart();
+
+      // we'll have to change tile size based on performance
+      // *before* establishing if this is the last tile before restart
+      this.performanceBasedUpdates();
+
+      // if the tile covers the entire screen, on the next call request again a re-start
+      if (this.isLastTileBeforeRestart()) {
+        this.requestedRestart = true;
+      }
+
+      return this.tile;
+    }
+
+    // if we got here, the previous tile wasn't the last one before restarting
     this.tile.x += this.tile.w;
 
     if (this.tile.x >= this.canvasSize.x) {
@@ -165,10 +225,12 @@ export class TileSequence {
       this.tile.y += this.tile.h;
     }
 
-    if (this.tile.y >= this.canvasSize.y) {
-      this.tile.x = 0;
-      this.tile.y = 0;
-      onTileStart();
+    // we'll have to change tile size based on performance
+    // *before* establishing if this is the last tile before restart
+    this.performanceBasedUpdates();
+
+    if (this.isLastTileBeforeRestart()) {
+      this.requestedRestart = true;
     }
 
     return this.tile;
@@ -186,7 +248,7 @@ export class TileSequence {
   }
 
   // TODO: this is sort of a duplicate of the function above
-  isTileFinished() {
+  isLastTileBeforeRestart() {
     let w = this.tile.w;
     let h = this.tile.h;
     let x = this.tile.x;

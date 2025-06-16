@@ -310,6 +310,7 @@ export class Envmap {
 
   createEnvmapInfoBuffer(device: GPUDevice): GPUBuffer {
     const envmapInfoBuffer = device.createBuffer({
+      label: 'envmap info',
       size: this.INFO_BUFFER_BYTE_LENGTH /* determined with offset computer */,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });

@@ -125,6 +125,8 @@ export class Envmap {
     this.data = new Float32Array(radianceData);
     this.size = new Vector2(envmapSize, envmapSize);
 
+    hdrTexture.dispose();
+
     return this;
   }
 

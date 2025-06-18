@@ -209,15 +209,20 @@ export class ComputeSegment {
     );
   }
 
-  updateScene(sceneDataManager: SceneDataManager) {
-    this.resetSamplesAndTile();
-
+  setSceneDataManager(sceneDataManager: SceneDataManager) {
     this.sceneDataManager = sceneDataManager;
+    this.sceneDataManager.e.addEventListener('on-scene-update', this.updateScene);
+  }
+
+  updateScene = () => {
+    if (!this.sceneDataManager) return;
+
+    this.resetSamplesAndTile();
 
     // if we have a new envmap, we might have to require a shader re-compilation
     this.requestShaderCompilation = true;
 
-    let camera = sceneDataManager.camera;
+    let camera = this.sceneDataManager.camera;
     camera.e.addEventListener('change', this.onUpdateCamera);
     this.onUpdateCamera();
 
@@ -279,7 +284,7 @@ export class ComputeSegment {
         }
       ]
     });
-  }
+  };
 
   resize(canvasSize: Vector2, workBuffer: GPUBuffer, samplesCountBuffer: GPUBuffer) {
     this.resetSegment.resize(canvasSize, workBuffer, samplesCountBuffer);
@@ -466,6 +471,7 @@ export class ComputeSegment {
 
     this.configManager.e.removeEventListener('config-update', this.updateConfig);
     this.sceneDataManager?.camera.e.removeEventListener('change', this.onUpdateCamera);
+    this.sceneDataManager?.e.removeEventListener('on-scene-update', this.updateScene);
     this.tileSequence.e.removeEventListener('on-tile-start', this.onTileStart);
     this.tileSequence.e.removeEventListener('on-tile-size-increased', this.onTileSizeChanged);
     this.tileSequence.e.removeEventListener('on-tile-size-decreased', this.onTileSizeChanged);

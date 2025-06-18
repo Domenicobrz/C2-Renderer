@@ -1,4 +1,5 @@
 import { ReSTIR_SAMPLER_TYPE, type ConfigOptions } from '$lib/config';
+import type { SceneName } from '$lib/createScene';
 import { get, writable } from 'svelte/store';
 import { Vector2, Vector3 } from 'three';
 
@@ -106,6 +107,9 @@ type CameraMovementInfo = {
   position: Vector3;
   target: Vector3;
 };
+
+export const selectedSceneStore = writable<SceneName>('Cornell sphere');
+
 export const cameraInfoStore = writable<CameraInfo>({
   exposure: 1,
   aperture: 0,

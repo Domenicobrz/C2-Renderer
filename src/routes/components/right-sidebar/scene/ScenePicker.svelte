@@ -1,7 +1,13 @@
 <script lang="ts">
+  import { availableScenes, type SceneName } from '$lib/createScene';
+  import { selectedSceneStore } from '../../../stores/main';
   import Separator from '../../Separator.svelte';
   import Spacer from '../../Spacer.svelte';
   import SceneEntry from './SceneEntry.svelte';
+
+  function onSceneEntryClick(sceneName: SceneName) {
+    selectedSceneStore.set(sceneName);
+  }
 </script>
 
 <div class="container">
@@ -9,11 +15,14 @@
   <Separator />
   <Spacer vertical={35} />
 
-  <SceneEntry name="C2 Features" thumbnailUrl="scene-assets-TO-REMOVE/thumbnails/c2-renderer.jpg" />
-  <SceneEntry
-    name="Cornell sphere"
-    thumbnailUrl="scene-assets-TO-REMOVE/thumbnails/cornell-sphere.png"
-  />
+  {#each availableScenes as scene}
+    <SceneEntry
+      name={scene.name}
+      thumbnailUrl={scene.thumbnail}
+      selected={$selectedSceneStore == scene.name}
+      on:click={() => onSceneEntryClick(scene.name)}
+    />
+  {/each}
 </div>
 
 <style>

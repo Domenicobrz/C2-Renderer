@@ -7,10 +7,11 @@ import {
   centralStatusMessage,
   configOptions,
   renderView,
-  samplesInfo
+  samplesInfo,
+  selectedSceneStore
 } from '../routes/stores/main';
 import { createScene } from './createScene';
-import type { C2Scene } from './createScene';
+import type { C2Scene, SceneName } from './createScene';
 import { PreviewSegment } from './segment/previewSegment';
 import { get } from 'svelte/store';
 import { tick } from './utils/tick';
@@ -95,21 +96,11 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   // will create and load lutManager's textures and bluenoisetexture
   await loadCommonAssets();
 
-  centralStatusMessage.set('creating scene');
-  await tick(); // will give us the chance of showing the message above
-  scene = await createScene();
-  scene.camera.setCanvasContainer(canvas.parentElement as HTMLDivElement);
-  centralStatusMessage.set('processing bvh and materials');
-  await tick(); // will give us the chance of showing the message above
-  sceneDataManager = new SceneDataManager(globals.device);
-  sceneDataManager.update(scene);
-  centralStatusMessage.set('');
-
   renderSegment = new RenderSegment(context, presentationFormat);
-  renderSegment.updateScene(scene);
-
   previewSegment = new PreviewSegment(context, presentationFormat);
-  previewSegment.updateScene(scene);
+
+  sceneDataManager = new SceneDataManager(globals.device);
+  await switchScene(get(selectedSceneStore));
 
   const resizeObserver = new ResizeObserver(async (entries) => {
     if (once('first-canvas-resize')) {
@@ -127,6 +118,7 @@ export async function Renderer(canvas: HTMLCanvasElement): Promise<RendererInter
   // msls.setSize(new Vector3(32, 32, 32), 1);
   // msls.calculateEavg(arrayData, 32);
 
+  listenForSceneSwitch();
   listenForIntegratorSwitch();
 
   return {
@@ -237,6 +229,16 @@ async function computeRenderLoop() {
   renderSegment.render();
 }
 
+function waitUntilRenderLoopFinishes() {
+  return new Promise((res, _) => {
+    function onAfterRender() {
+      globals.e.removeEventListener('on-after-render', onAfterRender);
+      res(null);
+    }
+    globals.e.addEventListener('on-after-render', onAfterRender);
+  });
+}
+
 function listenForIntegratorSwitch() {
   configOptions.subscribe((value) => {
     let prevIntegrator = configOptions.getOldValue().integrator;
@@ -247,19 +249,43 @@ function listenForIntegratorSwitch() {
   });
 }
 
+function listenForSceneSwitch() {
+  let previousScene = get(selectedSceneStore);
+  selectedSceneStore.subscribe((newScene) => {
+    if (newScene != previousScene) {
+      switchScene(newScene);
+      previousScene = newScene;
+    }
+  });
+}
+
+async function switchScene(name: SceneName) {
+  centralStatusMessage.set('creating scene');
+  await tick(); // will give us the chance of showing the message above
+
+  if (scene) {
+    scene.dispose();
+    await waitUntilRenderLoopFinishes();
+  }
+  scene = await createScene(name);
+  scene.camera.setCanvasContainer(globals.canvas.parentElement as HTMLDivElement);
+
+  centralStatusMessage.set('processing bvh and materials');
+  await tick(); // will give us the chance of showing the message above
+
+  sceneDataManager.update(scene);
+
+  renderSegment.updateScene(scene);
+  previewSegment.updateScene(scene);
+
+  centralStatusMessage.set('');
+}
+
 async function switchIntegrator(integratorType: IntegratorType) {
   if (computeSegment) {
     // wait until the integrator finishes the current iteration (useful since some are using multiple
     // await blocks that can cause stale data to remain after they exit from those await blocks)
-    await (function waitUntilRenderLoopFinishes() {
-      return new Promise((res, _) => {
-        function onAfterRender() {
-          globals.e.removeEventListener('on-after-render', onAfterRender);
-          res(null);
-        }
-        globals.e.addEventListener('on-after-render', onAfterRender);
-      });
-    })();
+    await waitUntilRenderLoopFinishes();
 
     computeSegment.dispose();
   }
@@ -277,7 +303,9 @@ async function switchIntegrator(integratorType: IntegratorType) {
     computeSegment = new ComputeSegment();
   }
 
-  computeSegment.updateScene(sceneDataManager);
+  computeSegment.setSceneDataManager(sceneDataManager);
+  // manually fire scene updated event such that compute segment catches it
+  sceneDataManager.e.fireEvent('on-scene-update');
 
   onCanvasResize(
     globals.canvas,

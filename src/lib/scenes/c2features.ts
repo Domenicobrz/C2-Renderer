@@ -28,15 +28,20 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   let plane = new Mesh(new PlaneGeometry(100, 100));
   plane.position.set(0, 0, 0);
   plane.rotation.x = -Math.PI * 0.5;
-  let gcDiff = (
-    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/grey-cartago/diff.png')
-  ).source.data;
-  let gcBump = (
-    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/grey-cartago/disp.png')
-  ).source.data;
-  let gcRough = (
-    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/grey-cartago/rough.png')
-  ).source.data;
+
+  let gcDiffTexture = await new TextureLoader().loadAsync(
+    globals.assetsPath + 'textures/misc/grey-cartago/diff.png'
+  );
+  let gcBumpTexture = await new TextureLoader().loadAsync(
+    globals.assetsPath + 'textures/misc/grey-cartago/disp.png'
+  );
+  let gcRoughTexture = await new TextureLoader().loadAsync(
+    globals.assetsPath + 'textures/misc/grey-cartago/rough.png'
+  );
+
+  let gcDiff = gcDiffTexture.source.data;
+  let gcBump = gcBumpTexture.source.data;
+  let gcRough = gcRoughTexture.source.data;
   materials.push(
     new TorranceSparrow({
       color: new Color(0.5, 0.5, 0.5),
@@ -55,20 +60,21 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   let graffiti = new Mesh(new PlaneGeometry(35, 15));
   graffiti.position.set(20, 7.25, -7.5);
   graffiti.rotation.y = Math.PI * 0.7;
-  let graffitiTexture = (
-    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/graff.png')
-  ).source.data;
-  let graffitiTexture2 = (
-    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/graff-2.png')
-  ).source.data;
-  let wallBump = (
-    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/bump-test.png')
-  ).source.data;
+
+  let graffitiTexture = await new TextureLoader().loadAsync(
+    globals.assetsPath + 'textures/misc/graff.png'
+  );
+  let graffitiTexture2 = await new TextureLoader().loadAsync(
+    globals.assetsPath + 'textures/misc/graff-2.png'
+  );
+  let wallBump = await new TextureLoader().loadAsync(
+    globals.assetsPath + 'textures/misc/bump-test.png'
+  );
   materials.push(
     new Diffuse({
       color: new Color(0.9, 0.9, 0.9),
-      map: graffitiTexture2,
-      bumpMap: wallBump,
+      map: graffitiTexture2.source.data,
+      bumpMap: wallBump.source.data,
       bumpStrength: 5,
       mapUvRepeat: new Vector2(1.3, 1.3),
       uvRepeat: new Vector2(2.25, 1.5)
@@ -130,7 +136,7 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   materials.push(
     new TorranceSparrow({
       color: new Color(1, 1, 1),
-      map: graffitiTexture,
+      map: graffitiTexture.source.data,
       roughness: 0.2,
       anisotropy: 1
     })
@@ -157,5 +163,14 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
   envmap.rotX = 5.5;
   envmap.rotY = 1.7;
 
-  return { triangles, materials, camera, envmap };
+  function dispose() {
+    gcDiffTexture.dispose();
+    gcBumpTexture.dispose();
+    gcRoughTexture.dispose();
+    graffitiTexture.dispose();
+    graffitiTexture2.dispose();
+    wallBump.dispose();
+  }
+
+  return { triangles, materials, camera, envmap, dispose };
 }

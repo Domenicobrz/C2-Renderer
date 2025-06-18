@@ -20,18 +20,31 @@ export type C2Scene = {
   materials: Material[];
   envmap?: Envmap;
   camera: Camera;
+  dispose: () => void;
 };
 
-export async function createScene(): Promise<C2Scene> {
+export const availableScenes = [
+  { name: 'C2 features', thumbnail: 'scene-assets-TO-REMOVE/thumbnails/c2-renderer.jpg' },
+  { name: 'Cornell sphere', thumbnail: 'scene-assets-TO-REMOVE/thumbnails/cornell-sphere.png' }
+] as const;
+
+export type SceneName = (typeof availableScenes)[number]['name'];
+
+const sceneConstructors: Record<SceneName, () => Promise<C2Scene>> = {
+  'C2 features': c2FeaturesScene,
+  'Cornell sphere': cornellSphereScene
+};
+
+export async function createScene(constructorName: SceneName): Promise<C2Scene> {
+  return sceneConstructors[constructorName]();
+
   // return furnaceTestScene();
   // return c2Features2Scene();
   // return envmapSphereScene();
-  return cornellSphereScene();
   // return ReSTIRTestScene();
   // return ReSTIREnvmapScene();
   // return ReSTIRTest2Scene();
   // return ReSTIRTest3Scene();
-  // return c2FeaturesScene();
   // return c2FeaturesScene_Debug();
   // return envmapHorseScene();
   // return dofQuadTest();

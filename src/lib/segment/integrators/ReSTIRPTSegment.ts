@@ -263,14 +263,20 @@ export class ReSTIRPTSegment {
     }
   };
 
-  updateScene(sceneDataManager: SceneDataManager) {
+  setSceneDataManager(sceneDataManager: SceneDataManager) {
+    this.sceneDataManager = sceneDataManager;
+    this.sceneDataManager.e.addEventListener('on-scene-update', this.updateScene);
+  }
+
+  updateScene = () => {
+    if (!this.sceneDataManager) return;
+
     this.requestReset();
 
     // if we have a new envmap, we might have to require a shader re-compilation
     this.requestShaderCompilation = true;
-    this.sceneDataManager = sceneDataManager;
 
-    let camera = sceneDataManager.camera;
+    let camera = this.sceneDataManager.camera;
     camera.e.addEventListener('change', this.onUpdateCamera);
     this.onUpdateCamera();
 
@@ -323,7 +329,7 @@ export class ReSTIRPTSegment {
     });
 
     this.createBindGroup1();
-  }
+  };
 
   updatePassInfoBuffer() {
     const isFinalPass = this.renderState.srIndex == this.SPATIAL_REUSE_PASSES - 1;
@@ -770,6 +776,7 @@ export class ReSTIRPTSegment {
 
     this.configManager.e.removeEventListener('config-update', this.updateConfig);
     this.sceneDataManager?.camera.e.removeEventListener('change', this.onUpdateCamera);
+    this.sceneDataManager?.e.removeEventListener('on-scene-update', this.updateScene);
 
     // these two are external !! they haven't been created here
     // this.workBuffer

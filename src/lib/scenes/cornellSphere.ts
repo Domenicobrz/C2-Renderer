@@ -80,9 +80,9 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   //   roughness: 0.9,
   //   anisotropy: 1
   // });
-  let wallBump = (
-    await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/bump-test.png')
-  ).source.data;
+  // let wallBump = (
+  //   await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/bump-test.png')
+  // ).source.data;
   // let mat = new Dielectric({
   //   absorption: new Color(0, 0, 0),
   //   roughness: 0.23,
@@ -112,5 +112,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   camera.focusDistance = 9.53;
   camera.exposure = 1.85;
 
-  return { triangles, materials, camera };
+  function dispose() {}
+
+  return { triangles, materials, camera, dispose };
 }

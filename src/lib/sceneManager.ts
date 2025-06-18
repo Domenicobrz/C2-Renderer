@@ -7,6 +7,7 @@ import { Orbit } from './controls/Orbit';
 import type { C2Scene } from './createScene';
 import { Envmap } from './envmap/envmap';
 import { TextureArraysSegment } from './segment/textureArraysSegment';
+import { EventHandler } from './eventHandler';
 
 // A new class
 export class SceneDataManager {
@@ -18,6 +19,8 @@ export class SceneDataManager {
   public envmapPC2DBuffer!: GPUBuffer;
   public envmapPC2DArrayBuffer!: GPUBuffer;
   public envmapInfoBuffer!: GPUBuffer;
+
+  public e = new EventHandler();
 
   public scene: C2Scene | undefined;
   public camera!: Camera;
@@ -139,6 +142,8 @@ export class SceneDataManager {
     this.device.queue.writeBuffer(this.lightsCDFBuffer, 0, LightsCDFBufferData);
     this.device.queue.writeBuffer(this.envmapPC2DBuffer, 0, envmapDistributionBuffer);
     this.device.queue.writeBuffer(this.envmapPC2DArrayBuffer, 0, envmapDistributionArrayBuffer);
+
+    this.e.fireEvent('on-scene-update');
   }
 
   updateConfig() {

@@ -541,11 +541,7 @@ export class ReSTIRPTSegment {
     centralStatusMessage.set('');
   }
 
-  saveTilePerformance(
-    tileSeq: TileSequence,
-    passPerformance: ComputePassPerformance,
-    simplified: number
-  ) {
+  saveTilePerformance(tileSeq: TileSequence, simplified: number) {
     if (!tileSeq.isTilePerformanceMeasureable()) return;
 
     tileSeq.saveComputationPerformance(simplified);
@@ -609,7 +605,7 @@ export class ReSTIRPTSegment {
     }
 
     if (this.renderState.state == 'compute') {
-      let tile = this.computeTile.getNextTile(() => {});
+      let tile = this.computeTile.getNextTile();
       this.updateTile(tile);
 
       // work group size in the shader is set to 8,8
@@ -649,8 +645,7 @@ export class ReSTIRPTSegment {
       await this.device.queue.onSubmittedWorkDone();
 
       let endTime = performance.now();
-
-      this.saveTilePerformance(this.computeTile, this.passPerformance, endTime - startTime);
+      this.saveTilePerformance(this.computeTile, endTime - startTime);
 
       if (this.computeTile.isLastTileBeforeRestart()) {
         let wasLastInitialCandidate =
@@ -672,11 +667,13 @@ export class ReSTIRPTSegment {
           this.updatePassInfoBuffer();
         }
       }
+
+      return;
     }
 
     if (this.renderState.state == 'sr') {
       let isLastSRPass = this.renderState.srIndex == this.SPATIAL_REUSE_PASSES - 1;
-      let tile = this.spatialResampleTile.getNextTile(() => {});
+      let tile = this.spatialResampleTile.getNextTile();
       let isLastTileBeforeRestart = this.spatialResampleTile.isLastTileBeforeRestart();
       this.updateTile(tile);
 
@@ -732,7 +729,7 @@ export class ReSTIRPTSegment {
 
       let endTime = performance.now();
 
-      this.saveTilePerformance(this.spatialResampleTile, this.passPerformance, endTime - startTime);
+      this.saveTilePerformance(this.spatialResampleTile, endTime - startTime);
 
       if (isLastTileBeforeRestart) {
         // Re-evaluate this condition after the await, just in case a config change occurred
@@ -750,6 +747,8 @@ export class ReSTIRPTSegment {
           this.updatePassInfoBuffer();
         }
       }
+
+      return;
     }
   }
 

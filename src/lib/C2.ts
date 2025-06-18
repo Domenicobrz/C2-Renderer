@@ -21,6 +21,7 @@ import type { LUTManager } from './managers/lutManager';
 import { loadCommonAssets } from './loadCommonAssets';
 import { once } from './utils/once';
 import { SceneDataManager } from './sceneManager';
+import { EventHandler } from './eventHandler';
 
 export type Integrator = ComputeSegment | ReSTIRPTSegment;
 
@@ -47,6 +48,7 @@ export const globals: {
   };
   animationFrameHandle: number | null;
   assetsPath: string;
+  e: EventHandler;
 } = {
   // not sure how to tell typescript that these values will exist when I'll try to access them
   device: null as any,
@@ -63,7 +65,8 @@ export const globals: {
     samplesCountBuffer: null as any
   },
   animationFrameHandle: null,
-  assetsPath: 'https://domenicobrz.github.io/scene-assets/'
+  assetsPath: 'https://domenicobrz.github.io/scene-assets/',
+  e: new EventHandler()
 };
 
 export type RendererInterface = {
@@ -211,6 +214,8 @@ async function renderLoop() {
 
   prevRW = rw;
   globals.animationFrameHandle = requestAnimationFrame(renderLoop);
+
+  globals.e.fireEvent('on-after-render');
 }
 
 function previewRenderLoop() {
@@ -229,28 +234,6 @@ async function computeRenderLoop() {
   }
 
   await computeSegment.compute();
-  if (computeSegment instanceof ComputeSegment) {
-    computeSegment.passPerformance
-      .getDeltaInMilliseconds()
-      .then((delta) => {
-        if (delta < 25) {
-          if ('increaseTileSize' in computeSegment) {
-            computeSegment.increaseTileSize();
-          }
-        } else if (delta > 100) {
-          // unfortunately some pixels in the long run might be computed much less than others
-          // by following this approach of increasing / decreasing tile size.
-          // I did find however that having a "range" of performance values helped with the issue
-          // instead of having e.g. increase if < 30 or decrease if > 30, having a range
-          // helped with dealing with the issue of some pixels not being computed as often as others
-          if ('decreaseTileSize' in computeSegment) {
-            computeSegment.decreaseTileSize();
-          }
-        }
-        samplesInfo.setPerformance(delta);
-      })
-      .catch(() => {});
-  }
   renderSegment.render();
 }
 
@@ -265,12 +248,26 @@ function listenForIntegratorSwitch() {
 }
 
 async function switchIntegrator(integratorType: IntegratorType) {
-  if (globals.animationFrameHandle) {
-    cancelAnimationFrame(globals.animationFrameHandle);
+  if (computeSegment) {
+    // wait until the integrator finishes the current iteration (useful since some are using multiple
+    // await blocks that can cause stale data to remain after they exit from those await blocks)
+    await (function waitUntilRenderLoopFinishes() {
+      return new Promise((res, _) => {
+        function onAfterRender() {
+          globals.e.removeEventListener('on-after-render', onAfterRender);
+          res(null);
+        }
+        globals.e.addEventListener('on-after-render', onAfterRender);
+      });
+    })();
+
+    computeSegment.dispose();
   }
 
-  if (computeSegment) {
-    computeSegment.dispose();
+  // to make sure we're cancelling the last issued animation frame handle, we'll wait
+  // until the render loop fully completes its function's body with the function above
+  if (globals.animationFrameHandle) {
+    cancelAnimationFrame(globals.animationFrameHandle);
   }
 
   if (integratorType == 'ReSTIR') {

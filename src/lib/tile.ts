@@ -2,6 +2,7 @@ import { Vector2 } from 'three';
 import { samplesInfo } from '../routes/stores/main';
 import { ConfigManager } from './config';
 import type { ConfigOptions } from './config';
+import { EventHandler } from './eventHandler';
 
 export type Tile = {
   x: number;
@@ -21,7 +22,7 @@ type TilePeformanceRequirements = {
 
 export class TileSequence {
   private canvasSize: Vector2 = new Vector2(0, 0);
-  private tile: Tile = { x: 0, y: 0, w: 0, h: 0 };
+  public tile: Tile = { x: 0, y: 0, w: 0, h: 0 };
   // used for both increments and decrements
   private tileIncrementCount = 0;
   private forceMaxTileSize: boolean = false;
@@ -30,14 +31,16 @@ export class TileSequence {
   public performanceHistoryCount = 15;
   public performanceHistory: number[] = [];
 
+  public e: EventHandler = new EventHandler();
+
   constructor(private performanceRequirements?: TilePeformanceRequirements) {
     let configManager = new ConfigManager();
     configManager.e.addEventListener('config-update', (options: ConfigOptions) => {
       this.forceMaxTileSize = options.forceMaxTileSize;
     });
 
-    if (performanceRequirements?.performanceHistoryCount) {
-      this.performanceHistoryCount = performanceRequirements?.performanceHistoryCount;
+    if (performanceRequirements) {
+      this.performanceHistoryCount = performanceRequirements.performanceHistoryCount;
     }
   }
 
@@ -120,7 +123,7 @@ export class TileSequence {
     samplesInfo.setTileSize(`${this.tile.w} x ${this.tile.h}`);
   }
 
-  increaseTileSize(skipTileReplacement: boolean = false) {
+  increaseTileSize() {
     // we're either increasing the width or the height,
     // to increase the performance load of 2x
     // (if we increase both performance load increases by 4x)
@@ -135,14 +138,6 @@ export class TileSequence {
     }
     if (this.tile.h > this.canvasSize.y) {
       this.tile.h = Math.ceil(this.canvasSize.y / 8) * 8;
-    }
-
-    if (!skipTileReplacement) {
-      // by subtracting tile.w to the x position,
-      // getNextTile() will pick the previous position as the next tile position
-      // basically when we increase the tile size we want the tile to remain
-      // in place
-      this.tile.x -= this.tile.w;
     }
 
     this.tileIncrementCount += 1;
@@ -165,11 +160,7 @@ export class TileSequence {
     }
 
     samplesInfo.setTileSize(`${sizex} x ${sizey}`);
-    // we decided tilesize will be a multiple of 8
-    this.tile = { x: this.canvasSize.x, y: this.canvasSize.y, w: sizex, h: sizey };
-    // ^^^^^^^^^^^^^^^^^^ this line should be useless now ^^^^^^^^^^^^^^
-    // ^^^^^^^^^^^^^^^^^^ this line should be useless now ^^^^^^^^^^^^^^
-    // ^^^^^^^^^^^^^^^^^^ this line should be useless now ^^^^^^^^^^^^^^
+    this.tile = { x: 0, y: 0, w: sizex, h: sizey };
     this.requestedRestart = true;
 
     this.performanceHistory = [];
@@ -188,22 +179,25 @@ export class TileSequence {
 
     if (avgPerf < avgPerfToIncrease && this.canTileSizeBeIncreased()) {
       if (this.canTileSizeBeIncreased()) {
-        this.increaseTileSize(true);
+        this.increaseTileSize();
+        this.e.fireEvent('on-tile-size-increased', {});
       }
     }
     if (avgPerf > avgPerfToDecrease && this.canTileSizeBeDecreased()) {
       if (this.canTileSizeBeDecreased()) {
         this.decreaseTileSize();
+        this.e.fireEvent('on-tile-size-decreased', {});
       }
     }
   }
 
-  getNextTile(onTileStart: () => void) {
+  getNextTile() {
     if (this.requestedRestart) {
       this.requestedRestart = false;
       this.tile.x = 0;
       this.tile.y = 0;
-      onTileStart();
+
+      this.e.fireEvent('on-tile-start', {});
 
       // we'll have to change tile size based on performance
       // *before* establishing if this is the last tile before restart
@@ -216,8 +210,9 @@ export class TileSequence {
 
       return this.tile;
     }
-
     // if we got here, the previous tile wasn't the last one before restarting
+
+    // [x ... x+w] was computed in the previous iteration, now add and select the new one
     this.tile.x += this.tile.w;
 
     if (this.tile.x >= this.canvasSize.x) {

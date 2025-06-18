@@ -52,7 +52,12 @@ export class ComputeSegment {
   private blueNoiseSampler = new BlueNoiseSampler();
   private customR2Sampler = new CustomR2Sampler();
 
-  private tileSequence = new TileSequence();
+  private tileSequence = new TileSequence({
+    avgPerfToIncrease: 25,
+    avgPerfToDecrease: 100,
+    changeTileSizeOnNewLineOnly: false,
+    performanceHistoryCount: 2
+  });
 
   constructor() {
     let device = globals.device;
@@ -135,6 +140,10 @@ export class ComputeSegment {
     this.updateConfig();
 
     this.requestShaderCompilation = true;
+
+    this.tileSequence.e.addEventListener('on-tile-start', this.onTileStart);
+    this.tileSequence.e.addEventListener('on-tile-size-increased', this.onTileSizeChanged);
+    this.tileSequence.e.addEventListener('on-tile-size-decreased', this.onTileSizeChanged);
   }
 
   setDebugPixelTarget(x: number, y: number) {
@@ -304,28 +313,6 @@ export class ComputeSegment {
     samplesInfo.reset();
   }
 
-  increaseTileSize() {
-    if (this.tileSequence.canTileSizeBeIncreased()) {
-      this.tileSequence.increaseTileSize();
-      // when we increase the tile size, the position doesn't change,
-      // thus we'll re-draw a portion of the pixels that were part of the previous tile,
-      // those pixels will need a new camera sample to properly accumulate new radiance values
-      // otherwise they would count twice the results of the same camera sample
-      this.updateRandomsBuffer();
-    }
-  }
-
-  decreaseTileSize() {
-    if (this.tileSequence.canTileSizeBeDecreased()) {
-      this.tileSequence.decreaseTileSize();
-      // when we decrease the tile size, the position doesn't change,
-      // thus we'll re-draw a portion of the pixels that were part of the previous tile,
-      // those pixels will need a new camera sample to properly accumulate new radiance values
-      // otherwise they would count twice the results of the same camera sample
-      this.updateRandomsBuffer();
-    }
-  }
-
   updateRandomsBuffer() {
     if (this.configManager.options.SimplePathTrace.SAMPLER_TYPE == SAMPLER_TYPE.HALTON) {
       let arr = new Float32Array(this.haltonSampler.getSamples(this.RANDOMS_BUFFER_COUNT));
@@ -368,6 +355,36 @@ export class ComputeSegment {
     centralStatusMessage.set('');
   }
 
+  saveTilePerformance(tileSeq: TileSequence, simplified: number) {
+    if (!tileSeq.isTilePerformanceMeasureable()) return;
+
+    tileSeq.saveComputationPerformance(simplified);
+    samplesInfo.setPerformance(simplified);
+
+    // this.passPerformance
+    //   .getDeltaInMilliseconds()
+    //   .then((delta) => {
+    //     if (!this.tileSequence.isTilePerformanceMeasureable()) return;
+    //     this.tileSequence.saveComputationPerformance(delta);
+    //     samplesInfo.setPerformance(delta);
+    //   })
+    //   .catch(() => {});
+  }
+
+  onTileSizeChanged = () => {
+    // when we decrease/increase the tile size, the position doesn't change
+    // (since we wont start on new line only like in ReSTIR-PT)
+    // thus we'll re-draw a portion of the pixels that were part of the previous tile,
+    // those pixels will need a new camera sample to properly accumulate new radiance values
+    // otherwise they would count twice the results of the same camera sample
+    this.updateRandomsBuffer();
+  };
+
+  onTileStart = () => {
+    this.updateRandomsBuffer();
+    samplesInfo.increment();
+  };
+
   async compute() {
     if (this.requestShaderCompilation) {
       await this.createPipeline();
@@ -396,12 +413,7 @@ export class ComputeSegment {
       this.uniformSampler.reset();
     }
 
-    let tile = this.tileSequence.getNextTile(
-      /* on new sample / tile start */ () => {
-        this.updateRandomsBuffer();
-        samplesInfo.increment();
-      }
-    );
+    let tile = this.tileSequence.getNextTile();
     this.updateTile(tile);
 
     // work group size in the shader is set to 8,8
@@ -430,9 +442,15 @@ export class ComputeSegment {
 
     encoder.copyBufferToBuffer(this.debugBuffer, 0, this.debugReadBuffer, 0, this.debugBuffer.size);
 
+    let startTime = performance.now();
+
     // Finish encoding and submit the commands
     const computeCommandBuffer = encoder.finish();
     this.device.queue.submit([computeCommandBuffer]);
+    await this.device.queue.onSubmittedWorkDone();
+
+    let endTime = performance.now();
+    this.saveTilePerformance(this.tileSequence, endTime - startTime);
   }
 
   dispose() {
@@ -448,5 +466,8 @@ export class ComputeSegment {
 
     this.configManager.e.removeEventListener('config-update', this.updateConfig);
     this.sceneDataManager?.camera.e.removeEventListener('change', this.onUpdateCamera);
+    this.tileSequence.e.removeEventListener('on-tile-start', this.onTileStart);
+    this.tileSequence.e.removeEventListener('on-tile-size-increased', this.onTileSizeChanged);
+    this.tileSequence.e.removeEventListener('on-tile-size-decreased', this.onTileSizeChanged);
   }
 }

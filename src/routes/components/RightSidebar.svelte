@@ -48,6 +48,9 @@
       <Folder name="Sampling" roundBox>
         <Sampling />
       </Folder>
+      <Folder name="Operate" roundBox>
+        <Operate {renderer} />
+      </Folder>
       <Folder name="Camera">
         <CameraSettings {canvasRef} {renderer} />
       </Folder>
@@ -62,9 +65,6 @@
       </Folder>
       <Folder name="Adapter Info" expanded={false}>
         <AdapterInfo />
-      </Folder>
-      <Folder name="Operate" roundBox>
-        <Operate {renderer} />
       </Folder>
     </div>
 

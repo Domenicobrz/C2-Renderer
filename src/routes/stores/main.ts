@@ -108,7 +108,7 @@ type CameraMovementInfo = {
   target: Vector3;
 };
 
-export const selectedSceneStore = writable<SceneName>('Cornell sphere');
+export const selectedSceneStore = writable<SceneName>('ReSTIR stress test');
 
 export const cameraInfoStore = writable<CameraInfo>({
   exposure: 1,

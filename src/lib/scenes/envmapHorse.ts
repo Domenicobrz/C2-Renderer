@@ -24,6 +24,7 @@ import { createNoise2D } from 'simplex-noise';
 import alea from 'alea';
 import { Orbit } from '$lib/controls/Orbit';
 import { globals } from '$lib/C2';
+import { disposeGltf } from '$lib/utils/disposeGLTF';
 
 const prng = alea('seed');
 const noise2D = createNoise2D(prng);
@@ -122,5 +123,9 @@ export async function envmapHorseScene(): Promise<C2Scene> {
   camera.focusDistance = 11.185065325218906;
   camera.exposure = 1.85;
 
-  return { triangles, materials, envmap, camera };
+  function dispose() {
+    disposeGltf(gltf);
+  }
+
+  return { triangles, materials, envmap, camera, dispose };
 }

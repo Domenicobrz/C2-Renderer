@@ -20,6 +20,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { Envmap } from '$lib/envmap/envmap';
 import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
 import { globals } from '$lib/C2';
+import { disposeGltf } from '$lib/utils/disposeGLTF';
 
 export async function c2FeaturesScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
@@ -170,6 +171,7 @@ export async function c2FeaturesScene(): Promise<C2Scene> {
     graffitiTexture.dispose();
     graffitiTexture2.dispose();
     wallBump.dispose();
+    disposeGltf(gltf);
   }
 
   return { triangles, materials, camera, envmap, dispose };

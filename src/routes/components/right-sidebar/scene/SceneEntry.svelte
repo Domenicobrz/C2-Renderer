@@ -15,7 +15,7 @@
   }
 
   .container.selected img {
-    border: 2px solid white;
+    border: 1px solid white;
   }
 
   .container.selected p {

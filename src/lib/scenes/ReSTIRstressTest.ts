@@ -157,12 +157,13 @@ export async function ReSTIRStressTestScene(): Promise<C2Scene> {
 
       const color = new Color();
       // const hue = r();
-      const hue = (i * 0.0675 + 0.5) % 1;
+      // const hue = (i * 0.0675 + 0.5) % 1;
+      const hue = (i * 0.0675 + j * 0.015 + 0.5) % 1;
       const saturation = 1.0;
       const lightness = 0.5;
       color.setHSL(hue, saturation, lightness);
-      color.add(new Color(0.05, 0.05, 0.05));
-      color.convertSRGBToLinear();
+      // color.add(new Color(0.05, 0.05, 0.05));
+      color.convertSRGBToLinear().convertSRGBToLinear().convertSRGBToLinear();
       // let color = new Color(1, 1, 1);
       // let cr = r();
       // if (cr > 0.333) {
@@ -172,7 +173,7 @@ export async function ReSTIRStressTestScene(): Promise<C2Scene> {
       //   color = new Color(1, 0.75, 0.35);
       // }
 
-      let intensity = 107;
+      let intensity = 137;
 
       let emissiveMaterial = new Emissive({ color, intensity });
       materials.push(emissiveMaterial);
@@ -217,8 +218,8 @@ export async function ReSTIRStressTestScene(): Promise<C2Scene> {
   lightCoverRight.translate(0, 0.001, 0);
   triangles = [...triangles, ...geometryToTriangles(lightCoverRight, 0)];
 
-  let bottomBox = new BoxGeometry(7, 0.175, 6);
-  bottomBox.translate(0.1, -1.8, 1.9);
+  let bottomBox = new BoxGeometry(6, 0.175, 6);
+  bottomBox.translate(0.2, -1.8, 1.9);
   materials.push(
     new TorranceSparrow({ color: new Color(0.65, 0.65, 0.65), roughness: 0.25, anisotropy: 0 })
   );

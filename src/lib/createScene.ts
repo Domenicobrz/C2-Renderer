@@ -26,7 +26,10 @@ export type C2Scene = {
 
 export const availableScenes = [
   { name: 'C2 features', thumbnail: 'scene-assets-TO-REMOVE/thumbnails/c2-renderer.jpg' },
-  { name: 'ReSTIR stress test', thumbnail: 'scene-assets-TO-REMOVE/thumbnails/cornell-sphere.png' },
+  {
+    name: 'ReSTIR stress test',
+    thumbnail: 'scene-assets-TO-REMOVE/thumbnails/restir-stress-test.jpg'
+  },
   { name: 'Cornell sphere', thumbnail: 'scene-assets-TO-REMOVE/thumbnails/cornell-sphere.png' },
   {
     name: 'Envmap + multiscatter dielectric',

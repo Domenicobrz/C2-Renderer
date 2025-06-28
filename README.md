@@ -18,6 +18,9 @@ A simple webgpu renderer implemented with javascript and svelte
 10. HDR envmap to PC2D conversion and export
 11. Different types of samplers: Uniform, Halton, Blue noise and a customized "sequenced" version of the R2 sampler
 12. 3 types of pixel-decorrelation strategies (none, random offset, blue noise mask)
+13. Two types of integrator: a simple backward path tracer and ReSTIR-PT
+14. ReSTIR-PT supports 3 types of generalized balance heuristic, Pairwise MIS (defensive variant) / complete GBH / Biased GBH
+15. ReSTIR-PT also supports variable spatio-temporal filter sizes, pass & reuse candidates count
 
 <img src="screenshots/1.png" width="90%" />
 <img src="screenshots/3.png" width="90%" />
@@ -30,3 +33,6 @@ A simple webgpu renderer implemented with javascript and svelte
 3. [R2 Low discrepancy sequence](https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/)
 4. [Blue-noise Dithered Sampling](https://blogs.autodesk.com/media-and-entertainment/wp-content/uploads/sites/162/dither_abstract.pdf)
 5. [Multiple importance sampling](https://graphics.stanford.edu/courses/cs348b-03/papers/veach-chapter9.pdf)
+6. [ReSTIR-DI](https://research.nvidia.com/sites/default/files/pubs/2020-07_Spatiotemporal-reservoir-resampling/ReSTIR.pdf)
+7. [ReSTIR-GI](https://research.nvidia.com/publication/2021-06_restir-gi-path-resampling-real-time-path-tracing)
+8. [Generalized Resampled Importance Sampling](https://research.nvidia.com/publication/2022-07_generalized-resampled-importance-sampling-foundations-restir)

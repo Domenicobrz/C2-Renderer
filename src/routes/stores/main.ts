@@ -1,5 +1,6 @@
 import { ReSTIR_SAMPLER_TYPE, type ConfigOptions } from '$lib/config';
 import type { SceneName } from '$lib/createScene';
+import { getURLParam } from '$lib/utils/getURLParam';
 import { get, writable } from 'svelte/store';
 import { Vector2, Vector3 } from 'three';
 
@@ -108,7 +109,12 @@ type CameraMovementInfo = {
   target: Vector3;
 };
 
-export const selectedSceneStore = writable<SceneName>('ReSTIR stress test');
+let initialScene: SceneName = 'C2 features';
+const selectedSceneFromParams = getURLParam('scene') || '';
+if (selectedSceneFromParams) {
+  initialScene = selectedSceneFromParams as SceneName;
+}
+export const selectedSceneStore = writable<SceneName>(initialScene);
 
 export const cameraInfoStore = writable<CameraInfo>({
   exposure: 1,

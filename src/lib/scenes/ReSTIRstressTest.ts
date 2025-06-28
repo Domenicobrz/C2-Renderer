@@ -20,6 +20,7 @@ import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 import random, { RNG } from 'random';
 import { BufferGeometryUtils, GLTFLoader } from 'three/examples/jsm/Addons.js';
 import { Dielectric } from '$lib/materials/dielectric';
+import { globals } from '$lib/C2';
 
 random.use('test-string' as unknown as RNG);
 // random.use(Math.random() as unknown as RNG);
@@ -70,13 +71,22 @@ export async function ReSTIRStressTestScene(): Promise<C2Scene> {
 
   let triangles: Triangle[] = [];
   let materials: Material[] = [
-    new Diffuse({ color: new Color(0.95, 0.95, 0.95).multiplyScalar(cornellBoxLuminosity) }),
-    new Diffuse({ color: new Color(1, 0.05, 0.05).multiplyScalar(cornellBoxLuminosity) }),
+    new Diffuse({
+      color: new Color(0.95, 0.95, 0.95).multiplyScalar(cornellBoxLuminosity),
+      roughness: 1
+    }),
+    new Diffuse({
+      color: new Color(1, 0.05, 0.05).multiplyScalar(cornellBoxLuminosity),
+      roughness: 1
+    }),
     new TorranceSparrow({ color: new Color(0.75, 0.75, 0.75), roughness: 0.25, anisotropy: 0 }),
     new Emissive({ color: new Color(1, 1, 1), intensity: 2000 }),
     // new EONDiffuse({ color: new Color(0.05, 1, 0.05), roughness: 1 }),
-    new Diffuse({ color: new Color(0.05, 1, 0.05).multiplyScalar(cornellBoxLuminosity) }),
-    new Diffuse({ color: new Color(0.15, 0.15, 0.15) }),
+    new Diffuse({
+      color: new Color(0.05, 1, 0.05).multiplyScalar(cornellBoxLuminosity),
+      roughness: 1
+    }),
+    new Diffuse({ color: new Color(0.15, 0.15, 0.15), roughness: 1 }),
     new Dielectric({
       absorption: new Color(0.35, 0.68, 0.99).multiplyScalar(0.5),
       roughness: 0.05,
@@ -115,15 +125,14 @@ export async function ReSTIRStressTestScene(): Promise<C2Scene> {
     triangles = [...triangles, ...geometryToTriangles(pg, mi)];
   }
 
-  // let gltf = await new GLTFLoader().loadAsync(globals.assetsPath + 'models/horse-statue.glb');
   let gltf = await new GLTFLoader().loadAsync(
-    'scene-assets-TO-REMOVE/models/stanford-xyz-dragon-low-res.glb'
+    globals.assetsPath + 'models/stanford-xyz-dragon-low-res.glb'
   );
   let mesh = gltf.scene.children[0];
   mesh.scale.set(0.0425, 0.0425, 0.0425);
   mesh.position.set(-0.2, 0, 1);
   mesh.rotation.z = -0.5;
-  materials.push(new Diffuse({ color: new Color(0.975, 0.975, 0.975) }));
+  materials.push(new Diffuse({ color: new Color(0.975, 0.975, 0.975), roughness: 1 }));
   triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
 
   let pc = 4;

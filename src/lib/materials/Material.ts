@@ -85,7 +85,7 @@ export class Material {
         let materialType = material.materialType;
       
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-          return evaluatePdfDiffuseLobe(wi, geometryContext.normals);
+          return evaluatePdfDiffuseLobe(wo, wi, material, geometryContext.normals);
         }
       
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {
@@ -112,7 +112,7 @@ export class Material {
         let materialType = material.materialType;
       
         if (materialType == ${MATERIAL_TYPE.DIFFUSE}) {
-          return evaluateDiffuseBrdf(material);
+          return evaluateDiffuseBrdf(wo, wi, material);
         }
       
         if (materialType == ${MATERIAL_TYPE.EMISSIVE}) {

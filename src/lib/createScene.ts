@@ -1,3 +1,4 @@
+import { globals } from './C2';
 import { Camera } from './controls/Camera';
 import { Envmap } from './envmap/envmap';
 import type { Material } from './materials/material';
@@ -25,15 +26,15 @@ export type C2Scene = {
 };
 
 export const availableScenes = [
-  { name: 'C2 features', thumbnail: 'scene-assets-TO-REMOVE/thumbnails/c2-renderer.jpg' },
+  { name: 'C2 features', thumbnail: globals.assetsPath + 'thumbnails/c2-renderer.jpg' },
   {
     name: 'ReSTIR stress test',
-    thumbnail: 'scene-assets-TO-REMOVE/thumbnails/restir-stress-test.jpg'
+    thumbnail: globals.assetsPath + 'thumbnails/restir-stress-test.jpg'
   },
-  { name: 'Cornell sphere', thumbnail: 'scene-assets-TO-REMOVE/thumbnails/cornell-sphere.png' },
+  { name: 'Cornell sphere', thumbnail: globals.assetsPath + 'thumbnails/cornell-sphere.png' },
   {
     name: 'Envmap + multiscatter dielectric',
-    thumbnail: 'scene-assets-TO-REMOVE/thumbnails/envmap-dielectric.png'
+    thumbnail: globals.assetsPath + 'thumbnails/envmap-dielectric.png'
   }
 ] as const;
 

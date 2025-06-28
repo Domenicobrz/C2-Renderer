@@ -6,6 +6,10 @@ fn squaredLength(v: vec3f) -> f32 {
   return dot(v, v);
 }
 
+fn getLuminance(emission: vec3f) -> f32 {
+  return 0.2126 * emission.x + 0.7152 * emission.y + 0.0722 * emission.z;
+}
+
 // this function did not really work, it caused issues at the abs(x) > abs(y) boundaries
 // when trying to create a TBN matrix to use for diffuse directions
 // the issue was visible in a cornell-sphere scene with only 3 bounces.
@@ -64,11 +68,15 @@ fn isFloatNaN(value: f32) -> bool {
 
 // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
 fn getTangentFromTriangle(
-  ires: BVHIntersectionResult, triangle: Triangle, shadingNormal: vec3f, 
+  geometryContext: GeometryContext,
   tangent: ptr<function, vec3f>, bitangent: ptr<function, vec3f>
 ) {
-  *tangent = ires.tangent;
-  *bitangent = normalize(cross(*tangent, triangle.geometricNormal));
+  let vertexTangent = geometryContext.interpolatedAttributes.tangent;
+  let geometricNormal = geometryContext.normals.geometric;
+  let shadingNormal = geometryContext.normals.shading;
+
+  *tangent = vertexTangent;
+  *bitangent = normalize(cross(*tangent, geometricNormal));
 
   // the tangents above are calculated with the geometric normal (picked from ires.triangle)
   // and have to be adjusted to use the vertex/shading normal
@@ -107,5 +115,23 @@ fn mod3f(a: vec3f, b: vec3f) -> vec3f {
     a.y - b.y * floor(a.y / b.y),
     a.z - b.z * floor(a.z / b.z),
   );
+}
+
+
+fn transformToLocalSpace(
+  wo: ptr<function, vec3f>, 
+  wi: ptr<function, vec3f>, 
+  geometryContext: GeometryContext
+) {
+  var tangent = vec3f(0.0);
+  var bitangent = vec3f(0.0);
+  getTangentFromTriangle(geometryContext, &tangent, &bitangent);
+  // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+  let TBN = mat3x3f(tangent, bitangent, geometryContext.normals.shading);
+  // to transform vectors from world space to tangent space, we multiply by
+  // the inverse of the TBN
+  let TBNinverse = transpose(TBN);
+  *wo = TBNinverse * *wo;
+  *wi = TBNinverse * *wi;
 }
 `;

@@ -86,23 +86,23 @@ export class EONDiffuse extends Material {
       fn createEONDiffuse(offset: u32) -> EONDiffuse {
         var eonDiffuse: EONDiffuse;
         eonDiffuse.color = vec3f(
-          materialsData[offset + 1],
-          materialsData[offset + 2],
-          materialsData[offset + 3],
+          materialsBuffer[offset + 1],
+          materialsBuffer[offset + 2],
+          materialsBuffer[offset + 3],
         );
-        eonDiffuse.roughness = materialsData[offset + 4];
-        eonDiffuse.bumpStrength = materialsData[offset + 5];
-        eonDiffuse.uvRepeat.x = materialsData[offset + 6];
-        eonDiffuse.uvRepeat.y = materialsData[offset + 7];
-        eonDiffuse.mapUvRepeat.x = materialsData[offset + 8];
-        eonDiffuse.mapUvRepeat.y = materialsData[offset + 9];
+        eonDiffuse.roughness = materialsBuffer[offset + 4];
+        eonDiffuse.bumpStrength = materialsBuffer[offset + 5];
+        eonDiffuse.uvRepeat.x = materialsBuffer[offset + 6];
+        eonDiffuse.uvRepeat.y = materialsBuffer[offset + 7];
+        eonDiffuse.mapUvRepeat.x = materialsBuffer[offset + 8];
+        eonDiffuse.mapUvRepeat.y = materialsBuffer[offset + 9];
         eonDiffuse.mapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 10]),
-          bitcast<i32>(materialsData[offset + 11]),
+          bitcast<i32>(materialsBuffer[offset + 10]),
+          bitcast<i32>(materialsBuffer[offset + 11]),
         );
         eonDiffuse.bumpMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 12]),
-          bitcast<i32>(materialsData[offset + 13]),
+          bitcast<i32>(materialsBuffer[offset + 12]),
+          bitcast<i32>(materialsBuffer[offset + 13]),
         );
         return eonDiffuse;
       } 
@@ -382,6 +382,7 @@ export class EONDiffuse extends Material {
         ires: BVHIntersectionResult, 
         ray: ptr<function, Ray>,
         reflectance: ptr<function, vec3f>, 
+        lastBrdfMisWeight: ptr<function, f32>, 
         rad: ptr<function, vec3f>,
         tid: vec3u,
         i: i32
@@ -390,10 +391,10 @@ export class EONDiffuse extends Material {
         var material: EONDiffuse = createEONDiffuse(ires.triangle.materialOffset);
 
         if (material.mapLocation.x > -1) {
-          material.color *= getTexelFromTextureArrays(material.mapLocation, ires.uv, material.mapUvRepeat).xyz;
+          material.color *= getTexelFromTextureArrays(material.mapLocation, ires.interpolatedAttributes.uv, material.mapUvRepeat).xyz;
         }
 
-        var vertexNormal = ires.normal;
+        var vertexNormal = ires.interpolatedAttributes.normal;
         // the normal flip is calculated using the geometric normal to avoid
         // black edges on meshes displaying strong smooth-shading via vertex normals
         if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
@@ -402,9 +403,11 @@ export class EONDiffuse extends Material {
         var N = vertexNormal;
         var bumpOffset: f32 = 0.0;
         if (material.bumpMapLocation.x > -1) {
+
+          let surfAttrWithFlippedNormal = InterpolatedAttributes(N, ires.interpolatedAttributes.uv, ires.interpolatedAttributes.tangent);
           N = getShadingNormal(
-            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-            ires, &bumpOffset
+            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, surfAttrWithFlippedNormal, *ray, 
+            ires.triangle, &bumpOffset
           );
         }
 
@@ -416,7 +419,6 @@ export class EONDiffuse extends Material {
           (*ray).origin += vertexNormal * bumpOffset;
         }
     
-        // rands1.w is used for ONE_SAMPLE_MODEL
         // rands1.xy is used for brdf samples
         // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
         let rands1 = vec4f(getRand2D(), getRand2D());
@@ -426,7 +428,7 @@ export class EONDiffuse extends Material {
         // we need to calculate a TBN matrix
         var tangent = vec3f(0.0);
         var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires, ires.triangle, N, &tangent, &bitangent);
+        getTangentFromTriangle(ires.interpolatedAttributes.tangent, ires.triangle.geometricNormal, N, &tangent, &bitangent);
 
         // normal could be flipped at some point, should we also flip TB?
         // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
@@ -435,7 +437,7 @@ export class EONDiffuse extends Material {
         // the inverse of the TBN
         let TBNinverse = transpose(TBN);
         var wi = vec3f(0,0,0); 
-        let wo = TBNinverse * -(*ray).direction;
+        let wo = TBNinverse * -ray.direction;
 
 
         // to my understanding, this model includes the 
@@ -449,21 +451,7 @@ export class EONDiffuse extends Material {
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin += (*ray).direction * 0.001;
           *reflectance *= (brdf / pdf) * max(dot(N, (*ray).direction), 0.0);
-        }
-
-        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-          var pdf: f32; var misWeight: f32; var ls: vec3f; var brdf: vec3f;
-          let isBrdfSample = rands1.w < 0.5;
-          if (isBrdfSample) {
-            shadeEONDiffuseSampleBRDF(rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &misWeight);
-          } else {
-            shadeEONDiffuseSampleLight(
-              rands2, material, wo, &wi, ray, TBN, TBNinverse, &brdf, &pdf, &misWeight, &ls
-            );         
-          }
-          (*ray).direction = normalize(TBN * wi);
-          (*ray).origin += (*ray).direction * 0.001;
-          *reflectance *= brdf * (misWeight / pdf) * max(dot(N, (*ray).direction), 0.0);
+          *lastBrdfMisWeight = 1.0;
         }
 
         if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
@@ -476,24 +464,27 @@ export class EONDiffuse extends Material {
           var rayBrdf = Ray((*ray).origin, (*ray).direction);
           var rayLight = Ray((*ray).origin, (*ray).direction);
 
+          // the reason why we're guarding NEE with this if statement is explained in the segment/integrators/mis-explanation.png
+          if (debugInfo.bounce < config.BOUNCES_COUNT - 1) {
+            shadeEONDiffuseSampleLight(
+              rands2, material, wo, &lightSampleWi, &rayLight, TBN, TBNinverse,
+              &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
+            );
+            // from tangent space to world space
+            lightSampleWi = normalize(TBN * lightSampleWi);
+            // light contribution
+            *rad += *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * max(dot(N, lightSampleWi), 0.0);
+          }
+
           shadeEONDiffuseSampleBRDF(
-            rands1, material, wo, &wi, ray, TBN, &brdfSampleBrdf, &brdfSamplePdf, 
+            rands1, material, wo, &wi, &rayBrdf, TBN, &brdfSampleBrdf, &brdfSamplePdf, 
             &brdfMisWeight
           );
-          shadeEONDiffuseSampleLight(
-            rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse,
-            &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
-          );
-
           (*ray).direction = normalize(TBN * wi);
           (*ray).origin += (*ray).direction * 0.001;
           
-          // from tangent space to world space
-          lightSampleWi = normalize(TBN * lightSampleWi);
-
-          // light contribution
-          *rad += *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * max(dot(N, lightSampleWi), 0.0);
-          *reflectance *= brdfSampleBrdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);    
+          *reflectance *= brdfSampleBrdf * (1.0 / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);    
+          *lastBrdfMisWeight = brdfMisWeight;
         }
       }
     `;

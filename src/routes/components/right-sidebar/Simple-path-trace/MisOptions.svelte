@@ -1,7 +1,7 @@
 <script lang="ts">
   import { MIS_TYPE } from '$lib/config';
-  import { configOptions } from '../../stores/main';
-  import Separator from '../Separator.svelte';
+  import { configOptions } from '../../../stores/main';
+  import Separator from '../../Separator.svelte';
 </script>
 
 <p>Mis Type:</p>
@@ -12,7 +12,7 @@
     type="radio"
     name="mis-type"
     value={MIS_TYPE.BRDF_ONLY}
-    bind:group={$configOptions.MIS_TYPE}
+    bind:group={$configOptions.SimplePathTrace.MIS_TYPE}
   />
   Brdf only
 </label>
@@ -20,17 +20,8 @@
   <input
     type="radio"
     name="mis-type"
-    value={MIS_TYPE.ONE_SAMPLE_MODEL}
-    bind:group={$configOptions.MIS_TYPE}
-  />
-  One Sample Model
-</label>
-<label>
-  <input
-    type="radio"
-    name="mis-type"
     value={MIS_TYPE.NEXT_EVENT_ESTIMATION}
-    bind:group={$configOptions.MIS_TYPE}
+    bind:group={$configOptions.SimplePathTrace.MIS_TYPE}
   />
   Next Event Estimation
 </label>
@@ -44,7 +35,7 @@
     type="radio"
     name="mis-heuristic"
     value={0}
-    bind:group={$configOptions.USE_POWER_HEURISTIC}
+    bind:group={$configOptions.SimplePathTrace.USE_POWER_HEURISTIC}
   />
   Balanced Heuristic
 </label>
@@ -53,7 +44,7 @@
     type="radio"
     name="mis-heuristic"
     value={1}
-    bind:group={$configOptions.USE_POWER_HEURISTIC}
+    bind:group={$configOptions.SimplePathTrace.USE_POWER_HEURISTIC}
   />
   Power Heuristic
 </label>

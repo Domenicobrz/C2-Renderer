@@ -1,7 +1,8 @@
 import { Vector2 } from 'three';
 import { samplesInfo } from '../routes/stores/main';
-import { configManager } from './config';
+import { ConfigManager } from './config';
 import type { ConfigOptions } from './config';
+import { EventHandler } from './eventHandler';
 
 export type Tile = {
   x: number;
@@ -10,17 +11,55 @@ export type Tile = {
   h: number;
 };
 
+type TilePeformanceRequirements = {
+  changeTileSizeOnNewLineOnly: boolean;
+  performanceHistoryCount: number;
+  // number of milliseconds after which we'll decrease the tile size
+  avgPerfToDecrease: number;
+  // number of milliseconds under which we'll increase the tile size
+  avgPerfToIncrease: number;
+};
+
 export class TileSequence {
   private canvasSize: Vector2 = new Vector2(0, 0);
-  private tile: Tile = { x: 0, y: 0, w: 0, h: 0 };
+  public tile: Tile = { x: 0, y: 0, w: 0, h: 0 };
   // used for both increments and decrements
   private tileIncrementCount = 0;
   private forceMaxTileSize: boolean = false;
+  private requestedRestart: boolean = true;
 
-  constructor() {
+  public performanceHistoryCount = 15;
+  public performanceHistory: number[] = [];
+
+  public e: EventHandler = new EventHandler();
+
+  constructor(private performanceRequirements?: TilePeformanceRequirements) {
+    let configManager = new ConfigManager();
     configManager.e.addEventListener('config-update', (options: ConfigOptions) => {
       this.forceMaxTileSize = options.forceMaxTileSize;
     });
+
+    if (performanceRequirements) {
+      this.performanceHistoryCount = performanceRequirements.performanceHistoryCount;
+    }
+  }
+
+  saveComputationPerformance(value: number) {
+    this.performanceHistory.push(value);
+    if (this.performanceHistory.length > this.performanceHistoryCount) {
+      this.performanceHistory.splice(0, 1);
+    }
+  }
+
+  getAveragePerformance() {
+    if (this.performanceHistory.length > 0) {
+      return (
+        this.performanceHistory.reduce((prev, curr) => prev + curr, 0) /
+        this.performanceHistory.length
+      );
+    }
+
+    return 0;
   }
 
   setCanvasSize(canvasSize: Vector2) {
@@ -101,20 +140,19 @@ export class TileSequence {
       this.tile.h = Math.ceil(this.canvasSize.y / 8) * 8;
     }
 
-    // by subtracting tile.w to the x position,
-    // getNextTile() will pick the previous position as the next tile position
-    // basically when we increase the tile size we want the tile to remain
-    // in place
-    this.tile.x -= this.tile.w;
-
     this.tileIncrementCount += 1;
     samplesInfo.setTileSize(`${this.tile.w} x ${this.tile.h}`);
   }
 
-  resetTile() {
+  resetTile(initialSize?: Vector2) {
     this.tileIncrementCount = 0;
     let sizex = 16;
     let sizey = 16;
+
+    if (initialSize) {
+      sizex = initialSize.x;
+      sizey = initialSize.y;
+    }
 
     if (this.forceMaxTileSize) {
       sizex = this.canvasSize.x;
@@ -122,11 +160,59 @@ export class TileSequence {
     }
 
     samplesInfo.setTileSize(`${sizex} x ${sizey}`);
-    // we decided tilesize will be a multiple of 8
-    this.tile = { x: this.canvasSize.x, y: this.canvasSize.y, w: sizex, h: sizey };
+    this.tile = { x: 0, y: 0, w: sizex, h: sizey };
+    this.requestedRestart = true;
+
+    this.performanceHistory = [];
   }
 
-  getNextTile(onTileStart: () => void) {
+  performanceBasedUpdates() {
+    let { performanceRequirements } = this;
+    if (!performanceRequirements) return;
+    let { avgPerfToDecrease, avgPerfToIncrease, changeTileSizeOnNewLineOnly } =
+      performanceRequirements;
+
+    let avgPerf = this.getAveragePerformance();
+
+    if (avgPerf === 0) return;
+    if (changeTileSizeOnNewLineOnly && !this.isNewLine()) return;
+
+    if (avgPerf < avgPerfToIncrease && this.canTileSizeBeIncreased()) {
+      if (this.canTileSizeBeIncreased()) {
+        this.increaseTileSize();
+        this.e.fireEvent('on-tile-size-increased', {});
+      }
+    }
+    if (avgPerf > avgPerfToDecrease && this.canTileSizeBeDecreased()) {
+      if (this.canTileSizeBeDecreased()) {
+        this.decreaseTileSize();
+        this.e.fireEvent('on-tile-size-decreased', {});
+      }
+    }
+  }
+
+  getNextTile() {
+    if (this.requestedRestart) {
+      this.requestedRestart = false;
+      this.tile.x = 0;
+      this.tile.y = 0;
+
+      this.e.fireEvent('on-tile-start', {});
+
+      // we'll have to change tile size based on performance
+      // *before* establishing if this is the last tile before restart
+      this.performanceBasedUpdates();
+
+      // if the tile covers the entire screen, on the next call request again a re-start
+      if (this.isLastTileBeforeRestart()) {
+        this.requestedRestart = true;
+      }
+
+      return this.tile;
+    }
+    // if we got here, the previous tile wasn't the last one before restarting
+
+    // [x ... x+w] was computed in the previous iteration, now add and select the new one
     this.tile.x += this.tile.w;
 
     if (this.tile.x >= this.canvasSize.x) {
@@ -134,13 +220,40 @@ export class TileSequence {
       this.tile.y += this.tile.h;
     }
 
-    if (this.tile.y >= this.canvasSize.y) {
-      this.tile.x = 0;
-      this.tile.y = 0;
-      onTileStart();
+    // we'll have to change tile size based on performance
+    // *before* establishing if this is the last tile before restart
+    this.performanceBasedUpdates();
+
+    if (this.isLastTileBeforeRestart()) {
+      this.requestedRestart = true;
     }
 
     return this.tile;
+  }
+
+  // certain algorithms like ReSTIR PT require tiles to be
+  // increased or decreased only when we reach a new line
+  isNewLine() {
+    if (this.tile.x == 0) return true;
+    return false;
+  }
+
+  isTileStarting() {
+    if (this.tile.x == 0 && this.tile.y == 0) return true;
+  }
+
+  // TODO: this is sort of a duplicate of the function above
+  isLastTileBeforeRestart() {
+    let w = this.tile.w;
+    let h = this.tile.h;
+    let x = this.tile.x;
+    let y = this.tile.y;
+
+    if (x + w >= this.canvasSize.x && y + h >= this.canvasSize.y) {
+      return true;
+    }
+
+    return false;
   }
 
   getCurrentTile() {

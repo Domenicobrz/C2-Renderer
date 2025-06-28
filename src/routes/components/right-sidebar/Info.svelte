@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { bvhInfo, samplesInfo } from '../../stores/main';
+  import { bvhInfo, configOptions, samplesInfo } from '../../stores/main';
+  import Separator from '../Separator.svelte';
 </script>
 
 <p>Bvh nodes count: <span>{$bvhInfo.nodesCount}</span></p>
@@ -11,6 +12,22 @@
   >
 </p>
 <p>Click target: <span class="user-selectable">{$samplesInfo.clickTarget}</span></p>
+
+{#if $configOptions.integrator == 'ReSTIR'}
+  <Separator />
+  <p>ReSTIR PT State: <span>{$samplesInfo.integrator.ReSTIR?.state ?? ''}</span></p>
+  <p>
+    Initial Candidate index: <span
+      >{$samplesInfo.integrator.ReSTIR?.initialCandidateIndex ?? ''}</span
+    >
+  </p>
+  <p>Spatial Re-sample index: <span>{$samplesInfo.integrator.ReSTIR?.srPassIndex ?? ''}</span></p>
+  <p>
+    ReSTIR Buffer size (MB): <span
+      >{$samplesInfo.integrator.ReSTIR?.bufferSizeMB.toFixed(0) ?? ''} (x2)</span
+    >
+  </p>
+{/if}
 
 <style>
   p,

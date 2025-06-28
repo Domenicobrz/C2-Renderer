@@ -12,18 +12,19 @@ import { Orbit } from '$lib/controls/Orbit';
 import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
+import { globals } from '$lib/C2';
 
 export async function cornellSphereScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
   let materials: Material[] = [
-    new EONDiffuse({ color: new Color(0.95, 0.95, 0.95), roughness: 1 }),
-    new EONDiffuse({ color: new Color(1, 0.05, 0.05), roughness: 1 }),
-    // new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
-    // new Diffuse({ color: new Color(1, 0.05, 0.05) }),
+    // new EONDiffuse({ color: new Color(0.95, 0.95, 0.95), roughness: 1 }),
+    // new EONDiffuse({ color: new Color(1, 0.05, 0.05), roughness: 1 }),
+    new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
+    new Diffuse({ color: new Color(1, 0.05, 0.05) }),
     new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), roughness: 0, anisotropy: 0 }),
     new Emissive({ color: new Color(1, 1, 1), intensity: 20 }),
-    new EONDiffuse({ color: new Color(0.05, 1, 0.05), roughness: 1 }),
-    // new Diffuse({ color: new Color(0.05, 1, 0.05) }),
+    // new EONDiffuse({ color: new Color(0.05, 1, 0.05), roughness: 1 }),
+    new Diffuse({ color: new Color(0.05, 1, 0.05) }),
     new Dielectric({
       absorption: new Color(0.095, 0.195, 0.295),
       roughness: 0.05,
@@ -73,22 +74,28 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   mesh.position.set(0, 0, 1);
 
   // let mat = new Diffuse({ color: new Color(1, 1, 1) });
-  let mat = new EONDiffuse({ color: new Color(1, 1, 1), roughness: 1 });
+  // let mat = new EONDiffuse({ color: new Color(1, 1, 1), roughness: 1 });
   // let mat = new TorranceSparrow({
   //   color: new Color(0.99, 0.99, 0.99),
   //   roughness: 0.9,
   //   anisotropy: 1
   // });
+  // let wallBump = (
+  //   await new TextureLoader().loadAsync(globals.assetsPath + 'textures/misc/bump-test.png')
+  // ).source.data;
   // let mat = new Dielectric({
   //   absorption: new Color(0, 0, 0),
-  //   roughness: 0.9,
+  //   roughness: 0.23,
   //   anisotropy: 0,
-  //   eta: 1.5
+  //   eta: 1.5,
+  //   bumpMap: wallBump,
+  //   bumpStrength: 3
   // });
-  materials.push(mat);
-  triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
+  // materials.push(mat);
+  // triangles = [...triangles, ...meshToTriangles(mesh, materials.length - 1)];
+  triangles = [...triangles, ...meshToTriangles(mesh, 0)];
 
-  // let gltf = await new GLTFLoader().loadAsync('scene-assets/models/horse-statue-uv.glb');
+  // let gltf = await new GLTFLoader().loadAsync(globals.assetsPath + 'models/horse-statue-uv.glb');
   // let group = gltf.scene.children[0];
   // group.scale.set(-2.85, 2.85, 2.85);
   // group.position.set(0.1, -4, 1.5);
@@ -105,5 +112,7 @@ export async function cornellSphereScene(): Promise<C2Scene> {
   camera.focusDistance = 9.53;
   camera.exposure = 1.85;
 
-  return { triangles, materials, camera };
+  function dispose() {}
+
+  return { triangles, materials, camera, dispose };
 }

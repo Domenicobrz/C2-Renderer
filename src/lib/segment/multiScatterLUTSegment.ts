@@ -48,7 +48,7 @@ export class MultiScatterLUTSegment {
     });
 
     this.randsUniformBuffer = this.device.createBuffer({
-      label: 'multi-scatter LUT - randoms buffer',
+      label: 'multi-scatter LUT - randoms',
       size: 4 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
@@ -114,7 +114,6 @@ export class MultiScatterLUTSegment {
     const data = copyArrayBuffer.slice(0);
     this.stagingBuffer.unmap();
     const floatsData = new Float32Array(data).map((v) => (v /= this.samples));
-    // console.log(floatsData);
 
     this.saveLUTBuffer(floatsData, 1, this.LUTSize);
   }
@@ -170,12 +169,14 @@ export class MultiScatterLUTSegment {
     this.LUTSize = size;
 
     let LUTTypeUniformBuffer = this.device.createBuffer({
+      label: 'LUT Type uniform',
       size: 1 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     this.device.queue.writeBuffer(LUTTypeUniformBuffer, 0, new Uint32Array([type]));
 
     let LUTSizeUniformBuffer = this.device.createBuffer({
+      label: 'LUT Size uniform',
       size: 3 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
@@ -188,14 +189,14 @@ export class MultiScatterLUTSegment {
     const input = new Float32Array(size.x * size.y * size.z);
     this.LUTbyteLength = input.byteLength;
     this.workBuffer = this.device.createBuffer({
-      label: 'multi-scatter LUT - work buffer',
+      label: 'multi-scatter LUT - work',
       size: this.LUTbyteLength,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC
     });
     this.device.queue.writeBuffer(this.workBuffer, 0, input);
 
     this.stagingBuffer = this.device.createBuffer({
-      label: 'multi-scatter LUT - staging buffer',
+      label: 'multi-scatter LUT - staging',
       size: this.LUTbyteLength,
       usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST
     });

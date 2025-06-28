@@ -2,23 +2,10 @@
   import { Renderer } from '$lib/C2';
   import type { RendererInterface } from '$lib/C2';
   import { onMount } from 'svelte';
-  import {
-    centralErrorStatusMessage,
-    centralStatusMessage,
-    configOptions,
-    samplesInfo
-  } from '../stores/main';
-  import Folder from './Folder.svelte';
+  import { centralErrorStatusMessage, centralStatusMessage, samplesInfo } from '../stores/main';
   import LeftSidebar from './LeftSidebar.svelte';
-  import Envmap from './right-sidebar/Envmap.svelte';
-  import CameraSettings from './right-sidebar/CameraSettings.svelte';
-  import CanvasSize from './right-sidebar/CanvasSize.svelte';
-  import Sampling from './right-sidebar/Sampling.svelte';
-  import Info from './right-sidebar/Info.svelte';
-  import Operate from './right-sidebar/Operate.svelte';
-  import Performance from './right-sidebar/Performance.svelte';
   import StopWatch from './icons/StopWatch.svelte';
-  import { tick } from '$lib/utils/tick';
+  import RightSidebar from './RightSidebar.svelte';
 
   let canvasRef: HTMLCanvasElement;
   let canvasWidth: number;
@@ -51,41 +38,23 @@
     />
 
     {#if $centralStatusMessage}
-      <p class="csm">
-        <span class="csm-icon-container"><StopWatch /></span>{$centralStatusMessage}
-      </p>
+      <div class="csm-dialog">
+        <p>
+          <span class="csm-icon-container"><StopWatch /></span>{$centralStatusMessage}
+        </p>
+      </div>
     {/if}
 
     {#if $centralErrorStatusMessage}
-      <p class="csm csm-error">
-        {$centralErrorStatusMessage}
-      </p>
+      <div class="csm-dialog">
+        <p class="csm csm-error">
+          {$centralErrorStatusMessage}
+        </p>
+      </div>
     {/if}
   </div>
 
-  <div class="sidebar">
-    <Folder name="Canvas">
-      <CanvasSize {canvasContainerEl} bind:width={canvasWidth} bind:height={canvasHeight} />
-    </Folder>
-    <Folder name="Info">
-      <Info />
-    </Folder>
-    <Folder name="Camera">
-      <CameraSettings {canvasRef} {renderer} />
-    </Folder>
-    <Folder name="Envmap" disabled={!$configOptions.shaderConfig.HAS_ENVMAP}>
-      <Envmap />
-    </Folder>
-    <Folder name="Sampling" roundBox>
-      <Sampling />
-    </Folder>
-    <Folder name="Performance" expanded={false}>
-      <Performance />
-    </Folder>
-    <Folder name="Operate" roundBox>
-      <Operate />
-    </Folder>
-  </div>
+  <RightSidebar bind:canvasWidth bind:canvasHeight {renderer} {canvasContainerEl} {canvasRef} />
 </main>
 
 <style>
@@ -126,21 +95,17 @@
     display: block;
   }
 
-  .sidebar {
-    flex: 0 0 310px;
-    height: 100%;
-    border: 1px solid #333;
-    color: #ddd;
-    background: #191919;
-    overflow: auto;
-  }
-
-  .csm {
+  .csm-dialog {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     color: #ddd;
+
+    background: #0e0e0e;
+    padding: 20px 40px 25px 40px;
+    border-radius: 5px;
+    border: 1px solid #333;
   }
 
   .csm-error {
@@ -151,7 +116,7 @@
     display: inline-block;
     width: 20px;
     height: 20px;
-    margin: 0px 7px 0 0;
+    margin: 0px 12px 0 0;
     transform: translateY(5px);
   }
 </style>

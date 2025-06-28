@@ -18,6 +18,7 @@ export class Triangle {
   public tang0: Vector3 = new Vector3(-1, -1);
   public tang1: Vector3 = new Vector3(-1, -1);
   public tang2: Vector3 = new Vector3(-1, -1);
+  public lightSourcePickProb: number = 0;
 
   constructor(
     public v0: Vector3,
@@ -111,7 +112,12 @@ export class Triangle {
     let t =
       getLuminance(new Vector3(material.color.r, material.color.g, material.color.b)) *
       material.intensity;
+
     return t * this.getArea();
+  }
+
+  setLightSourcePickProb(value: number) {
+    this.lightSourcePickProb = value;
   }
 
   // https://github.com/johnnovak/raytriangle-test
@@ -170,7 +176,8 @@ export class Triangle {
     const trianglesCount = triangles.length;
     const data = new ArrayBuffer(STRUCT_SIZE * trianglesCount);
 
-    // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001007502000000000000003d888b0237284c234702b7aab29385155b3f2718992e9b6754bac0a4d3907ac90197744d48b9165df714046bc7d6a8882427bc684ede9e1685318a82b40048c549223d1f7abe31636c665e79d11c08efcc4fb5bff7d8a86f8925b840379e9f0fe6217697f31c7d707c87c5c75ec8a65e9710bf6837a91498edfefafe8b2e149fb80f170cb95db955139c3d8643b5d6547487a586549965e3ec33f42a335c3340c334845ae27cda95db9375d1372ddf5fc521a40e6e0f2cfcc9ebb05307ec87db49570a3287af807057e2a490786b24e6193736769a632b793b83634489093c3a260745eb7cb2f55a50af23b63060f1fbe34aa6e79b0b5a543ca1a2ba6ec4338f23d28f0c8f448fffd0a8a78c
+    // this layout saves some bytes thanks to better padding utilization
+    // https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html#x=5d000001008402000000000000003d888b0237284d3025f2381bcb288abe3eafc62d6ca0d8042fc198313b2c59144a61358b4ecf0a110a5742e9967abe5fd8f09cb0d426b783c5c4acdcaff73de043847ea99d270287c5bb8165ff191938bf46519812ae7414abd50009897e6e082bbcee17c3349015d5ed4b8b2120008b0c6a6ffc569819fa7a27183a01ea0a2473a3d9ae82d6f19977f864f8389ad8d0166b9039cdef56ea0156ff4d5fb5245315b532da1a7b3c81364f31ab5bcb14150cb20619751943f1d96182f45c3e5ddca7cecc01374fbdf4d94965aa085462ebf20563ad9553c901c0e6890cfd7cbf4392bca3fff587ff59069e7aa71bb4a9dcb6881df21a53d876fecbd759c1c11611742171b1bac66e8bb0442f7f251de34876f234ac2fc555fff63d7861
     triangles.forEach((t, i) => {
       const offs = i * STRUCT_SIZE;
       const views = {
@@ -187,6 +194,7 @@ export class Triangle {
         norm0: new Float32Array(data, offs + 128, 3),
         norm1: new Float32Array(data, offs + 144, 3),
         norm2: new Float32Array(data, offs + 160, 3),
+        lightSourcePickProb: new Float32Array(data, offs + 172, 1),
         geometricNormal: new Float32Array(data, offs + 176, 3),
         materialOffset: new Uint32Array(data, offs + 188, 1)
       };
@@ -197,6 +205,7 @@ export class Triangle {
       views.uv1.set([t.uv1.x, t.uv1.y]);
       views.uv2.set([t.uv2.x, t.uv2.y]);
       views.area.set([t.getArea()]);
+      views.lightSourcePickProb.set([t.lightSourcePickProb]);
       views.norm0.set([t.norm0.x, t.norm0.y, t.norm0.z]);
       views.norm1.set([t.norm1.x, t.norm1.y, t.norm1.z]);
       views.norm2.set([t.norm2.x, t.norm2.y, t.norm2.z]);
@@ -216,9 +225,24 @@ export class Triangle {
         hit: bool,
         t: f32,
         hitPoint: vec3f,
-        uv: vec2f,
+        barycentrics: vec2f,
+      }
+
+      struct InterpolatedAttributes {
         normal: vec3f,
+        uv: vec2f,
         tangent: vec3f,
+      }
+
+      struct SurfaceNormals {
+        geometric: vec3f,
+        vertex: vec3f,
+        shading: vec3f,
+      }
+
+      struct TriangleSampleResult {
+        point: vec3f,
+        barycentrics: vec2f,
       }
 
       // this layout saves some bytes because of padding
@@ -237,6 +261,7 @@ export class Triangle {
         norm0: vec3f,
         norm1: vec3f,
         norm2: vec3f,
+        lightSourcePickProb: f32,
         geometricNormal: vec3f,
         materialOffset: u32,
       }
@@ -245,16 +270,44 @@ export class Triangle {
 
   static shaderIntersectionFn(): string {
     return /* wgsl */ `
-      fn sampleTrianglePoint(triangle: Triangle, s: f32, t: f32) -> vec3f {
+      fn sampleTrianglePoint(triangle: Triangle, st: vec2f) -> TriangleSampleResult {
+        let s = st.x;
+        let t = st.y;
+        
         let v0v1 = (triangle.v1 - triangle.v0);
         let v0v2 = (triangle.v2 - triangle.v0);
-        let in_triangle = s + t <= 1;
 
+        let in_triangle = s + t <= 1;
         if (in_triangle) {
-          return v0v1 * s + v0v2 * t + triangle.v0;
+          return TriangleSampleResult(v0v1 * s + v0v2 * t + triangle.v0, vec2f(s, t));
         }
 
-        return v0v1 * (1.0 - s) + v0v2 * (1.0 - t) + triangle.v0;
+        return TriangleSampleResult(
+          v0v1 * (1.0 - s) + v0v2 * (1.0 - t) + triangle.v0,
+          vec2f((1.0 - s), (1.0 - t))
+        );
+      }
+
+      fn getInterpolatedAttributes(triangle: Triangle, barycentrics: vec2f) -> InterpolatedAttributes {
+        let u = barycentrics.x;
+        let v = barycentrics.y;
+        let w = 1.0 - u - v;
+        let uv0 = triangle.uv0;
+        let uv1 = triangle.uv1;
+        let uv2 = triangle.uv2;
+        let hitUV = uv0 * w + uv1 * u + uv2 * v;
+        
+        let norm0 = triangle.norm0;
+        let norm1 = triangle.norm1;
+        let norm2 = triangle.norm2;
+        let hitNormal = normalize(norm0 * w + norm1 * u + norm2 * v);
+
+        let tang0 = triangle.tang0;
+        let tang1 = triangle.tang1;
+        let tang2 = triangle.tang2;
+        let hitTangent = normalize(tang0 * w + tang1 * u + tang2 * v);
+
+        return InterpolatedAttributes(hitNormal, hitUV, hitTangent);
       }
 
       // https://github.com/johnnovak/raytriangle-test
@@ -271,7 +324,7 @@ export class Triangle {
         let det = dot(v0v1, pvec);
       
         const CULLING = false;
-        const noIntersection = IntersectionResult(false, 0, vec3f(0), vec2f(0), vec3f(0), vec3(0));
+        const noIntersection = IntersectionResult(false, 0, vec3f(0), vec2f(0));
       
         if (CULLING) {
           if (det < 0.000001) {
@@ -305,24 +358,11 @@ export class Triangle {
         }
 
         let hitPoint = ray.origin + t * ray.direction;
-        
-        let w = 1.0 - u - v;
-        let uv0 = triangle.uv0;
-        let uv1 = triangle.uv1;
-        let uv2 = triangle.uv2;
-        let hitUV = uv0 * w + uv1 * u + uv2 * v;
-        
-        let norm0 = triangle.norm0;
-        let norm1 = triangle.norm1;
-        let norm2 = triangle.norm2;
-        let hitNormal = normalize(norm0 * w + norm1 * u + norm2 * v);
+        let barycentrics = vec2f(u, v);
 
-        let tang0 = triangle.tang0;
-        let tang1 = triangle.tang1;
-        let tang2 = triangle.tang2;
-        let hitTangent = normalize(tang0 * w + tang1 * u + tang2 * v);
-
-        return IntersectionResult(true, t, hitPoint, hitUV, hitNormal, hitTangent);
+        return IntersectionResult(
+          true, t, hitPoint, barycentrics
+        );
       }
     `;
   }

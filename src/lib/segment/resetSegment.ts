@@ -36,9 +36,14 @@ export class ResetSegment {
 
     // create a typedarray to hold the values for the uniforms in JavaScript
     this.canvasSizeUniformBuffer = device.createBuffer({
+      label: 'canvas size uniform',
       size: 2 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
+  }
+
+  dispose() {
+    this.canvasSizeUniformBuffer.destroy();
   }
 
   resize(canvasSize: Vector2, workBuffer: GPUBuffer, samplesCountBuffer: GPUBuffer) {

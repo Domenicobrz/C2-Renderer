@@ -37,22 +37,27 @@ export class Camera {
 
     this.device = globals.device;
     this.cameraUniformBuffer = this.device.createBuffer({
+      label: 'camera uniform',
       size: 96 /* determined with offset computer */,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     this.exposureUniformBuffer = this.device.createBuffer({
+      label: 'exposure uniform',
       size: 1 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     this.cameraMatrixUniformBuffer = this.device.createBuffer({
+      label: 'camera matrix uniform',
       size: 16 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     this.projectionMatrixUniformBuffer = this.device.createBuffer({
+      label: 'projection matrix uniform',
       size: 16 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     this.cameraPositionUniformBuffer = this.device.createBuffer({
+      label: 'camera position uniform',
       size: 3 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });

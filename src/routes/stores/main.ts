@@ -1,4 +1,6 @@
-import type { ConfigOptions } from '$lib/config';
+import { ReSTIR_SAMPLER_TYPE, type ConfigOptions } from '$lib/config';
+import type { SceneName } from '$lib/createScene';
+import { getURLParam } from '$lib/utils/getURLParam';
 import { get, writable } from 'svelte/store';
 import { Vector2, Vector3 } from 'three';
 
@@ -12,20 +14,35 @@ export const renderView = writable<'preview' | 'realtime' | 'compute'>('compute'
 export const centralErrorStatusMessage = writable<string>('');
 export const centralStatusMessage = writable<string>('');
 
+type ReSTIRState = {
+  state: string;
+  initialCandidateIndex: number;
+  srPassIndex: number;
+  bufferSizeMB: number;
+};
+
+export const adapterInfo = writable<Record<string, number>>({});
+
 type SamplesInfo = {
   limit: number;
   count: number;
   ms: number;
   tileSize: string;
   clickTarget: string;
+  integrator: {
+    ReSTIR: ReSTIRState | null;
+  };
 };
 export const samplesInfo = (function createSamplesInfoStore() {
   let store = writable<SamplesInfo>({
-    limit: 8,
+    limit: 200,
     count: 0,
     ms: 0,
     tileSize: '',
-    clickTarget: '(0, 0)'
+    clickTarget: '(0, 0)',
+    integrator: {
+      ReSTIR: null
+    }
   });
 
   return {
@@ -53,6 +70,12 @@ export const samplesInfo = (function createSamplesInfoStore() {
     setLimit: (value: number) => {
       store.update((si) => {
         si.limit = value;
+        return si;
+      });
+    },
+    setReSTIRState: (state: ReSTIRState) => {
+      store.update((si) => {
+        si.integrator.ReSTIR = state;
         return si;
       });
     },
@@ -85,6 +108,14 @@ type CameraMovementInfo = {
   position: Vector3;
   target: Vector3;
 };
+
+let initialScene: SceneName = 'C2 features';
+const selectedSceneFromParams = getURLParam('scene') || '';
+if (selectedSceneFromParams) {
+  initialScene = selectedSceneFromParams as SceneName;
+}
+export const selectedSceneStore = writable<SceneName>(initialScene);
+
 export const cameraInfoStore = writable<CameraInfo>({
   exposure: 1,
   aperture: 0,
@@ -106,14 +137,36 @@ export const cameraMovementInfoStore = writable<CameraMovementInfo>({
 export const configOptions = createConfigStore({
   forceMaxTileSize: false,
   BOUNCES_COUNT: 10,
-  MIS_TYPE: 2,
-  SAMPLER_TYPE: 3,
-  SAMPLER_DECORRELATION: 3,
-  USE_POWER_HEURISTIC: 1,
+
   ENVMAP_SCALE: 1,
   ENVMAP_ROTX: 0,
   ENVMAP_ROTY: 0,
   ENVMAP_USE_COMPENSATED_DISTRIBUTION: false,
+
+  integrator: 'Simple-path-trace',
+  // integrator: 'ReSTIR',
+
+  SimplePathTrace: {
+    MIS_TYPE: 1,
+    SAMPLER_TYPE: 3,
+    SAMPLER_DECORRELATION: 3,
+    USE_POWER_HEURISTIC: 1
+  },
+
+  ReSTIR: {
+    SAMPLER_TYPE: ReSTIR_SAMPLER_TYPE.UNIFORM,
+    USE_POWER_HEURISTIC: 1,
+    RESTIR_INITIAL_CANDIDATES: 1, // the paper recommends 50 I think
+    // the paper recommends 6, but on my machine occupancy rates seems to be horrible at 6
+    RESTIR_SR_CANDIDATES: 6,
+    RESTIR_SR_PASS_COUNT: 3,
+    RESTIR_TEMP_CANDIDATES: 2,
+    SR_CIRCLE_RADIUS: 10.0,
+    MAX_CONFIDENCE: 10,
+    USE_TEMPORAL_RESAMPLE: false,
+    GBH_VARIANT: 'Pairwise MIS'
+  },
+
   shaderConfig: {
     HAS_ENVMAP: false
   }

@@ -93,59 +93,6 @@ export class TorranceSparrow extends Material {
     ];
   }
 
-  static shaderStruct(): string {
-    return /* wgsl */ `
-      struct TORRANCE_SPARROW {
-        color: vec3f,
-        ax: f32,
-        ay: f32,
-        roughness: f32,
-        anisotropy: f32,
-        bumpStrength: f32,
-        uvRepeat: vec2f,
-        mapUvRepeat: vec2f,
-        mapLocation: vec2i,
-        roughnessMapLocation: vec2i,
-        bumpMapLocation: vec2i,
-      }
-    `;
-  }
-
-  static shaderCreateStruct(): string {
-    return /* wgsl */ `
-      fn createTorranceSparrow(offset: u32) -> TORRANCE_SPARROW {
-        var ts: TORRANCE_SPARROW;
-        ts.color = vec3f(
-          materialsData[offset + 1],
-          materialsData[offset + 2],
-          materialsData[offset + 3],
-        );
-        ts.ax = 0; // we'll map this value in the shader
-        ts.ay = 0; // we'll map this value in the shader
-        ts.roughness = materialsData[offset + 4];
-        ts.anisotropy = materialsData[offset + 5];
-        ts.bumpStrength = materialsData[offset + 6];
-        ts.uvRepeat.x = materialsData[offset + 7];
-        ts.uvRepeat.y = materialsData[offset + 8];
-        ts.mapUvRepeat.x = materialsData[offset + 9];
-        ts.mapUvRepeat.y = materialsData[offset + 10];
-        ts.mapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 11]),
-          bitcast<i32>(materialsData[offset + 12]),
-        );
-        ts.roughnessMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 13]),
-          bitcast<i32>(materialsData[offset + 14]),
-        );
-        ts.bumpMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 15]),
-          bitcast<i32>(materialsData[offset + 16]),
-        );
-        return ts;
-      } 
-    `;
-  }
-
   // this division was created to simplify the shader of the multi-scatter LUT creation
   static shaderBRDF(): string {
     return /* wgsl */ `
@@ -295,204 +242,220 @@ export class TorranceSparrow extends Material {
       
       return f;
     }
+
+    // https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf
+    fn multiScatterCompensationTorranceSparrow(F0: vec3f, wo: vec3f, roughness: f32) -> vec3f {
+      let ESSwo = getLUTvalue(
+        vec3f(roughness, saturate(wo.z /* dot(wo, norm) */), 0),
+        LUT_MultiScatterTorranceSparrow, 
+      ).x;
+  
+      let multiScatteringCoefficient = (1.0 + F0 * (1.0 - ESSwo) / ESSwo);
+      return multiScatteringCoefficient;
+    }
   `;
   }
 
-  static shaderShadeTorranceSparrow(): string {
+  static shaderTorranceSparrowLobe(): string {
     return /* wgsl */ `
-      // https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf
-      fn multiScatterCompensationTorranceSparrow(F0: vec3f, wo: vec3f, roughness: f32) -> vec3f {
-        let ESSwo = getLUTvalue(
-          vec3f(roughness, saturate(wo.z /* dot(wo, norm) */), 0),
-          LUT_MultiScatterTorranceSparrow, 
-        ).x;
+fn getTSMaterial(
+  interpolatedAttributes: InterpolatedAttributes, offset: u32
+) -> EvaluatedMaterial {
+  var data = EvaluatedMaterial();
+  
+  // material type
+  data.materialType = u32(materialsBuffer[offset + 0]);
 
-        let multiScatteringCoefficient = (1.0 + F0 * (1.0 - ESSwo) / ESSwo);
-        return multiScatteringCoefficient;
-      }
+  // color 
+  data.baseColor.x = materialsBuffer[offset + 1]; 
+  data.baseColor.y = materialsBuffer[offset + 2]; 
+  data.baseColor.z = materialsBuffer[offset + 3]; 
 
-      fn shadeTorranceSparrowSampleBRDF(
-        rands: vec4f, 
-        material: TORRANCE_SPARROW,
-        wo: vec3f,
-        wi: ptr<function, vec3f>,
-        worldSpaceRay: ptr<function, Ray>, 
-        TBN: mat3x3f,
-        brdf: ptr<function, vec3f>,
-        pdf: ptr<function, f32>,
-        misWeight: ptr<function, f32>,
-      ) {
-        TS_Sample_f(wo, rands.xy, material.ax, material.ay, material.color, wi, pdf, brdf);
-        *brdf *= multiScatterCompensationTorranceSparrow(material.color, wo, material.roughness);
-        
-        let lightSamplePdf = getLightPDF(Ray((*worldSpaceRay).origin, normalize(TBN * *wi)));
-        *misWeight = getMisWeight(*pdf, lightSamplePdf);
-      }
+  // bump strength
+  data.bumpStrength = materialsBuffer[offset + 6]; 
 
-      fn shadeTorranceSparrowSampleLight(
-        rands: vec4f, 
-        material: TORRANCE_SPARROW,
-        wo: vec3f,
-        wi: ptr<function, vec3f>,
-        worldSpaceRay: ptr<function, Ray>, 
-        TBN: mat3x3f,
-        TBNinverse: mat3x3f,
-        brdf: ptr<function, vec3f>,
-        pdf: ptr<function, f32>,
-        misWeight: ptr<function, f32>,
-        lightSampleRadiance: ptr<function, vec3f>,
-      ) {
-        let lightSample = getLightSample(worldSpaceRay.origin, rands);
-        *pdf = lightSample.pdf;
-        let backSideHit = lightSample.backSideHit;
+  // uvRepeat, used for bumpMapping
+  data.uvRepeat.x = materialsBuffer[offset + 7];
+  data.uvRepeat.y = materialsBuffer[offset + 8];
 
-        // from world-space to tangent-space
-        *wi = TBNinverse * lightSample.direction;
-        
-        var brdfSamplePdf = TS_PDF(wo, *wi, material.ax, material.ay);
-        *brdf = TS_f(wo, *wi, material.ax, material.ay, material.color);
-        *brdf *= multiScatterCompensationTorranceSparrow(material.color, wo, material.roughness);
+  // bumpMapLocation, used for bumpMapping
+  data.bumpMapLocation.x = bitcast<i32>(materialsBuffer[offset + 15]);
+  data.bumpMapLocation.y = bitcast<i32>(materialsBuffer[offset + 16]);
 
-        if (
-          brdfSamplePdf == 0.0 || 
-          lightSample.pdf == 0.0
-        ) {
-          *misWeight = 0; *pdf = 1; 
-          *lightSampleRadiance = vec3f(0.0);
-          // this will avoid NaNs when we try to normalize wi
-          *wi = vec3f(-1);
-          return;
-        }
+  // roughness, anisotropy
+  data.roughness = materialsBuffer[offset + 4]; 
+  data.anisotropy = materialsBuffer[offset + 5]; 
 
-        *lightSampleRadiance = lightSample.radiance;
-        *misWeight = getMisWeight(lightSample.pdf, brdfSamplePdf);
-      }
+  data.uvRepeat = vec2f(
+    materialsBuffer[offset + 7],
+    materialsBuffer[offset + 8],
+  );
+  data.mapUvRepeat = vec2f(
+    materialsBuffer[offset + 9],
+    materialsBuffer[offset + 10],
+  );
 
+  data.mapLocation = vec2i(
+    bitcast<i32>(materialsBuffer[offset + 11]),
+    bitcast<i32>(materialsBuffer[offset + 12]),
+  );
+  data.roughnessMapLocation = vec2i(
+    bitcast<i32>(materialsBuffer[offset + 13]),
+    bitcast<i32>(materialsBuffer[offset + 14]),
+  );
+  data.bumpMapLocation = vec2i(
+    bitcast<i32>(materialsBuffer[offset + 15]),
+    bitcast<i32>(materialsBuffer[offset + 16]),
+  );
 
-      fn shadeTorranceSparrow(
-        ires: BVHIntersectionResult, 
-        ray: ptr<function, Ray>,
-        reflectance: ptr<function, vec3f>, 
-        rad: ptr<function, vec3f>,
-        tid: vec3u,
-        i: i32
-      ) {
-        let hitPoint = ires.hitPoint;
-        var material: TORRANCE_SPARROW = createTorranceSparrow(ires.triangle.materialOffset);
+  if (data.mapLocation.x > -1) {
+    let texelColor = getTexelFromTextureArrays(
+      data.mapLocation, interpolatedAttributes.uv, data.mapUvRepeat
+    ).xyz;
 
-        if (material.mapLocation.x > -1) {
-          material.color *= getTexelFromTextureArrays(
-            material.mapLocation, ires.uv, material.mapUvRepeat
-          ).xyz;
-        }
-        if (material.roughnessMapLocation.x > -1) {
-          let roughness = getTexelFromTextureArrays(
-            material.roughnessMapLocation, ires.uv, material.uvRepeat
-          ).xy;
-          material.roughness *= roughness.x;
-          material.roughness = max(material.roughness, ${TorranceSparrow.MIN_INPUT_ROUGHNESS});
-        }
+    // color
+    data.baseColor *= texelColor;
+  }
+  if (data.roughnessMapLocation.x > -1) {
+    let roughnessTexel = getTexelFromTextureArrays(
+      data.roughnessMapLocation, interpolatedAttributes.uv, data.uvRepeat
+    ).xy;
 
-        let axay = anisotropyRemap(material.roughness, material.anisotropy);
-        material.ax = axay.x;
-        material.ay = axay.y;
+    // roughness
+    data.roughness *= roughnessTexel.x;
+    data.roughness = max(data.roughness, ${TorranceSparrow.MIN_INPUT_ROUGHNESS});
+  }
 
-        var vertexNormal = ires.normal;
-        if (dot(ires.triangle.geometricNormal, (*ray).direction) > 0) {
-          vertexNormal = -vertexNormal;
-        }
-        var N = vertexNormal;
-        var bumpOffset: f32 = 0.0;
-        if (material.bumpMapLocation.x > -1) {
-          N = getShadingNormal(
-            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-            ires, &bumpOffset
-          );
-        }
+  let axay = anisotropyRemap(data.roughness, data.anisotropy);
+  data.ax = axay.x;
+  data.ay = axay.y;
 
-        // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
-        (*ray).origin = ires.hitPoint;
-        // in practice however, only for Dielectrics we need the exact origin, 
-        // for TorranceSparrow we can apply the bump offset if necessary
-        if (bumpOffset > 0.0) {
-          (*ray).origin += vertexNormal * bumpOffset;
-        }
+  return data;
+}
 
-        // rands1.w is used for ONE_SAMPLE_MODEL
-        // rands1.xy is used for brdf samples
-        // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
-        let rands1 = vec4f(getRand2D(), getRand2D());
-        let rands2 = vec4f(getRand2D(), getRand2D());
+fn evaluatePdfTSLobe(
+  wo: vec3f,
+  wi: vec3f,
+  material: EvaluatedMaterial, 
+) -> f32 {
+  let ax = material.ax;
+  let ay = material.ay;
 
-        // we need to calculate a TBN matrix
-        var tangent = vec3f(0.0);
-        var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires, ires.triangle, N, &tangent, &bitangent);
+  // we're assuming wo and wi are in local-space 
+  var brdfSamplePdf = TS_PDF(wo, wi, ax, ay);
 
-        // normal could be flipped at some point, should we also flip TB?
-        // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
-        let TBN = mat3x3f(tangent, bitangent, N);
-        // to transform vectors from world space to tangent space, we multiply by
-        // the inverse of the TBN
-        let TBNinverse = transpose(TBN);
+  return brdfSamplePdf;
+}
 
-        var wi = vec3f(0,0,0); 
-        let wo = TBNinverse * -(*ray).direction;
+fn evaluateTSBrdf(
+  wo: vec3f,
+  wi: vec3f,
+  material: EvaluatedMaterial, 
+) -> vec3f {
+  let color = material.baseColor;
+  let ax = material.ax;
+  let ay = material.ay;
+  let roughness = material.roughness;
 
+  // we're assuming wo and wi are in local-space 
+  var brdf = TS_f(wo, wi, ax, ay, color);
+  brdf *= multiScatterCompensationTorranceSparrow(color, wo, roughness);
+  
+  return brdf;
+}
 
-        if (config.MIS_TYPE == BRDF_ONLY) {
-          var pdf: f32; var w: f32; var brdf: vec3f;
-          shadeTorranceSparrowSampleBRDF(
-            rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &w
-          );
-          (*ray).direction = normalize(TBN * wi);
-          (*ray).origin += (*ray).direction * 0.001;
-          *reflectance *= brdf * (1 / pdf) * max(dot(N, (*ray).direction), 0.0);
-        }
+fn sampleTSBrdf(
+  material: EvaluatedMaterial, 
+  geometryContext: GeometryContext
+) -> BrdfDirectionSample {
+  let ray = geometryContext.ray;
+  let surfaceNormals = geometryContext.normals;
 
-        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-          var pdf: f32; var misWeight: f32; var brdf: vec3f; var ls: vec3f;
-          if (rands1.w < 0.5) {
-            shadeTorranceSparrowSampleBRDF(
-              rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &misWeight
-            );
-          } else {
-            shadeTorranceSparrowSampleLight(
-              rands2, material, wo, &wi, ray, TBN, TBNinverse, 
-              &brdf, &pdf, &misWeight, &ls
-            );
-          }
-          (*ray).direction = normalize(TBN * wi);
-          (*ray).origin += (*ray).direction * 0.001;
-          *reflectance *= brdf * (misWeight / pdf) * max(dot(N, (*ray).direction), 0.0);
-        }
+  let rands = vec4f(getRand2D(), getRand2D());
 
-        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-          var brdfSamplePdf: f32; var brdfMisWeight: f32; 
-          var brdfSampleBrdf: vec3f; 
+  var tangent = vec3f(0.0);
+  var bitangent = vec3f(0.0);
+  getTangentFromTriangle(geometryContext, &tangent, &bitangent);
+  
+  // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+  let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
+  // to transform vectors from world space to tangent space, we multiply by
+  // the inverse of the TBN
+  let TBNinverse = transpose(TBN);
+  let wo = TBNinverse * -ray.direction;
+  var wi = vec3f(0.0);
 
-          var lightSamplePdf: f32; var lightMisWeight: f32; 
-          var lightRadiance: vec3f; var lightSampleBrdf: vec3f;
-          var lightSampleWi: vec3f;
+  let color = material.baseColor;
+  let ax = material.ax;
+  let ay = material.ay;
+  let roughness = material.roughness;
 
-          shadeTorranceSparrowSampleBRDF(
-            rands1, material, wo, &wi, ray, TBN, &brdfSampleBrdf, &brdfSamplePdf, &brdfMisWeight
-          );
-          shadeTorranceSparrowSampleLight(
-            rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse, 
-            &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
-          );
+  var brdfSamplePdf = 0.0;
+  var brdf = vec3f(0.0);
+  TS_Sample_f(wo, rands.xy, ax, ay, color, &wi, &brdfSamplePdf, &brdf);
+  brdf *= multiScatterCompensationTorranceSparrow(color, wo, roughness);
+  
+  let lightSamplePdf = getLightPDF(Ray(ray.origin, normalize(TBN * wi)));
+  let misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
+  let newDirection = normalize(TBN * wi);
 
-          (*ray).direction = normalize(TBN * wi);
-          (*ray).origin += (*ray).direction * 0.001;
-          // from tangent space to world space
-          lightSampleWi = normalize(TBN * lightSampleWi);
-          // light contribution, we have to multiply by *reflectance to account for reduced reflectance
-          // caused by previous light-bounces. You did miss this term when first implementing MIS here
-          *rad += *reflectance * lightRadiance * lightSampleBrdf * (lightMisWeight / lightSamplePdf) * max(dot(N, lightSampleWi), 0.0);
-          *reflectance *= brdfSampleBrdf * (brdfMisWeight / brdfSamplePdf) * max(dot(N, (*ray).direction), 0.0);
-        }
-      } 
+  return BrdfDirectionSample(
+    brdf,
+    brdfSamplePdf,
+    misWeight,
+    newDirection,
+  );
+}
+
+fn sampleTSLight(
+  material: EvaluatedMaterial, 
+  geometryContext: GeometryContext
+) -> LightDirectionSample {
+  let ray = geometryContext.ray;
+  let rands = vec4f(getRand2D(), getRand2D());
+
+  let lightSample = getLightSample(ray.origin, rands);
+  let pdf = lightSample.pdf;
+  let backSideHit = lightSample.backSideHit;
+
+  var wo = -ray.direction;
+  var wi = lightSample.direction;
+
+  // from world-space to tangent-space
+  transformToLocalSpace(&wo, &wi, geometryContext);
+
+  let color = material.baseColor;
+  let ax = material.ax;
+  let ay = material.ay;
+  let roughness = material.roughness;
+
+  var brdfSamplePdf = TS_PDF(wo, wi, ax, ay);
+  var brdf = TS_f(wo, wi, ax, ay, color);
+  brdf *= multiScatterCompensationTorranceSparrow(color, wo, roughness);
+
+  if (
+    brdfSamplePdf == 0.0 || 
+    lightSample.pdf == 0.0
+  ) {
+    return LightDirectionSample(
+      vec3f(0.0),
+      1,
+      0,
+      vec3f(0.0),
+      lightSample,
+    );
+  }
+
+  let mis = getMisWeight(lightSample.pdf, brdfSamplePdf);
+
+  return LightDirectionSample(
+    brdf,
+    pdf,
+    mis,
+    lightSample.direction,
+    lightSample
+  );
+}
     `;
   }
 }

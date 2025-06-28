@@ -1,7 +1,7 @@
 <script lang="ts">
   import { SAMPLER_TYPE } from '$lib/config';
-  import { configOptions } from '../../stores/main';
-  import Separator from '../Separator.svelte';
+  import { configOptions } from '../../../stores/main';
+  import Separator from '../../Separator.svelte';
 </script>
 
 <label>
@@ -9,7 +9,7 @@
     type="radio"
     name="sampler-type"
     value={SAMPLER_TYPE.UNIFORM}
-    bind:group={$configOptions.SAMPLER_TYPE}
+    bind:group={$configOptions.SimplePathTrace.SAMPLER_TYPE}
   />
   Uniform random
 </label>
@@ -18,7 +18,7 @@
     type="radio"
     name="sampler-type"
     value={SAMPLER_TYPE.HALTON}
-    bind:group={$configOptions.SAMPLER_TYPE}
+    bind:group={$configOptions.SimplePathTrace.SAMPLER_TYPE}
   />
   Halton sequence
 </label>
@@ -27,7 +27,7 @@
     type="radio"
     name="sampler-type"
     value={SAMPLER_TYPE.BLUE_NOISE}
-    bind:group={$configOptions.SAMPLER_TYPE}
+    bind:group={$configOptions.SimplePathTrace.SAMPLER_TYPE}
   />
   Blue Noise
 </label>
@@ -36,7 +36,7 @@
     type="radio"
     name="sampler-type"
     value={SAMPLER_TYPE.CUSTOM_R2}
-    bind:group={$configOptions.SAMPLER_TYPE}
+    bind:group={$configOptions.SimplePathTrace.SAMPLER_TYPE}
   />
   Sequenced R2
 </label>

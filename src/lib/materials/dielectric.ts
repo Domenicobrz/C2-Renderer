@@ -99,61 +99,6 @@ export class Dielectric extends Material {
     ];
   }
 
-  static shaderStruct(): string {
-    return /* wgsl */ `
-      struct DIELECTRIC {
-        absorption: vec3f,
-        ax: f32,
-        ay: f32,
-        roughness: f32,
-        anisotropy: f32,
-        eta: f32,
-        bumpStrength: f32,
-        uvRepeat: vec2f,
-        mapUvRepeat: vec2f,
-        absorptionMapLocation: vec2i,
-        roughnessMapLocation: vec2i,
-        bumpMapLocation: vec2i,
-      }
-    `;
-  }
-
-  static shaderCreateStruct(): string {
-    return /* wgsl */ `
-      fn createDielectric(offset: u32) -> DIELECTRIC {
-        var d: DIELECTRIC;
-        d.absorption = vec3f(
-          materialsData[offset + 1],
-          materialsData[offset + 2],
-          materialsData[offset + 3],
-        );
-        d.ax = 0; // we'll map this value in the shader
-        d.ay = 0; // we'll map this value in the shader
-        d.roughness = materialsData[offset + 4];
-        d.anisotropy = materialsData[offset + 5];
-        d.eta = materialsData[offset + 6];
-        d.bumpStrength = materialsData[offset + 7];
-        d.uvRepeat.x = materialsData[offset + 8];
-        d.uvRepeat.y = materialsData[offset + 9];
-        d.mapUvRepeat.x = materialsData[offset + 10];
-        d.mapUvRepeat.y = materialsData[offset + 11];
-        d.absorptionMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 12]),
-          bitcast<i32>(materialsData[offset + 13]),
-        );
-        d.roughnessMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 14]),
-          bitcast<i32>(materialsData[offset + 15]),
-        );
-        d.bumpMapLocation = vec2i(
-          bitcast<i32>(materialsData[offset + 16]),
-          bitcast<i32>(materialsData[offset + 17]),
-        );
-        return d;
-      } 
-    `;
-  }
-
   // this division was created to simplify the shader of the multi-scatter LUT creation
   static shaderBRDF(): string {
     return /* wgsl */ `
@@ -183,8 +128,8 @@ export class Dielectric extends Material {
         return (Sqr(r_parl) + Sqr(r_perp)) / 2;
       }
 
-      fn Dielectric_PDF(wo: vec3f, wi: vec3f, material: DIELECTRIC) -> f32 {
-        if (material.eta == 1 || (material.ax < 0.0005 && material.ay < 0.0005)) {
+      fn Dielectric_PDF(wo: vec3f, wi: vec3f, eta: f32, ax: f32, ay: f32) -> f32 {
+        if (eta == 1 || (ax < 0.0005 && ay < 0.0005)) {
           return 0;
         }
 
@@ -195,9 +140,9 @@ export class Dielectric extends Material {
         var etap = 1.0;
         if (!reflect) {
           if (cosTheta_o > 0) {
-            etap = material.eta;
+            etap = eta;
           } else {
-            etap = (1.0 / material.eta);
+            etap = (1.0 / eta);
           }
         }
         var wm = wi * etap + wo;
@@ -210,18 +155,18 @@ export class Dielectric extends Material {
           return 0;
         }
 
-        let R = FrDielectric(dot(wo, wm), material.eta);
+        let R = FrDielectric(dot(wo, wm), eta);
         let T = 1.0 - R;
         let pr = R;
         let pt = T;
 
         var pdf = 1.0;
         if (reflect) {
-          pdf = TR_DistributionPDF(wo, wm, material.ax, material.ay) / (4.0 * AbsDot(wo, wm)) * pr / (pr + pt);
+          pdf = TR_DistributionPDF(wo, wm, ax, ay) / (4.0 * AbsDot(wo, wm)) * pr / (pr + pt);
         } else {
           let denom = Sqr(dot(wi, wm) + dot(wo, wm) / etap);
           let dwm_dwi = AbsDot(wi, wm) / denom;
-          pdf = TR_DistributionPDF(wo, wm, material.ax, material.ay) * dwm_dwi * pt / (pr + pt);
+          pdf = TR_DistributionPDF(wo, wm, ax, ay) * dwm_dwi * pt / (pr + pt);
         }
 
         return pdf;
@@ -230,7 +175,9 @@ export class Dielectric extends Material {
       // this function samples the new wi direction, and returns the brdf and pdf
       fn Dielectric_Sample_f(
         wo:  vec3f,
-        material: DIELECTRIC,
+        eta: f32,
+        ax: f32,
+        ay: f32,
         rands: vec4f,
         wi:  ptr<function, vec3f>,
         pdf: ptr<function, f32>,
@@ -243,10 +190,10 @@ export class Dielectric extends Material {
           return;
         }
 
-        if (material.eta == 1.0 || (material.ax < 0.0005 && material.ay < 0.0005)) {
+        if (eta == 1.0 || (ax < 0.0005 && ay < 0.0005)) {
           // sample perfect specular BRDF
 
-          let R = FrDielectric(CosTheta(wo), material.eta);
+          let R = FrDielectric(CosTheta(wo), eta);
           let T = 1.0 - R;
           let pr = R;
           let pt = T;
@@ -265,7 +212,7 @@ export class Dielectric extends Material {
             return;
           } else {
             var etap = 0.0;
-            let valid: bool = Refract(wo, vec3f(0, 0, 1), material.eta, &etap, wi);
+            let valid: bool = Refract(wo, vec3f(0, 0, 1), eta, &etap, wi);
 
             if (!valid) {
               *f = vec3f(0.0);
@@ -287,8 +234,8 @@ export class Dielectric extends Material {
           let uc = rands.x;
           let u  = rands.yz;
 
-          let wm = TS_Sample_wm(wo, u, material.ax, material.ay);
-          let R = FrDielectric(dot(wo, wm), material.eta);
+          let wm = TS_Sample_wm(wo, u, ax, ay);
+          let R = FrDielectric(dot(wo, wm), eta);
           let T = 1.0 - R;
           let pr = R;
           let pt = T;
@@ -300,17 +247,17 @@ export class Dielectric extends Material {
               *pdf = 1.0;
               return;
             }
-            *pdf = TR_DistributionPDF(wo, wm, material.ax, material.ay) / 
+            *pdf = TR_DistributionPDF(wo, wm, ax, ay) / 
                       (4 * AbsDot(wo, wm)) * pr / (pr + pt);
 
             *f = vec3f(
-              TR_D(wm, material.ax, material.ay) * 
-              TR_G(wo, *wi, material.ax, material.ay) * R /
+              TR_D(wm, ax, ay) * 
+              TR_G(wo, *wi, ax, ay) * R /
               (4 * CosTheta(*wi) * CosTheta(wo))
             );
           } else {
             var etap = 0.0;
-            let tir = !Refract(wo, wm, material.eta, &etap, wi);
+            let tir = !Refract(wo, wm, eta, &etap, wi);
             if (SameHemisphere(wo, *wi) || (*wi).z == 0 || tir) {
               *f = vec3f(0.0);
               *pdf = 1.0;
@@ -319,10 +266,10 @@ export class Dielectric extends Material {
 
             let denom = Sqr(dot(*wi, wm) + dot(wo, wm) / etap);
             let dwm_dwi = AbsDot(*wi, wm) / denom;
-            *pdf = TR_DistributionPDF(wo, wm, material.ax, material.ay) * dwm_dwi * pt / (pr + pt);
+            *pdf = TR_DistributionPDF(wo, wm, ax, ay) * dwm_dwi * pt / (pr + pt);
 
-            *f = vec3f(T * TR_D(wm, material.ax, material.ay) *
-              TR_G(wo, *wi, material.ax, material.ay) *
+            *f = vec3f(T * TR_D(wm, ax, ay) *
+              TR_G(wo, *wi, ax, ay) *
               abs(dot(*wi, wm) * dot(wo, wm) /
               (CosTheta(*wi) * CosTheta(wo) * denom))
             );
@@ -344,8 +291,8 @@ export class Dielectric extends Material {
         }
       }
 
-      fn Dielectric_f(wo: vec3f, wi: vec3f, material: DIELECTRIC) -> vec3f {
-        if (material.eta == 1.0 || (material.ax < 0.0005 && material.ay < 0.0005)) {
+      fn Dielectric_f(wo: vec3f, wi: vec3f, eta: f32, ax: f32, ay: f32) -> vec3f {
+        if (eta == 1.0 || (ax < 0.0005 && ay < 0.0005)) {
           // TODO: use correct dirac-delta values for perfect specular BRDF
           return vec3f(1.0);
         } else {
@@ -356,9 +303,9 @@ export class Dielectric extends Material {
           var etap = 1.0;
           if (!reflect) {
             if (cosTheta_o > 0) {
-              etap = material.eta;
+              etap = eta;
             } else {
-              etap = (1.0 / material.eta);
+              etap = (1.0 / eta);
             }
           }
           var wm = wi * etap + wo;
@@ -371,11 +318,11 @@ export class Dielectric extends Material {
             return vec3f(0.0);
           }
 
-          let F = FrDielectric(dot(wo, wm), material.eta);
+          let F = FrDielectric(dot(wo, wm), eta);
           if (reflect) {
             let fr = vec3f(
-              TR_D(wm, material.ax, material.ay) * 
-              TR_G(wo, wi, material.ax, material.ay) * F /
+              TR_D(wm, ax, ay) * 
+              TR_G(wo, wi, ax, ay) * F /
               abs(4.0 * cosTheta_i * cosTheta_o)
             );
 
@@ -387,8 +334,8 @@ export class Dielectric extends Material {
           } else {
             let denom = Sqr(dot(wi, wm) + dot(wo, wm) / etap) * cosTheta_i * cosTheta_o;
             var ft = vec3f(
-              TR_D(wm, material.ax, material.ay) * (1.0 - F) * 
-              TR_G(wo, wi, material.ax, material.ay) *
+              TR_D(wm, ax, ay) * (1.0 - F) * 
+              TR_G(wo, wi, ax, ay) *
               abs(dot(wi, wm) * dot(wo, wm) / denom)
             );
 
@@ -404,72 +351,12 @@ export class Dielectric extends Material {
           }
         }
       }
-    `;
-  }
 
-  static shaderShadeDielectric(): string {
-    return /* wgsl */ `
-      fn shadeDielectricSampleBRDF(
-        rands: vec4f, 
-        material: DIELECTRIC,
-        wo: vec3f,
-        wi: ptr<function, vec3f>,
-        worldSpaceRay: ptr<function, Ray>, 
-        TBN: mat3x3f,
-        brdf: ptr<function, vec3f>,
-        pdf: ptr<function, f32>,
-        misWeight: ptr<function, f32>,
-      ) {
-        Dielectric_Sample_f(wo, material, rands, wi, pdf, brdf);
-        
-        let newDir = normalize(TBN * *wi);
-        let lightSamplePdf = getLightPDF(Ray((*worldSpaceRay).origin, newDir));
-        *misWeight = getMisWeight(*pdf, lightSamplePdf);
-      }
-
-      fn shadeDielectricSampleLight(
-        rands: vec4f, 
-        material: DIELECTRIC,
-        wo: vec3f,
-        wi: ptr<function, vec3f>,
-        worldSpaceRay: ptr<function, Ray>, 
-        TBN: mat3x3f,
-        TBNinverse: mat3x3f,
-        brdf: ptr<function, vec3f>,
-        pdf: ptr<function, f32>,
-        misWeight: ptr<function, f32>,
-        lightSampleRadiance: ptr<function, vec3f>,
-      ) {
-        let lightSample = getLightSample(worldSpaceRay.origin, rands);
-        *pdf = lightSample.pdf;
-        let backSideHit = lightSample.backSideHit;
-
-        // from world-space to tangent-space
-        *wi = TBNinverse * lightSample.direction;
-
-        var brdfSamplePdf = Dielectric_PDF(wo, *wi, material);
-        *brdf = Dielectric_f(wo, *wi, material);
-
-        if (
-          brdfSamplePdf == 0.0 ||
-          lightSample.pdf == 0.0
-        ) {
-          *misWeight = 0; *pdf = 1; *brdf = vec3f(0.0);
-          *lightSampleRadiance = vec3f(0.0);
-          // this will avoid NaNs when we try to normalize wi
-          *wi = vec3f(-1);
-          return;
-        }
-
-        *lightSampleRadiance = lightSample.radiance;
-        *misWeight = getMisWeight(lightSample.pdf, brdfSamplePdf);
-      }
-
-      fn dielectricMultiScatteringFactor(wo: vec3f, material: DIELECTRIC) -> f32 {
+      fn dielectricMultiScatteringFactor(wo: vec3f, roughness: f32, eta: f32) -> f32 {
         var msComp = 1.0;
         let woLutIndex = min(abs(wo.z), 0.9999);
-        let roughLutIndex = min(material.roughness, 0.9999);
-        let etaLutIndex = min(((material.eta - 1.0) / 2.0), 0.9999);
+        let roughLutIndex = min(roughness, 0.9999);
+        let etaLutIndex = min(((eta - 1.0) / 2.0), 0.9999);
         if (wo.z > 0.0) {
           let uvt = vec3f(roughLutIndex, woLutIndex, etaLutIndex);
           msComp = getLUTvalue(uvt, LUT_MultiScatterDielectricEo).x;
@@ -480,150 +367,198 @@ export class Dielectric extends Material {
 
         return msComp;
       }
+    `;
+  }
 
-      fn shadeDielectric(
-        ires: BVHIntersectionResult, 
-        ray: ptr<function, Ray>,
-        reflectance: ptr<function, vec3f>, 
-        rad: ptr<function, vec3f>,
-        tid: vec3u,
-        i: i32
-      ) {
-        let hitPoint = ires.hitPoint;
-        var material: DIELECTRIC = createDielectric(ires.triangle.materialOffset);
+  static shaderDielectricLobe(): string {
+    return /* wgsl */ `
+fn getDielectricMaterial(
+  interpolatedAttributes: InterpolatedAttributes, offset: u32
+) -> EvaluatedMaterial {
+  var data = EvaluatedMaterial();
+  
+  // material type
+  data.materialType = u32(materialsBuffer[offset + 0]);
 
-        var absorption = material.absorption;
-        // using a texture here is non-sensical from a PBR perspective,
-        // however it can be desireable from an artistic point of view
-        if (material.absorptionMapLocation.x > -1) {
-          absorption *= getTexelFromTextureArrays(
-            material.absorptionMapLocation, ires.uv, material.mapUvRepeat
-          ).xyz;
-        }
+  data.baseColor = vec3f(1.0);
 
-        if (material.roughnessMapLocation.x > -1) {
-          let roughness = getTexelFromTextureArrays(
-            material.roughnessMapLocation, ires.uv, material.uvRepeat
-          ).xy;
-          material.roughness *= roughness.x;
-          material.roughness = max(material.roughness, ${Dielectric.MIN_INPUT_ROUGHNESS});
-        }
+  // absorption 
+  data.absorptionCoefficient.x = materialsBuffer[offset + 1]; 
+  data.absorptionCoefficient.y = materialsBuffer[offset + 2]; 
+  data.absorptionCoefficient.z = materialsBuffer[offset + 3]; 
 
-        let axay = anisotropyRemap(material.roughness, material.anisotropy);
-        material.ax = axay.x;
-        material.ay = axay.y;
+  data.emissiveIntensity = 0.0;
 
-        var vertexNormal = ires.normal;
-        var N = vertexNormal;
-        var bumpOffset: f32 = 0.0;
-        if (material.bumpMapLocation.x > -1) {
-          N = getShadingNormal(
-            material.bumpMapLocation, material.bumpStrength, material.uvRepeat, N, *ray, 
-            ires, &bumpOffset
-          );
-        }
+  // roughness, anisotropy
+  data.roughness = materialsBuffer[offset + 4]; 
+  data.anisotropy = materialsBuffer[offset + 5]; 
 
-        var isInsideMedium = dot(N, (*ray).direction) > 0;
-        
-        // beer-lambert absorption 
-        if (isInsideMedium) {
-          *reflectance *= vec3f(
-            exp(-absorption.x * ires.t), 
-            exp(-absorption.y * ires.t), 
-            exp(-absorption.z * ires.t), 
-          );
-        }
-        
-        // needs to be the exact origin, such that getLightSample/getLightPDF can apply a proper offset 
-        (*ray).origin = ires.hitPoint;
+  // eta
+  data.eta = materialsBuffer[offset + 6]; 
 
-        // rands1.w is used for ONE_SAMPLE_MODEL
-        // rands1.xyz is used for brdf samples
-        // rands2.xyz is used for light samples (getLightSample(...) uses .xyz)
-        let rands1 = vec4f(getRand2D(), getRand2D());
-        let rands2 = vec4f(getRand2D(), getRand2D());
-        
-        // we need to calculate a TBN matrix
-        var tangent = vec3f(0.0);
-        var bitangent = vec3f(0.0);
-        getTangentFromTriangle(ires, ires.triangle, N, &tangent, &bitangent);
-       
+  // bump strength
+  data.bumpStrength = materialsBuffer[offset + 7]; 
 
-        // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
-        let TBN = mat3x3f(tangent, bitangent, N);
-        // to transform vectors from world space to tangent space, we multiply by
-        // the inverse of the TBN
-        let TBNinverse = transpose(TBN);
+  data.uvRepeat = vec2f(
+    materialsBuffer[offset + 8],
+    materialsBuffer[offset + 9],
+  );
+  data.mapUvRepeat = vec2f(
+    materialsBuffer[offset + 10],
+    materialsBuffer[offset + 11],
+  );
 
-        var wi = vec3f(0,0,0); 
-        let wo = normalize(TBNinverse * -(*ray).direction);
+  data.mapLocation = vec2i(-1, -1);
+  data.roughnessMapLocation = vec2i(
+    bitcast<i32>(materialsBuffer[offset + 14]),
+    bitcast<i32>(materialsBuffer[offset + 15]),
+  );
+  data.bumpMapLocation = vec2i(
+    bitcast<i32>(materialsBuffer[offset + 16]),
+    bitcast<i32>(materialsBuffer[offset + 17]),
+  );
 
-        let msCompensation = dielectricMultiScatteringFactor(wo, material);
+  if (data.roughnessMapLocation.x > -1) {
+    let roughnessTexel = getTexelFromTextureArrays(
+      data.roughnessMapLocation, interpolatedAttributes.uv, data.uvRepeat
+    ).xy;
 
-        if (config.MIS_TYPE == BRDF_ONLY) {
-          var pdf: f32; var w: f32; var brdf: vec3f;
-          shadeDielectricSampleBRDF(
-            rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &w
-          );
+    // roughness
+    data.roughness *= roughnessTexel.x;
+    data.roughness = max(data.roughness, ${Dielectric.MIN_INPUT_ROUGHNESS});
+  }
 
-          (*ray).direction = normalize(TBN * wi);
-          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
-          *reflectance *= (brdf / msCompensation) / pdf * abs(dot(N, (*ray).direction));
-        }
+  let axay = anisotropyRemap(data.roughness, data.anisotropy);
+  data.ax = axay.x;
+  data.ay = axay.y;
 
-        if (config.MIS_TYPE == ONE_SAMPLE_MODEL) {
-          var pdf: f32; var misWeight: f32; var brdf: vec3f; var ls: vec3f;
-          var isBrdfSample = rands1.w < 0.5;
-          if (isBrdfSample) {
-            shadeDielectricSampleBRDF(
-              rands1, material, wo, &wi, ray, TBN, &brdf, &pdf, &misWeight
-            );
-          } else {
-            shadeDielectricSampleLight(
-              rands2, material, wo, &wi, ray, TBN, TBNinverse, 
-              &brdf, &pdf, &misWeight, &ls
-            );
-          }
+  return data;
+}
 
-          (*ray).direction = normalize(TBN * wi);
-          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
-          *reflectance *= (brdf / msCompensation) * (misWeight / pdf) * abs(dot(N, (*ray).direction));
-        }
+fn evaluatePdfDielectricLobe(
+  wo: vec3f,
+  wi: vec3f,
+  material: EvaluatedMaterial, 
+) -> f32 {
+  let ax = material.ax;
+  let ay = material.ay;
+  let eta = material.eta;
 
-        if (config.MIS_TYPE == NEXT_EVENT_ESTIMATION) {
-          var brdfSamplePdf: f32; var brdfMisWeight: f32; 
-          var brdfSampleBrdf: vec3f; 
+  // we're assuming wo and wi are in local-space 
+  var brdfSamplePdf = Dielectric_PDF(wo, wi, eta, ax, ay);
+  return brdfSamplePdf;
+}
 
-          var lightSamplePdf: f32; var lightMisWeight: f32; 
-          var lightRadiance: vec3f; var lightSampleBrdf: vec3f;
-          var lightSampleWi: vec3f;
+fn evaluateDielectricBrdf(
+  wo: vec3f,
+  wi: vec3f,
+  material: EvaluatedMaterial, 
+) -> vec3f {
+  let ax = material.ax;
+  let ay = material.ay;
+  let eta = material.eta;
+  let roughness = material.roughness;
 
-          shadeDielectricSampleBRDF(
-            rands1, material, wo, &wi, ray, TBN, &brdfSampleBrdf, &brdfSamplePdf, &brdfMisWeight
-          );
-          shadeDielectricSampleLight(
-            rands2, material, wo, &lightSampleWi, ray, TBN, TBNinverse, 
-            &lightSampleBrdf, &lightSamplePdf, &lightMisWeight, &lightRadiance
-          );
+  // we're assuming wo and wi are in local-space 
+  var brdf = Dielectric_f(wo, wi, eta, ax, ay);
+  brdf /= dielectricMultiScatteringFactor(wo, roughness, eta);
+  
+  return brdf;
+}
 
-          (*ray).direction = normalize(TBN * wi);
-          (*ray).origin = ires.hitPoint + (*ray).direction * 0.001;
-          // from tangent space to world space
-          lightSampleWi = normalize(TBN * lightSampleWi);
-          // *****************
-          // The reason why we can use NEE without issues here is that if the light sample ray 
-          // ends up inside the medium, the bvh intersection routine will find the other side of 
-          // the object instead of a light source, thus setting misWeight to zero.
-          // We're also making sure the light-sample ray is correctly being positioned inside or outside 
-          // the medium before using the ray
-          // *****************
-          *rad += *reflectance * lightRadiance * (lightSampleBrdf / msCompensation) * 
-            (lightMisWeight / lightSamplePdf) * abs(dot(N, lightSampleWi));
-          
-          *reflectance *= (brdfSampleBrdf / msCompensation) * (brdfMisWeight / brdfSamplePdf) * 
-            abs(dot(N, (*ray).direction));
-        }
-      } 
+fn sampleDielectricBrdf(
+  material: EvaluatedMaterial, 
+  geometryContext: GeometryContext
+) -> BrdfDirectionSample {
+  let ray = geometryContext.ray;
+  let surfaceNormals = geometryContext.normals;
+
+  let rands = vec4f(getRand2D(), getRand2D());
+
+  var tangent = vec3f(0.0);
+  var bitangent = vec3f(0.0);
+  getTangentFromTriangle(geometryContext, &tangent, &bitangent);
+  
+  // https://learnopengl.com/Advanced-Lighting/Normal-Mapping
+  let TBN = mat3x3f(tangent, bitangent, surfaceNormals.shading);
+  // to transform vectors from world space to tangent space, we multiply by
+  // the inverse of the TBN
+  let TBNinverse = transpose(TBN);
+  let wo = TBNinverse * -ray.direction;
+  var wi = vec3f(0.0);
+
+  let ax = material.ax;
+  let ay = material.ay;
+  let eta = material.eta;
+  let roughness = material.roughness;
+
+  var brdfSamplePdf = 0.0;
+  var brdf = vec3f(0.0);
+  Dielectric_Sample_f(wo, eta, ax, ay, rands, &wi, &brdfSamplePdf, &brdf);
+  let msCompensation = dielectricMultiScatteringFactor(wo, roughness, eta);
+  brdf /= msCompensation;
+  
+  let lightSamplePdf = getLightPDF(Ray(ray.origin, normalize(TBN * wi)));
+  let misWeight = getMisWeight(brdfSamplePdf, lightSamplePdf);
+  let newDirection = normalize(TBN * wi);
+
+  return BrdfDirectionSample(
+    brdf,
+    brdfSamplePdf,
+    misWeight,
+    newDirection,
+  );
+}
+
+fn sampleDielectricLight(
+  material: EvaluatedMaterial, 
+  geometryContext: GeometryContext
+) -> LightDirectionSample {
+  let ray = geometryContext.ray;
+  let rands = vec4f(getRand2D(), getRand2D());
+
+  let lightSample = getLightSample(ray.origin, rands);
+  let pdf = lightSample.pdf;
+
+  var wo = -ray.direction;
+  var wi = lightSample.direction;
+
+  // from world-space to tangent-space
+  transformToLocalSpace(&wo, &wi, geometryContext);
+
+  let ax = material.ax;
+  let ay = material.ay;
+  let eta = material.eta;
+  let roughness = material.roughness;
+
+  var brdfSamplePdf = Dielectric_PDF(wo, wi, eta, ax, ay);
+
+  var brdf = Dielectric_f(wo, wi, eta, ax, ay);
+  brdf /= dielectricMultiScatteringFactor(wo, roughness, eta);
+
+  if (
+    brdfSamplePdf == 0.0 || 
+    lightSample.pdf == 0.0
+  ) {
+    return LightDirectionSample(
+      vec3f(0.0),
+      1,
+      0,
+      vec3f(0.0),
+      lightSample,
+    );
+  }
+
+  let mis = getMisWeight(lightSample.pdf, brdfSamplePdf);
+
+  return LightDirectionSample(
+    brdf,
+    pdf,
+    mis,
+    lightSample.direction,
+    lightSample
+  );
+}
     `;
   }
 }

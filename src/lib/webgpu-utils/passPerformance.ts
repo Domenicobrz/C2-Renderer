@@ -11,10 +11,12 @@ export class ComputePassPerformance {
       count: 2
     });
     this.resolveBuffer = device.createBuffer({
+      label: 'resolve - pass performance',
       size: this.querySet.count * 8,
       usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC
     });
     this.resultBuffer = device.createBuffer({
+      label: 'result - pass performance',
       size: this.resolveBuffer.size,
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
     });

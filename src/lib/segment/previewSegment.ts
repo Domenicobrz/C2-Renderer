@@ -72,6 +72,7 @@ export class PreviewSegment {
 
     // create a typedarray to hold the values for the uniforms in JavaScript
     this.renderModeBuffer = device.createBuffer({
+      label: 'render mode',
       size: 1 * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
@@ -139,7 +140,7 @@ export class PreviewSegment {
     }
 
     this.vertexBuffer = this.device.createBuffer({
-      label: 'preview segment vertex buffer',
+      label: 'preview segment vertex',
       size: vertexData.byteLength,
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
     });

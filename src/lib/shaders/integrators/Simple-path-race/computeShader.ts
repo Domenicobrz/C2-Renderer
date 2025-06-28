@@ -1,29 +1,30 @@
 import { AABB } from '$lib/bvh/aabb';
 import { BVH } from '$lib/bvh/bvh';
-import { configManager } from '$lib/config';
+import { SPTConfigManager } from '$lib/config';
 import { Diffuse } from '$lib/materials/diffuse';
 import { Emissive } from '$lib/materials/emissive';
 import { TorranceSparrow } from '$lib/materials/torranceSparrow';
 import { Material } from '$lib/materials/material';
 import { Triangle } from '$lib/primitives/triangle';
 import { TileSequence } from '$lib/tile';
-import { mathUtilsPart } from './parts/mathUtils';
-import { pbrtMathUtilsPart } from './parts/pbrtMathUtils';
-import { randomPart } from './parts/random';
+import { mathUtilsPart } from '../../parts/mathUtils';
+import { pbrtMathUtilsPart } from '../../parts/pbrtMathUtils';
+import { randomPart } from '../../parts/random';
 import { Dielectric } from '$lib/materials/dielectric';
 import { PC2D } from '$lib/samplers/PiecewiseConstant2D';
 import { PC1D } from '$lib/samplers/PiecewiseConstant1D';
 import { Envmap } from '$lib/envmap/envmap';
 import { Camera } from '$lib/controls/Camera';
 import { Plane } from '$lib/primitives/plane';
-import { misPart } from './parts/mis';
-import { texturePart } from './parts/texture';
-import { shadingNormalsPart } from './parts/shadingNormal';
+import { misPart } from '../../parts/mis';
+import { texturePart } from '../../parts/texture';
+import { shadingNormalsPart } from '../../parts/shadingNormal';
 import type { LUTManager } from '$lib/managers/lutManager';
-import { getRandomPart } from './parts/getRandom';
+import { getRandomPart } from '../../parts/getRandom';
 import { EONDiffuse } from '$lib/materials/EONDiffuse';
+import { shade } from './shade';
 
-export function getComputeShader(lutManager: LUTManager) {
+export function getComputeShader(lutManager: LUTManager, configManager: SPTConfigManager) {
   return /* wgsl */ `
 // keep in mind that configManager.shaderPart() might return different shader code if the
 // internal shader configs have changed
@@ -37,25 +38,15 @@ ${texturePart}
 ${shadingNormalsPart}
 ${getRandomPart}
 ${lutManager.getShaderPart()}
+${shade}
 ${TileSequence.shaderPart()}
-${Emissive.shaderStruct()}
-${Emissive.shaderCreateStruct()}
-${Emissive.shaderShadeEmissive()}
-${Diffuse.shaderStruct()}
-${Diffuse.shaderCreateStruct()}
-${Diffuse.shaderShadeDiffuse()}
-${EONDiffuse.shaderStruct()}
-${EONDiffuse.shaderCreateStruct()}
-${EONDiffuse.shaderShadeEONDiffuse()}
-${TorranceSparrow.shaderStruct()}
-${TorranceSparrow.shaderCreateStruct()}
+${Emissive.shaderEmissiveLobe()}
+${Diffuse.shaderDiffuseLobe()}
 ${TorranceSparrow.shaderBRDF()}
-${TorranceSparrow.shaderShadeTorranceSparrow()}
-${Dielectric.shaderStruct()}
-${Dielectric.shaderCreateStruct()}
+${TorranceSparrow.shaderTorranceSparrowLobe()}
 ${Dielectric.shaderBRDF()}
-${Dielectric.shaderShadeDielectric()}
-${Material.shaderShade()}
+${Dielectric.shaderDielectricLobe()}
+${Material.shaderStruct()}
 ${Camera.shaderStruct()}
 ${Camera.shaderMethods()}
 ${Triangle.shaderStruct()}
@@ -88,7 +79,7 @@ ${Plane.shaderMethods()}
 @group(2) @binding(1) var<uniform> debugPixelTarget: vec2<u32>;
 
 @group(3) @binding(0) var<storage> triangles: array<Triangle>;
-@group(3) @binding(1) var<storage> materialsData: array<f32>;
+@group(3) @binding(1) var<storage> materialsBuffer: array<f32>;
 @group(3) @binding(2) var<storage> bvhData: array<BVHNode>;
 @group(3) @binding(3) var<storage> lightsCDFData: array<LightCDFEntry>;
 // envmapPC2Darray will contain:
@@ -121,8 +112,10 @@ struct DebugInfo {
 // https://www.w3.org/TR/WGSL/#address-spaces-private
 var<private> debugInfo = DebugInfo(vec3u(0,0,0), false, 0, 0, 0);
 fn debugLog(value: f32) {
-  debugBuffer[debugInfo.debugLogIndex] = value;
-  debugInfo.debugLogIndex++;
+  if (debugInfo.isSelectedPixel) {
+    debugBuffer[debugInfo.debugLogIndex] = value;
+    debugInfo.debugLogIndex++;
+  }
 }
 
 // ***** Things to remember:  (https://webgpureport.org/)
@@ -155,6 +148,7 @@ fn debugLog(value: f32) {
 
   var reflectance = vec3f(1.0);
   var rad = vec3f(0.0);
+  var lastBrdfMis = 1.0;
   for (var i = 0; i < config.BOUNCES_COUNT; i++) {
     if (rayContribution == 0.0) { break; }
 
@@ -163,11 +157,11 @@ fn debugLog(value: f32) {
     let ires = bvhIntersect(ray);
 
     if (ires.hit) {
-      shade(ires, &ray, &reflectance, &rad, tid, i);
+      shade(ires, &ray, &rad, &reflectance, &lastBrdfMis);
     } else if (shaderConfig.HAS_ENVMAP) {
       // we bounced off into the envmap
       let envmapRad = getEnvmapRadiance(ray.direction);
-      rad += reflectance * envmapRad;
+      rad += lastBrdfMis * reflectance * envmapRad;
       break;
     }
 
@@ -177,7 +171,6 @@ fn debugLog(value: f32) {
   }
 
   if (debugInfo.isSelectedPixel) {
-    // debugLog(999);
     radianceOutput[idx] += vec3f(100, 0, 100);
   } else {
     radianceOutput[idx] += rad * rayContribution;

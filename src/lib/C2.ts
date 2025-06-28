@@ -50,6 +50,7 @@ export const globals: {
   animationFrameHandle: number | null;
   assetsPath: string;
   e: EventHandler;
+  version: string;
 } = {
   // not sure how to tell typescript that these values will exist when I'll try to access them
   device: null as any,
@@ -67,7 +68,8 @@ export const globals: {
   },
   animationFrameHandle: null,
   assetsPath: 'https://domenicobrz.github.io/scene-assets/',
-  e: new EventHandler()
+  e: new EventHandler(),
+  version: '1.0.0'
 };
 
 export type RendererInterface = {

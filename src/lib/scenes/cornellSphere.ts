@@ -11,7 +11,6 @@ import type { C2Scene } from '$lib/createScene';
 import { Orbit } from '$lib/controls/Orbit';
 import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
-import { EONDiffuse } from '$lib/materials/EONDiffuse';
 import { globals } from '$lib/C2';
 
 export async function cornellSphereScene(): Promise<C2Scene> {

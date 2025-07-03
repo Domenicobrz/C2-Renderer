@@ -11,20 +11,19 @@ import type { C2Scene } from '$lib/createScene';
 import { Orbit } from '$lib/controls/Orbit';
 import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
-import { EONDiffuse } from '$lib/materials/EONDiffuse';
 import { Envmap } from '$lib/envmap/envmap';
 import { globals } from '$lib/C2';
 
 export async function envmapSphereScene(): Promise<C2Scene> {
   let triangles: Triangle[] = [];
   let materials: Material[] = [
-    new EONDiffuse({ color: new Color(0.95, 0.95, 0.95), roughness: 1 }),
-    new EONDiffuse({ color: new Color(1, 0.05, 0.05), roughness: 1 }),
+    new Diffuse({ color: new Color(0.95, 0.95, 0.95), roughness: 1 }),
+    new Diffuse({ color: new Color(1, 0.05, 0.05), roughness: 1 }),
     // new Diffuse({ color: new Color(0.95, 0.95, 0.95) }),
     // new Diffuse({ color: new Color(1, 0.05, 0.05) }),
     new TorranceSparrow({ color: new Color(0.95, 0.95, 0.95), roughness: 0, anisotropy: 0 }),
     new Emissive({ color: new Color(1, 0.1, 0.1), intensity: 20 }),
-    new EONDiffuse({ color: new Color(0.05, 1, 0.05), roughness: 1 }),
+    new Diffuse({ color: new Color(0.05, 1, 0.05), roughness: 1 }),
     // new Diffuse({ color: new Color(0.05, 1, 0.05) }),
     new Dielectric({
       absorption: new Color(0.095, 0.195, 0.295),

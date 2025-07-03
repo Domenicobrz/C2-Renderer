@@ -19,7 +19,6 @@ import { meshToTriangles } from '$lib/utils/three/meshToTriangles';
 import type { C2Scene } from '$lib/createScene';
 import { Orbit } from '$lib/controls/Orbit';
 import { Envmap } from '$lib/envmap/envmap';
-import { EONDiffuse } from '$lib/materials/EONDiffuse';
 import { globals } from '$lib/C2';
 
 export async function furnaceTestScene(): Promise<C2Scene> {

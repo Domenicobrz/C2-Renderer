@@ -11,7 +11,6 @@ import type { C2Scene } from '$lib/createScene';
 import { Orbit } from '$lib/controls/Orbit';
 import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 import { geometryToTriangles } from '$lib/utils/three/geometryToTriangles';
-import { EONDiffuse } from '$lib/materials/EONDiffuse';
 
 export async function dofQuadTest(): Promise<C2Scene> {
   let triangles: Triangle[] = [];

@@ -21,7 +21,6 @@ import { texturePart } from '../../parts/texture';
 import { shadingNormalsPart } from '../../parts/shadingNormal';
 import type { LUTManager } from '$lib/managers/lutManager';
 import { getRandomPart } from '../../parts/getRandom';
-import { EONDiffuse } from '$lib/materials/EONDiffuse';
 import { shade } from './shade';
 
 export function getComputeShader(lutManager: LUTManager, configManager: SPTConfigManager) {

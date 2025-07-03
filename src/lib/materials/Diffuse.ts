@@ -496,6 +496,11 @@ fn sampleDiffuseBrdf(
   var wi = sample.xyz;
   let brdfSamplePdf = sample.w;
 
+  // apparently this can happen on a macbook m4 pro
+  if (brdfSamplePdf == 0.0) {
+    return BrdfDirectionSample(vec3f(0.0), 1, 0, vec3f(0.0));
+  }
+
   let brdf = f_EON(material.baseColor, material.roughness, wi, wo, true);
   let newDirection = normalize(TBN * wi);
 

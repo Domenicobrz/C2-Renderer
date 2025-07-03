@@ -234,6 +234,7 @@ export class ReSTIRPTSegment {
     */
     await this.debugReadBuffer.mapAsync(GPUMapMode.READ);
     const f32 = new Float32Array(this.debugReadBuffer.getMappedRange());
+    console.log(f32);
     this.debugReadBuffer.unmap();
   }
 

@@ -24,7 +24,7 @@ export class Camera {
 
   private device: GPUDevice;
 
-  private requestedBuffersUpdate: boolean = false;
+  private requestedBuffersUpdate: boolean = true;
 
   protected canvasContainerEl!: HTMLDivElement;
 
@@ -82,7 +82,7 @@ export class Camera {
     this.canvasContainerEl = canvasContainer;
   }
 
-  onCanvasResize(canvasSize: Vector2) {
+  setCanvasSize(canvasSize: Vector2) {
     this.canvasSize = canvasSize;
     this.requestedBuffersUpdate = true;
   }

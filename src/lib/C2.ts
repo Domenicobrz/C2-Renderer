@@ -146,7 +146,7 @@ function onCanvasResize(
 ) {
   canvasSize = vec2(canvas.width, canvas.height);
 
-  scene.camera.onCanvasResize(canvasSize);
+  scene.camera.setCanvasSize(canvasSize);
 
   if (globals.buffers.radianceBuffer) {
     globals.buffers.radianceBuffer.destroy();
@@ -276,6 +276,8 @@ async function switchScene(name: SceneName) {
   await tick(); // will give us the chance of showing the message above
 
   sceneDataManager.update(scene);
+
+  scene.camera.setCanvasSize(canvasSize);
 
   renderSegment.updateScene(scene);
   previewSegment.updateScene(scene);
